@@ -4,7 +4,7 @@ import WalletRow from './WalletRow';
 
 function HeaderRow() {
   return (
-    <div className="grid grid-cols-[40px_minmax(0,1fr)_70px_110px_140px_130px_110px_80px] px-5 py-3 bg-bg-surface border-b border-border-default text-[10px] uppercase tracking-[1.2px] text-text-muted">
+    <div className="grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 py-3 bg-bg-surface border-b border-border-default text-[10px] uppercase tracking-[1.2px] text-text-muted">
       <div>#</div>
       <div>Wallet</div>
       <div>Chain</div>
@@ -22,7 +22,7 @@ function LoadingRows() {
     <div className="p-5">
       <div className="skeleton h-8 rounded mb-3" />
       {Array.from({ length: 8 }).map((_, idx) => (
-          <div key={idx} className="grid grid-cols-[40px_minmax(0,1fr)_70px_110px_140px_130px_110px_80px] items-center py-3.5 border-b border-border-subtle">
+          <div key={idx} className="grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 items-center py-3.5 border-b border-border-subtle">
           <div className="skeleton rounded h-3 w-4" />
           <div className="space-y-2">
             <div className="skeleton rounded h-3 w-24" />

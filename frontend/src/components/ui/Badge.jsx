@@ -5,12 +5,12 @@ const SIGNAL_CLASSES = {
 };
 
 const GRADE_CLASSES = {
-  S: 'bg-green-dim text-green',
-  A: 'bg-green-dim text-green opacity-80',
-  B: 'bg-blue-dim text-blue',
-  C: 'bg-amber-dim text-amber',
-  D: 'bg-red-dim text-red',
-  F: 'bg-red-dim text-red',
+  S: 'bg-green/20 text-green border border-green/30',
+  A: 'bg-green/10 text-green border border-green/20',
+  B: 'bg-amber/20 text-amber border border-amber/30',
+  C: 'bg-amber/10 text-amber border border-amber/20',
+  D: 'bg-red/15 text-red border border-red/25',
+  F: 'bg-red/25 text-red border border-red/40',
 };
 
 const RISK_CLASSES = {

@@ -39,11 +39,11 @@ function saveUserTags(address, tags) {
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function gradeFromScore(score) {
-  if (score >= 92) return 'S';
-  if (score >= 82) return 'A';
-  if (score >= 68) return 'B';
-  if (score >= 52) return 'C';
-  if (score >= 36) return 'D';
+  if (score >= 85) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 55) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 25) return 'D';
   return 'F';
 }
 
@@ -67,18 +67,22 @@ function scaleBreakdown(breakdown, score) {
   };
 }
 
-function BreakdownBar({ label, value, max = 100 }) {
-  const pct = Math.round((value / max) * 100);
-  const colorClass = pct >= 80 ? 'fill-score-high' : pct >= 60 ? 'fill-score-mid' : 'fill-score-low';
+function BreakdownBar({ label, value, maxPts }) {
+  const pct = maxPts > 0 ? Math.round((value / maxPts) * 100) : 0;
+  // Ensure even tiny values are visible (at least 4% wide if non-zero)
+  const barPct = value > 0 ? Math.max(pct, 4) : 0;
+  const colorClass = pct >= 70 ? 'fill-score-high' : pct >= 40 ? 'fill-score-mid' : 'fill-score-low';
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] text-text-muted">{label}</span>
-        <span className="text-[11px] font-mono text-text-secondary">{value}</span>
+        <span className="text-[11px] font-mono text-text-secondary">
+          {value}<span className="text-text-muted">/{maxPts}</span>
+        </span>
       </div>
       <svg className="h-[2px] w-full overflow-visible" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true">
         <rect x="0" y="0" width="100" height="2" className="fill-bg-elevated" rx="1" />
-        <rect x="0" y="0" width={pct} height="2" className={colorClass} rx="1" />
+        <rect x="0" y="0" width={barPct} height="2" className={colorClass} rx="1" />
       </svg>
     </div>
   );
@@ -122,7 +126,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   };
 
   return (
-    <aside className="w-[340px] flex-shrink-0 h-full min-h-0 bg-bg-surface border-l border-border-subtle flex flex-col">
+    <aside className="w-full h-full min-h-0 bg-bg-surface border-l border-border-subtle flex flex-col">
 
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle relative">
@@ -189,11 +193,11 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         </div>
         <div className="flex gap-4">
           <ScoreRing score={score} size={64} />
-          <div className="flex-1 flex flex-col gap-2">
-            <BreakdownBar label="Activity" value={breakdown.activity} />
-            <BreakdownBar label="Success Rate" value={breakdown.success_rate} />
-            <BreakdownBar label="Balance" value={breakdown.balance} />
-            <BreakdownBar label="Recency" value={breakdown.recency} />
+          <div className="flex-1 flex flex-col gap-2.5">
+            <BreakdownBar label="Activity" value={wallet?.score_breakdown?.activity ?? breakdown.activity} maxPts={35} />
+            <BreakdownBar label="Success Rate" value={wallet?.score_breakdown?.success_rate ?? breakdown.success_rate} maxPts={30} />
+            <BreakdownBar label="Balance" value={wallet?.score_breakdown?.balance ?? breakdown.balance} maxPts={25} />
+            <BreakdownBar label="Recency" value={wallet?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
           </div>
         </div>
       </div>

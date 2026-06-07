@@ -162,12 +162,12 @@ export default function Sidebar() {
     <aside className="w-[220px] flex-shrink-0 bg-bg-surface border-r border-border-subtle flex flex-col">
 
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+      <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2.5">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true" className="flex-shrink-0">
           <path d="M11 1.6L18.7 6.1V15.9L11 20.4L3.3 15.9V6.1L11 1.6Z" fill="#00D992" />
         </svg>
         <span className="font-display text-[15px] font-bold tracking-[-0.5px] text-text-primary">SENTINEL</span>
-        <span className="text-[9px] text-text-muted tracking-[1.5px] uppercase ml-1">AI</span>
+        <span className="text-[9px] font-bold text-green tracking-[2px] uppercase bg-green/10 px-1.5 py-0.5 rounded">AI</span>
       </div>
 
       {/* Nav */}
@@ -227,27 +227,43 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="stroke-text-muted flex-shrink-0">
-            <circle cx="6" cy="6" r="4.2" strokeWidth="1" />
-            <path d="M6 3.7V6L7.6 7.1" strokeWidth="1" />
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6b7280" strokeWidth="1.1" className="flex-shrink-0">
+            <circle cx="6" cy="6" r="4.2" />
+            <path d="M6 3.7V6L7.6 7.1" strokeLinecap="round" />
           </svg>
-          <span className="text-[11px] text-text-muted">
+          <span className="text-[11px] text-text-secondary">
             Last: {relativeLastScan(lastScanned)}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="stroke-text-muted flex-shrink-0">
-            <path d="M6 2v4l2.5 2.5" strokeWidth="1" strokeLinecap="round" />
-            <circle cx="6" cy="6" r="4.5" strokeWidth="1" />
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6b7280" strokeWidth="1.1" className="flex-shrink-0">
+            <path d="M6 2v4l2.5 2.5" strokeLinecap="round" />
+            <circle cx="6" cy="6" r="4.5" />
           </svg>
-          <span className="text-[11px] text-text-muted">
+          <span className="text-[11px] text-text-secondary">
             {nextScanLabel ? `Next scan in ${nextScanLabel}` : 'Auto-scan: 6h cycle'}
           </span>
         </div>
       </div>
 
+      {/* Landing page link */}
+      <div className="px-4 pb-2">
+        <a
+          href="/landing"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 text-[11px] text-text-muted hover:text-text-secondary transition-colors py-1"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.1">
+            <path d="M6 1.5h4.5V6M5 7L10.5 1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5.5 2.5H2A.5.5 0 001.5 3v7a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V6.5" strokeLinecap="round" />
+          </svg>
+          View Landing Page
+        </a>
+      </div>
+
       {/* User */}
-      <div className="px-4 py-4 border-t border-border-subtle flex items-center gap-2">
+      <div className="px-4 py-3 border-t border-border-subtle flex items-center gap-2">
         <span className="h-7 w-7 rounded-full bg-blue-dim border border-blue-border flex items-center justify-center text-[11px] text-blue font-medium flex-shrink-0">
           SA
         </span>

@@ -276,7 +276,7 @@ def fetch_latest_analyses(wallet_ids: list[str], chunk_size: int = 40) -> dict[s
 
 async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[str] | None = None):
     balance, transactions = await fetch_wallet_data(address, chain)
-    score_result = score_wallet(transactions, balance, chain, address=address)
+    score_result = score_wallet(transactions, balance, chain, address=address, label=label)
 
     wallet_record = {
         "address": address,
@@ -396,7 +396,7 @@ async def scan_wallet(request: WalletScanRequest):
             balance=balance,
             chain=chain,
         )
-        score_result = score_wallet(transactions, balance, chain, address=address)
+        score_result = score_wallet(transactions, balance, chain, address=address, label=label)
         wallet_payload = {
             "address": address,
             "label": label,
@@ -612,6 +612,31 @@ async def add_to_watchlist(request: AddWalletRequest, background_tasks: Backgrou
 # ─────────────────────────────────────────
 # ROUTES — CRON / ADMIN
 # ─────────────────────────────────────────
+
+@app.post("/api/admin/rescan-all")
+async def rescan_all_wallets(background_tasks: BackgroundTasks):
+    """Trigger a full rescan of ALL wallets in the background (applies new scoring engine)."""
+    try:
+        result = (
+            supabase_client.table("wallets")
+            .select("address, label, chain, tags")
+            .eq("chain", "ethereum")
+            .order("score", desc=True)
+            .execute()
+        )
+        wallets = result.data or []
+        for w in wallets:
+            background_tasks.add_task(
+                persist_wallet_scan,
+                w["address"],
+                w.get("label", ""),
+                w.get("chain", "ethereum"),
+                w.get("tags") or [],
+            )
+        return success({"queued": len(wallets), "message": f"Rescanning {len(wallets)} wallets with v3 scoring engine"})
+    except Exception as e:
+        return error("RESCAN_FAILED", str(e), status_code=500)
+
 
 @app.post("/api/admin/backfill-balances")
 async def backfill_balances(background_tasks: BackgroundTasks, limit: int = 94):

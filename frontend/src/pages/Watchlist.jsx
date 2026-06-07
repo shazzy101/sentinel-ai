@@ -35,6 +35,8 @@ function filterButtonClass(isActive) {
   return 'text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors select-none bg-transparent border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default';
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function WatchlistPage() {
   const { wallets, loading, error, refetch } = useWatchlist();
   const { scan, loading: isScanning, activeAddress, stage } = useScanWallet();
@@ -51,6 +53,7 @@ export default function WatchlistPage() {
   const [toasts, setToasts] = useState([]);
   const [sortOpen, setSortOpen] = useState(false);
   const sortMenuRef = useRef(null);
+  const [isRescanningAll, setIsRescanningAll] = useState(false);
 
   // Open add-wallet modal from App-level topbar button
   useEffect(() => {
@@ -95,6 +98,22 @@ export default function WatchlistPage() {
     window.addEventListener('sentinel-alert-fired', onAlert);
     return () => window.removeEventListener('sentinel-alert-fired', onAlert);
   }, [addToast]);
+
+  const handleRescanAll = useCallback(async () => {
+    if (isRescanningAll) return;
+    setIsRescanningAll(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/rescan-all`, { method: 'POST' });
+      const json = await res.json();
+      const count = json?.data?.queued ?? wallets.length;
+      addToast(`Rescanning ${count} wallets with v3 scoring engine…`, 'success');
+      setTimeout(() => { refetch(); }, 10000);
+    } catch {
+      addToast('Rescan failed — check backend connection', 'error');
+    } finally {
+      setIsRescanningAll(false);
+    }
+  }, [isRescanningAll, wallets.length, refetch, addToast]);
 
   const filteredWallets = useMemo(() => wallets
     .filter((w) => {
@@ -207,32 +226,56 @@ export default function WatchlistPage() {
         ) : null}
 
         {/* Right controls */}
-        <div className="ml-auto flex items-center gap-3 relative" ref={sortMenuRef}>
+        <div className="ml-auto flex items-center gap-2 relative" ref={sortMenuRef}>
+          {/* Sort dropdown — styled as a real control */}
           <button
             type="button"
             onClick={() => setSortOpen((prev) => !prev)}
-            className="text-[12px] text-text-secondary bg-bg-overlay border border-border-default rounded-lg px-3 py-1.5 min-w-[130px] text-left"
+            className="flex items-center gap-2 text-[12px] text-text-secondary bg-bg-overlay border border-border-default rounded-lg px-3 py-1.5 min-w-[130px] hover:border-border-strong transition-colors"
           >
-            {SORT_LABEL[sortBy]}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-text-muted flex-shrink-0">
+              <path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            <span className="flex-1 text-left">{SORT_LABEL[sortBy]}</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`text-text-muted transition-transform ${sortOpen ? 'rotate-180' : ''}`}>
+              <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
           {sortOpen ? (
-            <div className="absolute top-9 left-0 bg-bg-overlay border border-border-default rounded-lg text-[12px] text-text-secondary min-w-[130px] z-20 shadow-lg">
-              {Object.entries(SORT_LABEL).map(([key, label]) => (
+            <div className="absolute top-9 right-0 bg-bg-overlay border border-border-default rounded-lg text-[12px] text-text-secondary min-w-[130px] z-20 shadow-xl overflow-hidden">
+              {Object.entries(SORT_LABEL).map(([key, lbl]) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => { setSortBy(key); setSortOpen(false); }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-bg-elevated first:rounded-t-lg last:rounded-b-lg"
+                  className={`w-full text-left px-3 py-2 hover:bg-bg-elevated transition-colors ${sortBy === key ? 'text-green' : ''}`}
                 >
-                  {label}
+                  {lbl}
                 </button>
               ))}
             </div>
           ) : null}
 
-          <span className="text-[11px] text-text-muted whitespace-nowrap">
-            {filteredWallets.length} / {wallets.length}
+          <span className="text-[11px] text-text-muted whitespace-nowrap px-1">
+            {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
           </span>
+
+          {/* Rescan All button */}
+          <button
+            type="button"
+            onClick={handleRescanAll}
+            disabled={isRescanningAll}
+            title="Apply new scoring engine to all wallets"
+            className="flex items-center gap-1.5 text-[11px] text-text-muted border border-border-subtle rounded-lg px-2.5 py-1.5 hover:border-border-default hover:text-text-secondary transition-colors disabled:opacity-40"
+          >
+            {isRescanningAll ? <Spinner size="sm" /> : (
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path d="M9.5 3.5A4 4 0 1 0 10 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M10 1.5v2.5H7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+            Rescan All
+          </button>
 
           <Button variant="icon" onClick={refetch} disabled={loading} aria-label="Refresh watchlist">
             {loading ? <Spinner size="sm" /> : (
@@ -262,7 +305,7 @@ export default function WatchlistPage() {
         </div>
         <div
           className={`flex-shrink-0 h-full transition-all duration-200 ease-out ${
-            selectedWallet ? 'w-[340px]' : 'w-0'
+            selectedWallet ? 'w-[400px]' : 'w-0'
           } overflow-hidden`}
         >
           {selectedWallet && (

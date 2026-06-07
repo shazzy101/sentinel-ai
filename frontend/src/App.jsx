@@ -22,7 +22,15 @@ function IntelligenceRoute() {
   return (
     <Shell
       title="Intelligence"
-      actions={<Button variant="ghost" onClick={() => window.dispatchEvent(new Event('regenerate-intelligence'))}>↻ Regenerate</Button>}
+      actions={
+        <Button variant="ghost" className="flex items-center gap-1.5" onClick={() => window.dispatchEvent(new Event('regenerate-intelligence'))}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="stroke-current">
+            <path d="M10.8 4A4.5 4.5 0 1 0 11.5 6.5" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M11.5 1.5v3h-3" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Regenerate
+        </Button>
+      }
     >
       <IntelligencePage />
     </Shell>

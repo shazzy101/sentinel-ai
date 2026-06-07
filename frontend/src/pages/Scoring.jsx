@@ -5,11 +5,11 @@ import { GradeBadge, SignalPill } from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
 
 function gradeFromScore(score) {
-  if (score >= 92) return 'S';
-  if (score >= 82) return 'A';
-  if (score >= 68) return 'B';
-  if (score >= 52) return 'C';
-  if (score >= 36) return 'D';
+  if (score >= 85) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 55) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 25) return 'D';
   return 'F';
 }
 
@@ -126,7 +126,7 @@ function GradeSection({ grade, wallets, defaultOpen = false }) {
   const gradeMeta = {
     S: { label: 'S — Elite', color: 'text-score-high', border: 'border-score-high/30' },
     A: { label: 'A — Strong', color: 'text-score-high', border: 'border-score-high/20' },
-    B: { label: 'B — Solid', color: 'text-blue', border: 'border-blue-border' },
+    B: { label: 'B — Solid', color: 'text-amber', border: 'border-amber/30' },
     C: { label: 'C — Average', color: 'text-score-mid', border: 'border-amber-border' },
     D: { label: 'D — Weak', color: 'text-score-low', border: 'border-red-border' },
     F: { label: 'F — Inactive', color: 'text-text-muted', border: 'border-border-subtle' },

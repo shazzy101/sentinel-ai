@@ -21,7 +21,11 @@ function relativeTime(timestamp) {
 }
 
 function formatBalance(value) {
-  return `${Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ETH`;
+  const n = Number(value ?? 0);
+  if (n >= 100_000) return `${(n / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })}K ETH`;
+  if (n >= 10_000) return `${(n / 1000).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K ETH`;
+  if (n >= 1_000) return `${(n / 1000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}K ETH`;
+  return `${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ETH`;
 }
 
 function scoreTextClass(score) {
@@ -44,7 +48,7 @@ function WalletRow({
 
   return (
     <div
-      className={`group grid grid-cols-[40px_minmax(0,1fr)_70px_110px_140px_130px_110px_80px] px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer ${
+      className={`group grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer ${
         isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
       }`.trim()}
       onClick={() => onSelect(wallet)}
@@ -62,8 +66,8 @@ function WalletRow({
         <div className="font-mono text-[10px] text-text-muted mt-0.5">{truncateAddress(wallet.address)}</div>
       </div>
       <div><ChainBadge chain={wallet.chain} /></div>
-      <div>
-        <div className="max-w-[60px] h-[2px] bg-bg-elevated rounded-full mb-1">
+      <div className="overflow-hidden">
+        <div className="w-full h-[2px] bg-bg-elevated rounded-full mb-1.5" style={{ maxWidth: '56px' }}>
           <div
             className={`h-full rounded-full transition-all duration-700 ${
               score >= 80 ? 'bg-score-high' : score >= 60 ? 'bg-score-mid' : 'bg-score-low'
@@ -71,7 +75,7 @@ function WalletRow({
             style={{ width: `${score}%` }}
           />
         </div>
-        <div className={`text-[12px] font-mono font-medium ${scoreTextClass(score)}`}>
+        <div className={`text-[12px] font-mono font-bold ${scoreTextClass(score)}`}>
           {score}
         </div>
       </div>

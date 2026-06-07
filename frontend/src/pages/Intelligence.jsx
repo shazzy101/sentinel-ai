@@ -6,12 +6,30 @@ import ScoreRing from '../components/ui/ScoreRing';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function gradeFromScore(score) {
-  if (score >= 92) return 'S';
-  if (score >= 82) return 'A';
-  if (score >= 68) return 'B';
-  if (score >= 52) return 'C';
-  if (score >= 36) return 'D';
+  if (score >= 85) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 55) return 'B';
+  if (score >= 40) return 'C';
+  if (score >= 25) return 'D';
   return 'F';
+}
+
+function gradeColor(grade) {
+  switch (grade) {
+    case 'S': return 'bg-green/20 text-green';
+    case 'A': return 'bg-green/10 text-green';
+    case 'B': return 'bg-amber/20 text-amber';
+    case 'C': return 'bg-amber/10 text-amber';
+    case 'D': return 'bg-red/10 text-red';
+    default:  return 'bg-red/20 text-red';
+  }
+}
+
+/** Extract at most 3 words from a theme string to keep pills tight. */
+function shortenTheme(theme) {
+  const words = theme.split(/\s+/).filter(Boolean);
+  if (words.length <= 3) return theme;
+  return words.slice(0, 3).join(' ') + '…';
 }
 
 function relativeTime(ts) {
@@ -34,13 +52,15 @@ function SignalRow({ item }) {
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-border-subtle last:border-0">
-      <ScoreRing score={score} size={36} strokeWidth={3} />
+      <ScoreRing score={score} size={38} strokeWidth={3} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[13px] font-medium text-text-primary truncate">
             {item.wallet_label || 'Unknown wallet'}
           </span>
-          <GradeBadge grade={grade} />
+          <span className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded ${gradeColor(grade)}`}>
+            {grade}
+          </span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="font-mono text-[10px] text-text-muted">{addr}</span>
@@ -49,7 +69,7 @@ function SignalRow({ item }) {
           )}
         </div>
         {item.signal_reason && (
-          <p className="text-[11px] text-text-secondary mt-1 leading-[1.5] line-clamp-2">
+          <p className="text-[11px] text-text-secondary mt-1 leading-[1.4] line-clamp-1">
             {item.signal_reason}
           </p>
         )}
@@ -214,9 +234,9 @@ export default function IntelligencePage() {
       <section>
         <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-2">Key themes</div>
         <div className="flex flex-wrap gap-2">
-          {(summary?.key_themes || ['Momentum concentration', 'Rotation into majors']).map((theme) => (
-            <span key={theme} className="text-[11px] bg-bg-elevated border border-border-default rounded-full px-3 py-1 text-text-secondary">
-              {theme.length > 30 ? theme.slice(0, 30) + '…' : theme}
+          {(summary?.key_themes || ['Smart money', 'Spot accumulation', 'High conviction']).map((theme) => (
+            <span key={theme} title={theme} className="text-[11px] bg-bg-elevated border border-border-default rounded-full px-3 py-1 text-text-secondary whitespace-nowrap">
+              {shortenTheme(theme)}
             </span>
           ))}
         </div>
