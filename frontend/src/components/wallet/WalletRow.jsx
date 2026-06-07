@@ -65,11 +65,10 @@ function WalletRow({
       <div>
         <div className="w-full h-[2px] bg-bg-elevated rounded-full mb-1">
           <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{
-              width: `${score}%`,
-              background: score >= 80 ? '#00D992' : score >= 60 ? '#F59E0B' : '#FF4D4D',
-            }}
+            className={`h-full rounded-full transition-all duration-700 ${
+              score >= 80 ? 'bg-score-high' : score >= 60 ? 'bg-score-mid' : 'bg-score-low'
+            }`}
+            style={{ width: `${score}%` }}
           />
         </div>
         <div className={`text-right text-[12px] font-mono font-medium ${scoreTextClass(score)}`.trim()}>
