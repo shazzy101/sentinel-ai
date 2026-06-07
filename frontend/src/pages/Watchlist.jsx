@@ -245,29 +245,33 @@ export default function WatchlistPage() {
       </div>
 
       {/* Main area: table + detail panel */}
-      <div className="flex-1 min-h-0 p-5 overflow-hidden">
-        <div className="h-full min-h-0 flex gap-0">
-          <div className="flex-1 min-h-0 min-w-0">
-            <WalletTable
-              wallets={filteredWallets}
-              loading={loading}
-              error={error}
-              selectedWallet={selectedWallet}
-              scanningIds={scanningIds}
-              onSelectWallet={handleSelectWallet}
-              onScanWallet={handleScan}
-              onRetry={refetch}
-              onOpenAddModal={() => setIsAddModalOpen(true)}
-            />
-          </div>
-          {selectedWallet ? (
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className="flex-1 min-h-0 min-w-0 p-5">
+          <WalletTable
+            wallets={filteredWallets}
+            loading={loading}
+            error={error}
+            selectedWallet={selectedWallet}
+            scanningIds={scanningIds}
+            onSelectWallet={handleSelectWallet}
+            onScanWallet={handleScan}
+            onRetry={refetch}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+          />
+        </div>
+        <div
+          className={`flex-shrink-0 h-full transition-all duration-200 ease-out ${
+            selectedWallet ? 'w-[340px]' : 'w-0'
+          } overflow-hidden`}
+        >
+          {selectedWallet && (
             <WalletDetailPanel
               wallet={selectedWallet}
               onClose={() => setSelectedWallet(null)}
               onRescan={() => handleScan(selectedWallet)}
               onRemove={handleRemoveWallet}
             />
-          ) : null}
+          )}
         </div>
       </div>
 
