@@ -276,7 +276,7 @@ def fetch_latest_analyses(wallet_ids: list[str], chunk_size: int = 40) -> dict[s
 
 async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[str] | None = None):
     balance, transactions = await fetch_wallet_data(address, chain)
-    score_result = score_wallet(transactions, balance, chain)
+    score_result = score_wallet(transactions, balance, chain, address=address)
 
     wallet_record = {
         "address": address,
@@ -396,7 +396,7 @@ async def scan_wallet(request: WalletScanRequest):
             balance=balance,
             chain=chain,
         )
-        score_result = score_wallet(transactions, balance, chain)
+        score_result = score_wallet(transactions, balance, chain, address=address)
         wallet_payload = {
             "address": address,
             "label": label,

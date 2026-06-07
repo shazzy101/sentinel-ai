@@ -7,7 +7,20 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-def score_wallet(transactions: list[dict], balance: float, chain: str) -> dict:
+EXCHANGE_ADDRESSES = {
+    "0x28c6c06298d514db089934071355e5743bf21d60",
+    "0x21a31ee1afc51d94c2efccaa1486ffa9c4a2a28",
+    "0x56eddb7aa87536c09ccc2793473599fd21a8b17f",
+    "0x4634d53b02f8329a07f5f60e9ac0b35843be9a72",
+    "0x0dfd5e9a5e0d5b8a8d5e8a4a8f3b0e7c1e8b3a2e",
+    "0x9696c1b0e96eea04dcef3d8d0d9c2e6f4c7a1b3",
+    "0x4976c1b0e96eea04dcef3d8d0d9c2e6f4c7a2327",
+    "0xcffa43e5e01c0ae7b09e7d5e8a4a8f3b0e7c0703",
+    "0x6262c1b0e96eea04dcef3d8d0d9c2e6f4c7a2a23",
+}
+
+
+def score_wallet(transactions: list[dict], balance: float, chain: str, address: str = None) -> dict:
     """
     Score 0–100. Grade S/A/B/C/D/F.
 
@@ -41,8 +54,11 @@ def score_wallet(transactions: list[dict], balance: float, chain: str) -> dict:
     success_score = round(success_rate * 30)
 
     # ── 3. Balance weight (25pts) ─────────────────────────────────────────────
-    # ETH: 100+ ETH = whale (max), 10 ETH = mid
-    balance_score = round(min(balance / 100.0, 1.0) * 25)
+    # ETH: 100+ ETH = whale (max). Exchange wallets (100k+ ETH) score 0 balance pts.
+    if chain == "ethereum" and balance > 10000:
+        balance_score = 0
+    else:
+        balance_score = round(min(balance / 100.0, 1.0) * 25)
 
     # ── 4. Recency bonus (10pts) ──────────────────────────────────────────────
     recency_score = 0
@@ -59,6 +75,11 @@ def score_wallet(transactions: list[dict], balance: float, chain: str) -> dict:
     total = min(activity_score + success_score + balance_score + recency_score, 100)
     grade = _grade(total)
     summary = _summary(total, tx_count, success_rate, chain, balance)
+
+    if address and address.lower() in EXCHANGE_ADDRESSES:
+        total = min(total, 45)
+        grade = _grade(total)
+        summary = "Known exchange hot wallet. High volume but no directional trading signal."
 
     return {
         "score": total,
