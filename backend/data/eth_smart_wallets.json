@@ -1,0 +1,1352 @@
+[
+  {
+    "label": "Binance 14",
+    "address": "0x28C6c06298d514Db089934071355E5743bf21d60",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 13682977,
+    "source_balance_eth": 74746.280266,
+    "seed_activity_score": 129.15,
+    "rank": 1
+  },
+  {
+    "label": "Coinbase 5",
+    "address": "0xb5d85CBf7cB3EE0D56b3bB207D5Fc4B82f43F511",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 9518497,
+    "source_balance_eth": 17354.121514,
+    "seed_activity_score": 123.14,
+    "rank": 2
+  },
+  {
+    "label": "Binance 17",
+    "address": "0x56Eddb7aa87536c09CCc2793473599fD21A8b17F",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 4970568,
+    "source_balance_eth": 67097.715159,
+    "seed_activity_score": 122.71,
+    "rank": 3
+  },
+  {
+    "label": "Bittrex",
+    "address": "0xFBb1b73C4f0BDa4f67dcA266ce6Ef42f520fBB98",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bittrex"
+    ],
+    "source_label": "bittrex",
+    "source_tx_count": 11598672,
+    "source_balance_eth": 8700.668418,
+    "seed_activity_score": 122.54,
+    "rank": 4
+  },
+  {
+    "label": "Binance 15",
+    "address": "0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 6628872,
+    "source_balance_eth": 30529.448624,
+    "seed_activity_score": 122.41,
+    "rank": 5
+  },
+  {
+    "label": "Crypto.com 2",
+    "address": "0x46340b20830761efd32832A74d7169B29FEB9758",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "cryptocom"
+    ],
+    "source_label": "cryptocom",
+    "source_tx_count": 8912018,
+    "source_balance_eth": 14705.64153,
+    "seed_activity_score": 122.3,
+    "rank": 6
+  },
+  {
+    "label": "Coinbase 4",
+    "address": "0x3cD751E6b0078Be393132286c442345e5DC49699",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 10029660,
+    "source_balance_eth": 10974.836131,
+    "seed_activity_score": 122.26,
+    "rank": 7
+  },
+  {
+    "label": "Binance 16",
+    "address": "0xDFd5293D8e347dFe59E90eFd55b2956a1343963d",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 6289307,
+    "source_balance_eth": 31430.300218,
+    "seed_activity_score": 122.16,
+    "rank": 8
+  },
+  {
+    "label": "Binance 18",
+    "address": "0x9696f59E4d72E237BE84fFD425DCaD154Bf96976",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 4628600,
+    "source_balance_eth": 29601.478692,
+    "seed_activity_score": 120.14,
+    "rank": 9
+  },
+  {
+    "label": "Binance 20",
+    "address": "0x4976A4A02f38326660D17bf34b431dC6e2eb2327",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 2784167,
+    "source_balance_eth": 71373.652048,
+    "seed_activity_score": 119.35,
+    "rank": 10
+  },
+  {
+    "label": "Kraken 4",
+    "address": "0x267be1C1D684F78cb4F6a176C4911b741E4Ffdc0",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kraken"
+    ],
+    "source_label": "kraken",
+    "source_tx_count": 3167334,
+    "source_balance_eth": 44497.156579,
+    "seed_activity_score": 118.9,
+    "rank": 11
+  },
+  {
+    "label": "Gemini",
+    "address": "0xd24400ae8BfEBb18cA49Be86258a3C749cf46853",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "gemini"
+    ],
+    "source_label": "gemini",
+    "source_tx_count": 4002243,
+    "source_balance_eth": 23069.687187,
+    "seed_activity_score": 118.61,
+    "rank": 12
+  },
+  {
+    "label": "Crypto.com",
+    "address": "0x6262998Ced04146fA42253a5C0AF90CA02dfd2A3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "cryptocom"
+    ],
+    "source_label": "cryptocom",
+    "source_tx_count": 1183099,
+    "source_balance_eth": 109576.759393,
+    "seed_activity_score": 115.26,
+    "rank": 13
+  },
+  {
+    "label": "Gate.io",
+    "address": "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "gateio"
+    ],
+    "source_label": "gateio",
+    "source_tx_count": 6341972,
+    "source_balance_eth": 1630.998956,
+    "seed_activity_score": 114.51,
+    "rank": 14
+  },
+  {
+    "label": "Crypto.com 5",
+    "address": "0xCFFAd3200574698b78f32232aa9D63eABD290703",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "cryptocom"
+    ],
+    "source_label": "cryptocom",
+    "source_tx_count": 822912,
+    "source_balance_eth": 114028.692916,
+    "seed_activity_score": 113.16,
+    "rank": 15
+  },
+  {
+    "label": "Coinbase 3",
+    "address": "0xddfAbCdc4D8FfC6d5beaf154f18B778f892A0740",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 8373026,
+    "source_balance_eth": 327.843581,
+    "seed_activity_score": 112.02,
+    "rank": 16
+  },
+  {
+    "label": "OKX 3",
+    "address": "0xA7EFAe728D2936e78BDA97dc267687568dD593f3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "okx"
+    ],
+    "source_label": "okx",
+    "source_tx_count": 2036634,
+    "source_balance_eth": 4383.624233,
+    "seed_activity_score": 110.18,
+    "rank": 17
+  },
+  {
+    "label": "Poloniex 4",
+    "address": "0xA910f92ACdAf488fa6eF02174fb86208Ad7722ba",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "poloniex"
+    ],
+    "source_label": "poloniex",
+    "source_tx_count": 1334370,
+    "source_balance_eth": 7577.831508,
+    "seed_activity_score": 109.03,
+    "rank": 18
+  },
+  {
+    "label": "Coinbase 6",
+    "address": "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 7806502,
+    "source_balance_eth": 112.514783,
+    "seed_activity_score": 108.82,
+    "rank": 19
+  },
+  {
+    "label": "KuCoin 10",
+    "address": "0xcaD621da75a66c7A8f4FF86D30A2bF981Bfc8FdD",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 2875109,
+    "source_balance_eth": 430.468461,
+    "seed_activity_score": 106.23,
+    "rank": 20
+  },
+  {
+    "label": "Bitstamp 2",
+    "address": "0x1522900B6daFac587d499a862861C0869Be6E428",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bitstamp"
+    ],
+    "source_label": "bitstamp",
+    "source_tx_count": 1607109,
+    "source_balance_eth": 1205.472827,
+    "seed_activity_score": 105.37,
+    "rank": 21
+  },
+  {
+    "label": "OKX",
+    "address": "0x6cC5F688a315f3dC28A7781717a9A798a59fDA7b",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "okx"
+    ],
+    "source_label": "okx",
+    "source_tx_count": 3220611,
+    "source_balance_eth": 210.831336,
+    "seed_activity_score": 105.07,
+    "rank": 22
+  },
+  {
+    "label": "MEV Bot: 0x000...f56",
+    "address": "0x0000000000007F150Bd6f54c40A34d7C3d5e9f56",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 2342229,
+    "source_balance_eth": 415.62676,
+    "seed_activity_score": 104.89,
+    "rank": 23
+  },
+  {
+    "label": "Coinone",
+    "address": "0x167A9333BF582556f35Bd4d16A7E80E191aa6476",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinone"
+    ],
+    "source_label": "coinone",
+    "source_tx_count": 1035976,
+    "source_balance_eth": 2712.945545,
+    "seed_activity_score": 104.82,
+    "rank": 24
+  },
+  {
+    "label": "KuCoin 9",
+    "address": "0xf16E9B0D03470827A95CDfd0Cb8a8A3b46969B91",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 1881890,
+    "source_balance_eth": 372.584269,
+    "seed_activity_score": 103.28,
+    "rank": 25
+  },
+  {
+    "label": "Binance",
+    "address": "0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 17017385,
+    "source_balance_eth": 0.204038,
+    "seed_activity_score": 101.72,
+    "rank": 26
+  },
+  {
+    "label": "Huobi 9",
+    "address": "0x1062a747393198f70F71ec65A582423Dba7E5Ab3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1974931,
+    "source_balance_eth": 163.709124,
+    "seed_activity_score": 101.44,
+    "rank": 27
+  },
+  {
+    "label": "Huobi 1",
+    "address": "0xaB5C66752a9e8167967685F1450532fB96d5d24f",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1949566,
+    "source_balance_eth": 162.856401,
+    "seed_activity_score": 101.35,
+    "rank": 28
+  },
+  {
+    "label": "Poloniex",
+    "address": "0x32Be343B94f860124dC4fEe278FDCBD38C102D88",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "poloniex"
+    ],
+    "source_label": "poloniex",
+    "source_tx_count": 2777126,
+    "source_balance_eth": 69.011437,
+    "seed_activity_score": 101.28,
+    "rank": 29
+  },
+  {
+    "label": "MEV Bot: 0x860...F66",
+    "address": "0x860bd2dba9Cd475A61E6d1b45e16c365F6D78F66",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 2179301,
+    "source_balance_eth": 100.569349,
+    "seed_activity_score": 100.78,
+    "rank": 30
+  },
+  {
+    "label": "Huobi: Deposit Funder",
+    "address": "0xFd54078bAdD5653571726C3370AfB127351a6f26",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 2460636,
+    "source_balance_eth": 74.550428,
+    "seed_activity_score": 100.74,
+    "rank": 31
+  },
+  {
+    "label": "Huobi 3",
+    "address": "0xfdb16996831753d5331fF813c29a93c76834A0AD",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1808560,
+    "source_balance_eth": 133.971978,
+    "seed_activity_score": 100.38,
+    "rank": 32
+  },
+  {
+    "label": "Huobi 2",
+    "address": "0x6748F50f686bfbcA6Fe8ad62b22228b87F31ff2b",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1970046,
+    "source_balance_eth": 108.807189,
+    "seed_activity_score": 100.37,
+    "rank": 33
+  },
+  {
+    "label": "Huobi 36",
+    "address": "0x0A98fB70939162725aE66E626Fe4b52cFF62c2e5",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1682836,
+    "source_balance_eth": 143.611757,
+    "seed_activity_score": 100.13,
+    "rank": 34
+  },
+  {
+    "label": "Bitfinex: Hot Wallet",
+    "address": "0x77134cbC06cB00b66F4c7e623D5fdBF6777635EC",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bitfinex"
+    ],
+    "source_label": "bitfinex",
+    "source_tx_count": 132068,
+    "source_balance_eth": 54995.493759,
+    "seed_activity_score": 100.13,
+    "rank": 35
+  },
+  {
+    "label": "Huobi 4",
+    "address": "0xeEe28d484628d41A82d01e21d12E2E78D69920da",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1805687,
+    "source_balance_eth": 120.720732,
+    "seed_activity_score": 100.11,
+    "rank": 36
+  },
+  {
+    "label": "Huobi 7",
+    "address": "0xadB2B42F6bD96F5c65920b9ac88619DcE4166f94",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1770577,
+    "source_balance_eth": 121.441692,
+    "seed_activity_score": 100.0,
+    "rank": 37
+  },
+  {
+    "label": "Kraken 7",
+    "address": "0x89e51fA8CA5D66cd220bAed62ED01e8951aa7c40",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kraken"
+    ],
+    "source_label": "kraken",
+    "source_tx_count": 1569897,
+    "source_balance_eth": 160.906101,
+    "seed_activity_score": 100.0,
+    "rank": 38
+  },
+  {
+    "label": "Coinbase 2",
+    "address": "0x503828976D22510aad0201ac7EC88293211D23Da",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 2099362,
+    "source_balance_eth": 69.70963,
+    "seed_activity_score": 99.61,
+    "rank": 39
+  },
+  {
+    "label": "Coinbase 13",
+    "address": "0x95A9bd206aE52C4BA8EecFc93d18EACDd41C88CC",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 1530232,
+    "source_balance_eth": 147.128789,
+    "seed_activity_score": 99.61,
+    "rank": 40
+  },
+  {
+    "label": "Binance 19",
+    "address": "0x4D9fF50EF4dA947364BB9650892B2554e7BE5E2B",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 1800552,
+    "source_balance_eth": 95.165153,
+    "seed_activity_score": 99.47,
+    "rank": 41
+  },
+  {
+    "label": "Huobi 12",
+    "address": "0x46705dfff24256421A05D056c29E81Bdc09723B8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1946042,
+    "source_balance_eth": 72.986189,
+    "seed_activity_score": 99.26,
+    "rank": 42
+  },
+  {
+    "label": "Huobi: Deposit Funder 2",
+    "address": "0x18916e1a2933Cb349145A280473A5DE8EB6630cb",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 1571814,
+    "source_balance_eth": 96.330818,
+    "seed_activity_score": 98.68,
+    "rank": 43
+  },
+  {
+    "label": "OKX: Deposit Funder",
+    "address": "0xc5a93444Cc4dA6EfB9e6FC6e5D3CB55A53b52396",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "okx"
+    ],
+    "source_label": "okx",
+    "source_tx_count": 1337710,
+    "source_balance_eth": 104.295789,
+    "seed_activity_score": 97.9,
+    "rank": 44
+  },
+  {
+    "label": "Coinbase 1",
+    "address": "0x71660c4005BA85c37ccec55d0C4493E66Fe775d3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 1561169,
+    "source_balance_eth": 65.429052,
+    "seed_activity_score": 97.64,
+    "rank": 45
+  },
+  {
+    "label": "KuCoin 3",
+    "address": "0xa1D8d972560C2f8144AF871Db508F0B0B10a3fBf",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 2750098,
+    "source_balance_eth": 13.885198,
+    "seed_activity_score": 97.19,
+    "rank": 46
+  },
+  {
+    "label": "Bitstamp 1",
+    "address": "0x00BDb5699745f5b860228c8f939ABF1b9Ae374eD",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bitstamp"
+    ],
+    "source_label": "bitstamp",
+    "source_tx_count": 1640805,
+    "source_balance_eth": 47.869213,
+    "seed_activity_score": 97.15,
+    "rank": 47
+  },
+  {
+    "label": "Binance 3",
+    "address": "0x564286362092D8e7936f0549571a803B203aAceD",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 4864447,
+    "source_balance_eth": 2.019469,
+    "seed_activity_score": 96.5,
+    "rank": 48
+  },
+  {
+    "label": "Bithumb: Deposit Funder",
+    "address": "0x03599A2429871E6be1B154Fb9c24691F9D301865",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bithumb"
+    ],
+    "source_label": "bithumb",
+    "source_tx_count": 693694,
+    "source_balance_eth": 244.180623,
+    "seed_activity_score": 96.11,
+    "rank": 49
+  },
+  {
+    "label": "Kraken 10",
+    "address": "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kraken"
+    ],
+    "source_label": "kraken",
+    "source_tx_count": 724896,
+    "source_balance_eth": 190.199553,
+    "seed_activity_score": 95.73,
+    "rank": 50
+  },
+  {
+    "label": "MEV Bot: 0xA69...78C",
+    "address": "0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 909819,
+    "source_balance_eth": 95.797811,
+    "seed_activity_score": 95.34,
+    "rank": 51
+  },
+  {
+    "label": "Coinbase 14",
+    "address": "0xb739D0895772DBB71A89A3754A160269068f0D45",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 780382,
+    "source_balance_eth": 128.067793,
+    "seed_activity_score": 95.16,
+    "rank": 52
+  },
+  {
+    "label": "Coinbase 11",
+    "address": "0x77696bb39917C91A0c3908D577d5e322095425cA",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 675598,
+    "source_balance_eth": 149.21572,
+    "seed_activity_score": 94.68,
+    "rank": 53
+  },
+  {
+    "label": "MEV Bot: 0x98c...b8e",
+    "address": "0x98C3d3183C4b8A650614ad179A1a98be0a8d6B8E",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 1476009,
+    "source_balance_eth": 22.193569,
+    "seed_activity_score": 94.56,
+    "rank": 54
+  },
+  {
+    "label": "KuCoin: Deposit Funder",
+    "address": "0x061F7937B7b2bc7596539959804F86538b6368dC",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 778553,
+    "source_balance_eth": 93.362652,
+    "seed_activity_score": 94.33,
+    "rank": 55
+  },
+  {
+    "label": "Crypto.com 4",
+    "address": "0x7758E507850dA48cd47df1fB5F875c23E3340c50",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "cryptocom"
+    ],
+    "source_label": "cryptocom",
+    "source_tx_count": 116954,
+    "source_balance_eth": 6609.707476,
+    "seed_activity_score": 93.87,
+    "rank": 56
+  },
+  {
+    "label": "Binance 2",
+    "address": "0xD551234Ae421e3BCBA99A0Da6d736074f22192FF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 4976495,
+    "source_balance_eth": 0.016682,
+    "seed_activity_score": 93.8,
+    "rank": 57
+  },
+  {
+    "label": "Binance 4",
+    "address": "0x0681d8Db095565FE8A346fA0277bFfdE9C0eDBBF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 4946298,
+    "source_balance_eth": 0.02617,
+    "seed_activity_score": 93.79,
+    "rank": 58
+  },
+  {
+    "label": "OKX 7",
+    "address": "0x5041ed759Dd4aFc3a72b8192C143F72f4724081A",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "okx"
+    ],
+    "source_label": "okx",
+    "source_tx_count": 1400839,
+    "source_balance_eth": 16.766053,
+    "seed_activity_score": 93.55,
+    "rank": 59
+  },
+  {
+    "label": "Bitfinex 3",
+    "address": "0x876EabF441B2EE5B5b0554Fd502a8E0600950cFa",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bitfinex"
+    ],
+    "source_label": "bitfinex",
+    "source_tx_count": 2277362,
+    "source_balance_eth": 3.726157,
+    "seed_activity_score": 93.05,
+    "rank": 60
+  },
+  {
+    "label": "Binance 8",
+    "address": "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 11030,
+    "source_balance_eth": 1170353.954706,
+    "seed_activity_score": 93.01,
+    "rank": 61
+  },
+  {
+    "label": "KuCoin 11",
+    "address": "0xeC30d02f10353f8EFC9601371f56e808751f396F",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 609164,
+    "source_balance_eth": 94.034285,
+    "seed_activity_score": 92.85,
+    "rank": 62
+  },
+  {
+    "label": "KuCoin 13",
+    "address": "0xd89350284c7732163765b23338f2ff27449E0Bf5",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 175803,
+    "source_balance_eth": 1689.460478,
+    "seed_activity_score": 92.8,
+    "rank": 63
+  },
+  {
+    "label": "KuCoin",
+    "address": "0x2B5634C42055806a59e9107ED44D43c426E58258",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 2828292,
+    "source_balance_eth": 1.481378,
+    "seed_activity_score": 92.69,
+    "rank": 64
+  },
+  {
+    "label": "MEV Bot: 0x000...2D4",
+    "address": "0x000000000dFDe7deaF24138722987c9a6991e2D4",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 774146,
+    "source_balance_eth": 49.939018,
+    "seed_activity_score": 92.69,
+    "rank": 65
+  },
+  {
+    "label": "Huobi 10",
+    "address": "0xE93381fB4c4F14bDa253907b18faD305D799241a",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 2818125,
+    "source_balance_eth": 1.052284,
+    "seed_activity_score": 92.17,
+    "rank": 66
+  },
+  {
+    "label": "Huobi 5",
+    "address": "0x5C985E89DDe482eFE97ea9f1950aD149Eb73829B",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 418881,
+    "source_balance_eth": 173.995057,
+    "seed_activity_score": 92.17,
+    "rank": 67
+  },
+  {
+    "label": "MEV Bot: 0xa57...6CF",
+    "address": "0xa57Bd00134B2850B2a1c55860c9e9ea100fDd6CF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 3671097,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 91.91,
+    "rank": 68
+  },
+  {
+    "label": "Binance: Deposit Funder",
+    "address": "0x9430801EBAf509Ad49202aaBC5F5Bc6fd8A3dAf8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 794590,
+    "source_balance_eth": 27.386865,
+    "seed_activity_score": 91.32,
+    "rank": 69
+  },
+  {
+    "label": "KuCoin 4",
+    "address": "0x4ad64983349C49dEfE8d7A4686202d24b25D0CE8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kucoin"
+    ],
+    "source_label": "kucoin",
+    "source_tx_count": 1876309,
+    "source_balance_eth": 2.064575,
+    "seed_activity_score": 90.74,
+    "rank": 70
+  },
+  {
+    "label": "Kraken 5",
+    "address": "0xFa52274DD61E1643d2205169732f29114BC240b3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kraken"
+    ],
+    "source_label": "kraken",
+    "source_tx_count": 2749007,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 90.15,
+    "rank": 71
+  },
+  {
+    "label": "Huobi 23",
+    "address": "0xf056F435Ba0CC4fCD2F1B17e3766549fFc404B94",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 491279,
+    "source_balance_eth": 54.060832,
+    "seed_activity_score": 90.12,
+    "rank": 72
+  },
+  {
+    "label": "Coinbase 12",
+    "address": "0x7c195D981AbFdC3DDecd2ca0Fed0958430488e34",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 396045,
+    "source_balance_eth": 84.333208,
+    "seed_activity_score": 89.96,
+    "rank": 73
+  },
+  {
+    "label": "Gate.io 3",
+    "address": "0x1C4b70a3968436B9A0a9cf5205c787eb81Bb558c",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "gateio"
+    ],
+    "source_label": "gateio",
+    "source_tx_count": 38075,
+    "source_balance_eth": 20027.301374,
+    "seed_activity_score": 89.94,
+    "rank": 74
+  },
+  {
+    "label": "Coinbase 10",
+    "address": "0xA9D1e08C7793af67e9d92fe308d5697FB81d3E43",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "coinbase"
+    ],
+    "source_label": "coinbase",
+    "source_tx_count": 2221814,
+    "source_balance_eth": 1e-06,
+    "seed_activity_score": 88.85,
+    "rank": 75
+  },
+  {
+    "label": "Kraken 8",
+    "address": "0xc6bed363b30DF7F35b601a5547fE56cd31Ec63DA",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "kraken"
+    ],
+    "source_label": "kraken",
+    "source_tx_count": 189738,
+    "source_balance_eth": 257.164943,
+    "seed_activity_score": 88.37,
+    "rank": 76
+  },
+  {
+    "label": "Gate.io: Deposit Funder",
+    "address": "0x6596Da8B65995d5feaCfF8c2936f0b7a2051B0D0",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "gateio"
+    ],
+    "source_label": "gateio",
+    "source_tx_count": 430039,
+    "source_balance_eth": 36.288044,
+    "seed_activity_score": 88.3,
+    "rank": 77
+  },
+  {
+    "label": "Bitfinex 2",
+    "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bitfinex"
+    ],
+    "source_label": "bitfinex",
+    "source_tx_count": 18351,
+    "source_balance_eth": 57708.195599,
+    "seed_activity_score": 88.26,
+    "rank": 78
+  },
+  {
+    "label": "Gemini 4",
+    "address": "0x5f65f7b609678448494De4C87521CdF6cEf1e932",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "gemini"
+    ],
+    "source_label": "gemini",
+    "source_tx_count": 1996766,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 88.2,
+    "rank": 79
+  },
+  {
+    "label": "Huobi 11",
+    "address": "0xFA4B5Be3f2f84f56703C42eB22142744E95a2c58",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 208991,
+    "source_balance_eth": 178.596268,
+    "seed_activity_score": 88.01,
+    "rank": 80
+  },
+  {
+    "label": "Poloniex 2",
+    "address": "0x209c4784AB1E8183Cf58cA33cb740efbF3FC18EF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "poloniex"
+    ],
+    "source_label": "poloniex",
+    "source_tx_count": 1814558,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 87.62,
+    "rank": 81
+  },
+  {
+    "label": "Huobi 16",
+    "address": "0xEec606A66edB6f497662Ea31b5eb1610da87AB5f",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 660407,
+    "source_balance_eth": 9.529227,
+    "seed_activity_score": 87.61,
+    "rank": 82
+  },
+  {
+    "label": "Bittrex 2",
+    "address": "0xE94b04a0FeD112f3664e45adb2B8915693dD5FF3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bittrex"
+    ],
+    "source_label": "bittrex",
+    "source_tx_count": 1653546,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 87.06,
+    "rank": 83
+  },
+  {
+    "label": "Bittrex: Controller",
+    "address": "0xa3C1E324CA1ce40db73eD6026c4A177F099B5770",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "bittrex"
+    ],
+    "source_label": "bittrex",
+    "source_tx_count": 1586444,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 86.81,
+    "rank": 84
+  },
+  {
+    "label": "Binance USD",
+    "address": "0x4Fabb145d64652a948d72533023f6E7A623C7C53",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 1527402,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 86.58,
+    "rank": 85
+  },
+  {
+    "label": "Binance 11",
+    "address": "0x708396f17127c42383E3b9014072679b2F60B82f",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 1239495,
+    "source_balance_eth": 0.563992,
+    "seed_activity_score": 86.47,
+    "rank": 86
+  },
+  {
+    "label": "MEV Bot: 0x000...94e",
+    "address": "0x000000000035B5e5ad9019092C665357240f594e",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 354386,
+    "source_balance_eth": 26.820074,
+    "seed_activity_score": 86.36,
+    "rank": 87
+  },
+  {
+    "label": "MEV Bot: 0x000...E9a",
+    "address": "0x000000000000006F6502B7F2bbaC8C30A3f67E9a",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "mev_bot"
+    ],
+    "source_label": "mev_bot",
+    "source_tx_count": 1438193,
+    "source_balance_eth": 0.0,
+    "seed_activity_score": 86.21,
+    "rank": 88
+  },
+  {
+    "label": "Huobi 34",
+    "address": "0xCAc725beF4f114F728cbCfd744a731C2a463c3Fc",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "huobi"
+    ],
+    "source_label": "huobi",
+    "source_tx_count": 873483,
+    "source_balance_eth": 1.4539,
+    "seed_activity_score": 85.52,
+    "rank": 89
+  },
+  {
+    "label": "Binance 10",
+    "address": "0x85b931A32a0725Be14285B66f1a22178c672d69B",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "smart-money",
+      "binance"
+    ],
+    "source_label": "binance",
+    "source_tx_count": 1221122,
+    "source_balance_eth": 0.070447,
+    "seed_activity_score": 85.39,
+    "rank": 90
+  }
+]
