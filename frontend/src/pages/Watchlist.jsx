@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWatchlist, useScanWallet } from '../hooks/useWatchlist';
 import { useAlertEngine } from './Alerts';
 import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
 import Spinner from '../components/ui/Spinner';
 import { ToastStack } from '../components/ui/Toast';
 import WalletTable from '../components/wallet/WalletTable';
@@ -32,14 +31,16 @@ const STAGE_MESSAGES = {
 };
 
 function filterButtonClass(isActive) {
-  if (isActive) return 'text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors bg-bg-elevated border-border-strong text-text-primary';
-  return 'text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors bg-transparent border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default';
+  if (isActive) return 'text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors select-none bg-bg-elevated border-border-strong text-text-primary';
+  return 'text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors select-none bg-transparent border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default';
 }
 
 export default function WatchlistPage() {
   const { wallets, loading, error, refetch } = useWatchlist();
   const { scan, loading: isScanning, activeAddress, stage } = useScanWallet();
   useAlertEngine(wallets);
+
+  useEffect(() => { document.title = 'Watchlist — Sentinel AI'; }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
@@ -155,21 +156,21 @@ export default function WatchlistPage() {
       {/* Filter bar */}
       <div className="flex-shrink-0 bg-bg-surface border-b border-border-subtle px-5 py-2.5 flex items-center gap-3">
         {/* Search */}
-        <div className="relative w-[200px]">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-2.5 top-2.5 stroke-text-muted pointer-events-none">
-            <circle cx="6.2" cy="6.2" r="4.4" strokeWidth="1.2" />
-            <path d="M9.7 9.7L12.2 12.2" strokeWidth="1.2" />
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5 pointer-events-none" viewBox="0 0 14 14" fill="none">
+            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          <Input
+          <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search wallets..."
-            className="w-full pl-8 pr-8"
+            className="w-[200px] bg-bg-elevated border border-border-default rounded-lg pl-8 pr-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted outline-none focus:border-border-focus transition-colors font-mono"
           />
           {searchQuery ? (
             <button
               type="button"
-              className="absolute right-2.5 top-2.5 text-text-muted hover:text-text-secondary"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
               onClick={() => setSearchQuery('')}
               aria-label="Clear search"
             >

@@ -198,14 +198,12 @@ export default function Sidebar() {
               onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('sentinel-alerts-viewed')) : undefined}
             >
               {({ isActive }) => (
-                <div className={`flex items-center gap-3 px-3 py-2 text-[13px] relative select-none rounded-lg transition-colors duration-150 ${
+                <div className={`flex items-center gap-3 py-2 text-[13px] relative select-none rounded-lg transition-colors duration-150 ${
                   isActive
-                    ? 'bg-bg-elevated text-text-primary'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-bg-elevated'
+                    ? 'bg-bg-elevated text-text-primary pl-[10px] pr-3 border-l-2 border-green'
+                    : 'px-3 text-text-muted hover:text-text-secondary hover:bg-bg-elevated'
                 }`.trim()}>
-                  {isActive ? (
-                    <div className="absolute left-0 w-[2px] h-4 bg-green rounded-r-full" />
-                  ) : null}
+                  {isActive ? null : null}
                   <Icon name={item.icon} />
                   <span>{item.label}</span>
                   {badge ? (

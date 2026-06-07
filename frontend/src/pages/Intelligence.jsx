@@ -91,6 +91,11 @@ export default function IntelligencePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.title = 'Intelligence — Sentinel AI';
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -129,8 +134,25 @@ export default function IntelligencePage() {
     );
   }
 
+  const bullishCount = signals.filter((s) => s.signal === 'BULLISH').length;
+  const bearishCount = signals.filter((s) => s.signal === 'BEARISH').length;
+
   return (
     <div className="h-full min-h-0 overflow-y-auto">
+    {/* Top stats strip */}
+    <div className="flex items-center gap-0 border-b border-border-subtle bg-bg-surface">
+      {[
+        { label: 'Wallets Analyzed', value: '94' },
+        { label: 'Bullish Signals', value: bullishCount },
+        { label: 'Bearish Signals', value: bearishCount },
+        { label: 'Last Updated', value: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+      ].map((stat, i) => (
+        <div key={stat.label} className={`flex flex-col px-5 py-3 ${i < 3 ? 'border-r border-border-subtle' : ''}`}>
+          <span className="text-[10px] uppercase tracking-[1px] text-text-muted">{stat.label}</span>
+          <span className="text-[14px] font-bold text-text-primary font-display">{stat.value}</span>
+        </div>
+      ))}
+    </div>
     <div className="max-w-3xl mx-auto px-5 py-6 flex flex-col gap-5">
       {error ? (
         <div className="bg-bg-card border border-red-border rounded-xl p-4 text-red text-[13px]">
@@ -169,9 +191,23 @@ export default function IntelligencePage() {
             <ChainBadge chain="ethereum" />
             <span className="text-[11px] uppercase tracking-[1px] text-text-muted">Flow state</span>
           </div>
-          <p className="text-[13px] text-text-secondary leading-[1.6] mt-2">
-            {summary?.flow_state || 'Mixed'}
+          <p className="text-[16px] font-bold font-display text-text-primary mt-2">
+            {summary?.flow_state || 'NEUTRAL'}
           </p>
+          {signals.length > 0 && (
+            <div className="mt-3 space-y-1">
+              <div className="text-[11px] text-text-muted">
+                {signals.length} wallet{signals.length !== 1 ? 's' : ''} contributing
+              </div>
+              <div className="text-[11px] text-text-secondary font-mono">
+                <span className="text-green">{bullishCount} bullish</span>
+                {' · '}
+                <span className="text-red">{bearishCount} bearish</span>
+                {' · '}
+                <span className="text-amber">{signals.length - bullishCount - bearishCount} neutral</span>
+              </div>
+            </div>
+          )}
         </article>
       </section>
 
@@ -180,7 +216,7 @@ export default function IntelligencePage() {
         <div className="flex flex-wrap gap-2">
           {(summary?.key_themes || ['Momentum concentration', 'Rotation into majors']).map((theme) => (
             <span key={theme} className="text-[11px] bg-bg-elevated border border-border-default rounded-full px-3 py-1 text-text-secondary">
-              {theme}
+              {theme.length > 30 ? theme.slice(0, 30) + '…' : theme}
             </span>
           ))}
         </div>

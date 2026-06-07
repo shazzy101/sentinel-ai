@@ -7,13 +7,14 @@
  * type: 'signal_bullish' | 'signal_bearish' | 'score_above' | 'score_below'
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import Button from '../components/ui/Button';
 import { SignalPill } from '../components/ui/Badge';
 
 const RULES_KEY = 'sentinel_alert_rules';
 const FIRED_KEY = 'sentinel_fired_alerts';
+const HISTORY_KEY = 'sentinel-alert-history';
 
 function loadRules() {
   try { return JSON.parse(localStorage.getItem(RULES_KEY) || '[]'); }
@@ -165,11 +166,27 @@ export function useAlertEngine(wallets) {
       if (ruleMatchesWallet(rule, wallet)) {
         fired[rule.id] = key;
         anyNew = true;
+        const historyEntry = {
+          id: `${Date.now()}-${rule.id}`,
+          walletLabel: wallet.label || 'Unknown',
+          walletAddress: wallet.address,
+          signal: wallet.signal,
+          score: wallet.score,
+          ruleType: rule.type,
+          ruleDescription: ruleDescription(rule),
+          timestamp: new Date().toISOString(),
+        };
+        try {
+          const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+          const updated = [historyEntry, ...existing].slice(0, 50);
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        } catch { /* ignore */ }
         window.dispatchEvent(new CustomEvent('sentinel-alert-fired', {
           detail: {
             rule,
             wallet,
             message: `${wallet.label || 'Wallet'} ${ruleDescription(rule)}`,
+            historyEntry,
           },
         }));
       }
@@ -182,10 +199,94 @@ export function useAlertEngine(wallets) {
   }, [wallets]);
 }
 
+function relativeTime(ts) {
+  if (!ts) return '';
+  const ms = Date.now() - new Date(ts).getTime();
+  if (Number.isNaN(ms)) return '';
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${Math.max(m, 1)}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function AlertHistory() {
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+  });
+
+  const refresh = useCallback(() => {
+    try { setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')); } catch { setHistory([]); }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('sentinel-alert-fired', refresh);
+    return () => window.removeEventListener('sentinel-alert-fired', refresh);
+  }, [refresh]);
+
+  const clearHistory = () => {
+    localStorage.removeItem(HISTORY_KEY);
+    setHistory([]);
+  };
+
+  const signalColor = (sig) => {
+    if (sig === 'BULLISH') return 'border-green bg-green-dim';
+    if (sig === 'BEARISH') return 'border-red bg-red-dim';
+    return 'border-amber bg-amber-dim';
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[13px] font-medium text-text-primary">Alert History</div>
+        {history.length > 0 && (
+          <button
+            type="button"
+            onClick={clearHistory}
+            className="text-[11px] text-text-muted hover:text-text-secondary transition-colors"
+          >
+            Clear history
+          </button>
+        )}
+      </div>
+      <div className="bg-bg-card border border-border-subtle rounded-xl overflow-hidden">
+        {history.length === 0 ? (
+          <div className="py-12 flex flex-col items-center text-center">
+            <svg width="32" height="32" viewBox="0 0 16 16" fill="none" className="stroke-text-muted mb-3">
+              <path d="M8 2.3C6.1 2.3 4.8 3.7 4.8 5.7V7.1C4.8 8.1 4.4 9 3.8 9.7L3.1 10.5H12.9L12.2 9.7C11.6 9 11.2 8.1 11.2 7.1V5.7C11.2 3.7 9.9 2.3 8 2.3Z" strokeWidth="1.2" />
+              <path d="M6.5 12.1C6.7 12.9 7.3 13.3 8 13.3C8.7 13.3 9.3 12.9 9.5 12.1" strokeWidth="1.2" />
+            </svg>
+            <div className="text-[13px] text-text-muted">No alerts fired yet</div>
+            <div className="text-[12px] text-text-muted mt-1 opacity-70">Alerts will appear here when your rules match</div>
+          </div>
+        ) : (
+          <div className="divide-y divide-border-subtle">
+            {history.map((entry) => (
+              <div key={entry.id} className={`flex items-start gap-3 px-4 py-3 border-l-2 ${signalColor(entry.signal)}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-text-primary truncate">{entry.walletLabel}</span>
+                    <SignalPill signal={entry.signal || 'NEUTRAL'} />
+                  </div>
+                  <div className="text-[11px] text-text-muted mt-0.5">
+                    {entry.ruleDescription} · {relativeTime(entry.timestamp)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AlertsPage() {
   const { wallets } = useWatchlist();
   const [rules, setRules] = useState(loadRules);
   const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => { document.title = 'Alerts — Sentinel AI'; }, []);
 
   // Persist on change
   useEffect(() => { saveRules(rules); }, [rules]);
@@ -267,18 +368,18 @@ export default function AlertsPage() {
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleToggle(rule.id)}
-                    className="text-[11px] px-2.5 py-1 rounded-md border border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default transition-colors"
+                    className="text-[11px] px-2.5 py-1 rounded-md border border-border-default text-text-muted hover:text-text-secondary hover:border-border-strong transition-colors h-7"
                   >
                     {rule.active ? 'Pause' : 'Resume'}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(rule.id)}
-                    className="text-[11px] px-2.5 py-1 rounded-md border border-red-border text-red hover:bg-red-dim transition-colors"
+                    className="text-[11px] px-2.5 py-1 rounded-md border border-border-default text-text-muted hover:bg-red-dim hover:text-red hover:border-red-border transition-colors h-7"
                   >
                     ✕
                   </button>
@@ -287,6 +388,8 @@ export default function AlertsPage() {
             ))}
           </div>
         )}
+
+        <AlertHistory />
       </div>
     </div>
   );

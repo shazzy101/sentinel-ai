@@ -40,11 +40,11 @@ function WalletRow({
 }) {
   const name = wallet.label || 'Unnamed wallet';
   const score = Math.round(Number(wallet.score ?? 0));
-  const balanceClass = Number(wallet.balance) > 10000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
+  const balanceClass = Number(wallet.balance) > 1000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
 
   return (
     <div
-      className={`grid grid-cols-[28px_minmax(0,1fr)_80px_100px_120px_130px_90px_70px] px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer ${
+      className={`group grid grid-cols-[40px_minmax(0,1fr)_70px_110px_140px_130px_110px_80px] px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer ${
         isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
       }`.trim()}
       onClick={() => onSelect(wallet)}
@@ -63,7 +63,7 @@ function WalletRow({
       </div>
       <div><ChainBadge chain={wallet.chain} /></div>
       <div>
-        <div className="w-full h-[2px] bg-bg-elevated rounded-full mb-1">
+        <div className="max-w-[60px] h-[2px] bg-bg-elevated rounded-full mb-1">
           <div
             className={`h-full rounded-full transition-all duration-700 ${
               score >= 80 ? 'bg-score-high' : score >= 60 ? 'bg-score-mid' : 'bg-score-low'
@@ -71,7 +71,7 @@ function WalletRow({
             style={{ width: `${score}%` }}
           />
         </div>
-        <div className={`text-right text-[12px] font-mono font-medium ${scoreTextClass(score)}`.trim()}>
+        <div className={`text-[12px] font-mono font-medium ${scoreTextClass(score)}`}>
           {score}
         </div>
       </div>

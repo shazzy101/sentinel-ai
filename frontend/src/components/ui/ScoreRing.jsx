@@ -9,7 +9,7 @@ function scoreColor(score) {
 export default function ScoreRing({ score = 0, size = 48, strokeWidth = 3 }) {
   const safeScore = Math.max(0, Math.min(100, Number(score) || 0));
   const [animatedScore, setAnimatedScore] = useState(0);
-  const radius = useMemo(() => (size - strokeWidth) / 2, [size, strokeWidth]);
+  const radius = useMemo(() => (size - strokeWidth * 2) / 2, [size, strokeWidth]);
   const circumference = useMemo(() => 2 * Math.PI * radius, [radius]);
   const dashOffset = circumference - (animatedScore / 100) * circumference;
 
@@ -24,7 +24,6 @@ export default function ScoreRing({ score = 0, size = 48, strokeWidth = 3 }) {
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className="-rotate-90"
         aria-hidden="true"
       >
         <circle
@@ -43,9 +42,10 @@ export default function ScoreRing({ score = 0, size = 48, strokeWidth = 3 }) {
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"
-          strokeDasharray={circumference}
+          strokeDasharray={`${circumference}`}
           strokeDashoffset={dashOffset}
-          className="transition-all duration-1000 ease-in-out"
+          style={{ transition: 'stroke-dashoffset 1s ease' }}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
       <span className="absolute text-[12px] font-bold font-display text-text-primary">

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import ScoreRing from '../components/ui/ScoreRing';
 import { GradeBadge, SignalPill } from '../components/ui/Badge';
@@ -44,7 +45,7 @@ function MiniBar({ value, maxColor = 'bg-score-high' }) {
 
 function StatCard({ label, value, sub, colorClass = 'text-text-primary' }) {
   return (
-    <div className="bg-bg-card border border-border-subtle rounded-xl p-4">
+    <div className="bg-bg-card border border-border-subtle rounded-xl p-4 rounded-xl">
       <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-2">{label}</div>
       <div className={`font-display text-[22px] font-bold ${colorClass}`}>{value}</div>
       {sub ? <div className="text-[11px] text-text-muted mt-1">{sub}</div> : null}
@@ -59,7 +60,12 @@ function ScoreRow({ wallet, rank }) {
   const rawBd = wallet.score_breakdown || {};
 
   return (
-    <div className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] items-center px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100">
+    <div
+      className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] items-center px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer"
+      onClick={() => {
+        window.dispatchEvent(new CustomEvent('scoring-select-wallet', { detail: { wallet } }));
+      }}
+    >
       {/* Rank */}
       <div className="text-[11px] text-text-muted font-mono">{rank}</div>
 
@@ -106,7 +112,16 @@ function ScoreRow({ wallet, rank }) {
   );
 }
 
-function GradeSection({ grade, wallets }) {
+function ChevronIcon({ open }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`stroke-current transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+      <path d="M3 4.5L6 7.5L9 4.5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GradeSection({ grade, wallets, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!wallets.length) return null;
   const gradeMeta = {
     S: { label: 'S — Elite', color: 'text-score-high', border: 'border-score-high/30' },
@@ -120,32 +135,41 @@ function GradeSection({ grade, wallets }) {
 
   return (
     <div className={`border ${meta.border} rounded-xl overflow-hidden mb-4`}>
-      <div className="px-5 py-2.5 bg-bg-surface border-b border-border-subtle flex items-center gap-2">
+      <button
+        type="button"
+        className="w-full px-5 py-2.5 bg-bg-surface border-b border-border-subtle flex items-center gap-2 hover:bg-bg-elevated transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
         <span className={`font-display text-[13px] font-bold ${meta.color}`}>{meta.label}</span>
         <span className="text-[11px] text-text-muted ml-1">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div className="bg-bg-card">
-        {/* Sub-header */}
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] px-5 py-2 text-[9px] uppercase tracking-[1.2px] text-text-muted border-b border-border-subtle">
-          <div>#</div>
-          <div>Wallet</div>
-          <div className="text-center">Grade</div>
-          <div className="px-2 grid grid-cols-4 gap-1 text-center">
-            <div>Act</div><div>Suc</div><div>Bal</div><div>Rec</div>
+        <span className={`ml-auto text-text-muted`}><ChevronIcon open={open} /></span>
+      </button>
+      {open && (
+        <div className="bg-bg-card">
+          {/* Sub-header */}
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] px-5 py-2 text-[9px] uppercase tracking-[1.2px] text-text-muted border-b border-border-subtle">
+            <div>#</div>
+            <div>Wallet</div>
+            <div className="text-center">Grade</div>
+            <div className="px-2 grid grid-cols-4 gap-1 text-center">
+              <div>Act</div><div>Suc</div><div>Bal</div><div>Rec</div>
+            </div>
+            <div className="text-center">Score</div>
+            <div className="text-center">Signal</div>
           </div>
-          <div className="text-center">Score</div>
-          <div className="text-center">Signal</div>
+          {wallets.map((w, i) => (
+            <ScoreRow key={w.address} wallet={w} rank={i + 1} />
+          ))}
         </div>
-        {wallets.map((w, i) => (
-          <ScoreRow key={w.address} wallet={w} rank={i + 1} />
-        ))}
-      </div>
+      )}
     </div>
   );
 }
 
 export default function ScoringPage() {
   const { wallets, loading } = useWatchlist();
+
+  useEffect(() => { document.title = 'Scoring — Sentinel AI'; }, []);
 
   if (loading) {
     return (
@@ -231,7 +255,7 @@ export default function ScoringPage() {
 
         {/* Grade sections */}
         {['S', 'A', 'B', 'C', 'D', 'F'].map((g) => (
-          <GradeSection key={g} grade={g} wallets={byGrade[g]} />
+          <GradeSection key={g} grade={g} wallets={byGrade[g]} defaultOpen={g === 'S' || g === 'A'} />
         ))}
 
         {unscored.length > 0 && (

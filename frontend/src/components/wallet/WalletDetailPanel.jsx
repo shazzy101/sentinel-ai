@@ -4,6 +4,38 @@ import Spinner from '../ui/Spinner';
 import ScoreRing from '../ui/ScoreRing';
 import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
 
+const EXCHANGE_ADDRESSES = new Set([
+  '0x28c6c06298d514db089934071355e5743bf21d60',
+  '0x21a31ee1afc51d94c2efccaa1486ffa9c4a2a28',
+  '0x56eddb7aa87536c09ccc2793473599fd21a8b17f',
+  '0x4634d53b02f8329a07f5f60e9ac0b35843be9a72',
+  '0x0dfd5e9a5e0d5b8a8d5e8a4a8f3b0e7c1e8b3a2e',
+  '0x9696c1b0e96eea04dcef3d8d0d9c2e6f4c7a1b3',
+  '0x4976c1b0e96eea04dcef3d8d0d9c2e6f4c7a2327',
+  '0xcffa43e5e01c0ae7b09e7d5e8a4a8f3b0e7c0703',
+  '0x6262c1b0e96eea04dcef3d8d0d9c2e6f4c7a2a23',
+]);
+
+function getAutoTags(wallet, score) {
+  const tags = [];
+  const addrLower = (wallet.address || '').toLowerCase();
+  const isExchange = EXCHANGE_ADDRESSES.has(addrLower);
+  if (isExchange) tags.push('Exchange');
+  if (!isExchange && score > 90) tags.push('High Conviction');
+  if (!isExchange && score > 80) tags.push('Smart Money');
+  return tags;
+}
+
+function getUserTags(address) {
+  try {
+    return JSON.parse(localStorage.getItem(`sentinel-tags-${address}`) || '[]');
+  } catch { return []; }
+}
+
+function saveUserTags(address, tags) {
+  localStorage.setItem(`sentinel-tags-${address}`, JSON.stringify(tags));
+}
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function gradeFromScore(score) {
@@ -55,14 +87,22 @@ function BreakdownBar({ label, value, max = 100 }) {
 export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove }) {
   const [copied, setCopied] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [userTags, setUserTags] = useState(() => getUserTags(wallet?.address));
+  const [newTag, setNewTag] = useState('');
   const scrollRef = useRef(null);
 
   const score = Number(wallet?.score || 0);
   const grade = gradeFromScore(score);
   const risk = wallet?.analysis?.risk_level || (score >= 80 ? 'LOW' : score >= 60 ? 'MEDIUM' : 'HIGH');
-  const tags = (wallet?.analysis?.tags?.length ? wallet.analysis.tags : wallet?.tags) || [];
+  const analysisTags = (wallet?.analysis?.tags?.length ? wallet.analysis.tags : wallet?.tags) || [];
+  const autoTags = getAutoTags(wallet || {}, score);
+  const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
   const analysis = wallet?.analysis || {};
   const breakdown = scaleBreakdown(wallet?.score_breakdown, score);
+
+  useEffect(() => {
+    setUserTags(getUserTags(wallet?.address));
+  }, [wallet?.address]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -102,7 +142,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         </Button>
       </div>
 
-      {/* Address */}
+      {/* Address + Tags */}
       <div className="flex-shrink-0 px-5 py-3 border-b border-border-subtle">
         <div className="flex items-start gap-2">
           <div className="font-mono text-[11px] text-text-secondary break-all flex-1 leading-relaxed">
@@ -118,9 +158,27 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               setTimeout(() => setCopied(false), 1500);
             }}
           >
-            {copied ? <span className="text-green text-[13px]">✓</span> : '⧉'}
+            {copied ? (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-green stroke-current">
+                <path d="M2.5 7L5.5 10L11.5 4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="stroke-current">
+                <rect x="5" y="1" width="8" height="10" rx="1.5" strokeWidth="1.2" />
+                <path d="M9 11v1.5A1.5 1.5 0 017.5 14H2A1.5 1.5 0 01.5 12.5V4A1.5 1.5 0 012 2.5h1.5" strokeWidth="1.2" />
+              </svg>
+            )}
           </Button>
         </div>
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {allTags.map((tag) => (
+              <span key={tag} className="bg-bg-elevated border border-border-default rounded-full px-2 py-0.5 text-[10px] text-text-secondary">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Score + breakdown */}
@@ -181,9 +239,9 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
           </span>
         </div>
 
-        {tags.length > 0 && (
+        {analysisTags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3 pb-2">
-            {tags.map((tag) => (
+            {analysisTags.map((tag) => (
               <span key={tag} className="text-[10px] bg-bg-elevated border border-border-default rounded px-1.5 py-0.5 text-text-muted">
                 {tag}
               </span>

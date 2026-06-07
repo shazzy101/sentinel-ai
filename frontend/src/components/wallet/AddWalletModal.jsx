@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function AddWalletModal({ open, onClose, onSubmit, isScanning }) {
   const [address, setAddress] = useState('');
   const [label, setLabel] = useState('');
   const [tags, setTags] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const trimmedAddress = address.trim();
   const isLength42 = trimmedAddress.length === 42;
@@ -20,6 +24,32 @@ export default function AddWalletModal({ open, onClose, onSubmit, isScanning }) 
     if (showError) return 'Must be a valid Ethereum address (0x...)';
     return '';
   }, [trimmedAddress, showError]);
+
+  useEffect(() => {
+    if (!isValidAddress) { setPreview(null); return; }
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreview(null);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/wallets/${trimmedAddress}`);
+        const body = await res.json();
+        if (!cancelled) {
+          if (body.success && body.data?.wallet) {
+            const w = body.data.wallet;
+            setPreview({ balance: w.balance, txCount: null, found: true });
+          } else {
+            setPreview({ found: false });
+          }
+        }
+      } catch {
+        if (!cancelled) setPreview({ found: false });
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [isValidAddress, trimmedAddress]);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -61,6 +91,27 @@ export default function AddWalletModal({ open, onClose, onSubmit, isScanning }) 
               {helperText}
             </div>
           ) : null}
+          {previewLoading && (
+            <div className="flex items-center gap-2 mt-2 text-[11px] text-text-muted">
+              <Spinner size="sm" />
+              Looking up address...
+            </div>
+          )}
+          {!previewLoading && preview?.found && (
+            <div className="flex items-center gap-2 mt-2 text-[11px]">
+              <span className="text-green">✓</span>
+              <span className="text-text-secondary font-mono">
+                {preview.balance != null
+                  ? `${Number(preview.balance).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ETH`
+                  : 'Wallet found'}
+              </span>
+            </div>
+          )}
+          {!previewLoading && preview && !preview.found && (
+            <div className="flex items-center gap-2 mt-2 text-[11px] text-amber">
+              ⚠ Not yet in watchlist — will be scanned fresh
+            </div>
+          )}
         </div>
 
         <div>

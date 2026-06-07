@@ -5,6 +5,7 @@ import WatchlistPage from './pages/Watchlist';
 import IntelligencePage from './pages/Intelligence';
 import ScoringPage from './pages/Scoring';
 import AlertsPage from './pages/Alerts';
+import LandingPage from './pages/Landing';
 
 function WatchlistRoute() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/intelligence" element={<IntelligenceRoute />} />
         <Route path="/scoring" element={<ScoringRoute />} />
         <Route path="/alerts" element={<AlertsRoute />} />
+        <Route path="/landing" element={<LandingPage />} />
       </Routes>
     </BrowserRouter>
   );

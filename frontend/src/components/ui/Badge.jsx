@@ -19,13 +19,20 @@ const RISK_CLASSES = {
   HIGH: 'text-red bg-red-dim border border-red-border',
 };
 
+const SIGNAL_DOT = {
+  BULLISH: 'bg-green',
+  BEARISH: 'bg-red',
+  NEUTRAL: 'bg-amber',
+};
+
 export function SignalPill({ signal }) {
   const normalized = (signal || 'NEUTRAL').toUpperCase();
   const classes = SIGNAL_CLASSES[normalized] || SIGNAL_CLASSES.NEUTRAL;
+  const dotClass = SIGNAL_DOT[normalized] || SIGNAL_DOT.NEUTRAL;
 
   return (
     <span className={`text-[10px] font-bold uppercase tracking-[0.8px] px-2 py-[3px] rounded-[4px] inline-flex items-center gap-1 ${classes}`.trim()}>
-      <span className="h-[5px] w-[5px] rounded-full bg-current" />
+      <span className={`w-1.5 h-1.5 rounded-full inline-block ${dotClass}`} />
       {normalized}
     </span>
   );
