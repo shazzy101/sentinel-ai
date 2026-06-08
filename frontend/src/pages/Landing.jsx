@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import ScrollWhalePaths from '../components/landing/ScrollWhalePaths';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
@@ -476,6 +477,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
+      <ScrollWhalePaths />
       <Navbar />
       <HeroSection />
       <ProductPreviewSection />
