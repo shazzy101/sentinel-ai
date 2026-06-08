@@ -812,3 +812,36 @@ Answer in 2-4 sentences max unless the user asks for a detailed breakdown. If as
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/eth")
+async def get_eth_market_data():
+    """
+    Proxy CoinGecko ETH data through backend.
+    Caches for 60 seconds to avoid rate limiting.
+    """
+    import httpx
+
+    cache_key = "eth_market_data"
+    if not hasattr(get_eth_market_data, "_cache"):
+        get_eth_market_data._cache = {}
+
+    cached = get_eth_market_data._cache.get(cache_key)
+    if cached and (datetime.now(timezone.utc) - cached["ts"]).seconds < 60:
+        return cached["data"]
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://api.coingecko.com/api/v3/simple/price"
+            "?ids=ethereum&vs_currencies=usd"
+            "&include_24hr_change=true"
+            "&include_market_cap=true"
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    get_eth_market_data._cache[cache_key] = {
+        "data": data,
+        "ts": datetime.now(timezone.utc),
+    }
+    return data
