@@ -4,6 +4,7 @@ import Button from './components/ui/Button';
 import LandingPage from './pages/Landing';
 import WatchlistPage from './pages/Watchlist';
 import IntelligencePage from './pages/Intelligence';
+import MarketsPage, { EthPriceBadge } from './pages/Markets';
 import ScoringPage from './pages/Scoring';
 import AlertsPage from './pages/Alerts';
 import AskSentinelPage from './pages/AskSentinel';
@@ -54,6 +55,14 @@ function AlertsRoute() {
   );
 }
 
+function MarketsRoute() {
+  return (
+    <Shell title="Markets" actions={<EthPriceBadge />}>
+      <MarketsPage />
+    </Shell>
+  );
+}
+
 function AskSentinelRoute() {
   return (
     <Shell title="Ask Sentinel">
@@ -69,9 +78,10 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/watchlist" element={<WatchlistRoute />} />
         <Route path="/intelligence" element={<IntelligenceRoute />} />
+        <Route path="/markets" element={<MarketsRoute />} />
+        <Route path="/ask" element={<AskSentinelRoute />} />
         <Route path="/scoring" element={<ScoringRoute />} />
         <Route path="/alerts" element={<AlertsRoute />} />
-        <Route path="/ask" element={<AskSentinelRoute />} />
       </Routes>
     </BrowserRouter>
   );

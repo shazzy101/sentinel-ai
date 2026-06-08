@@ -48,13 +48,31 @@ function Icon({ name }) {
       </svg>
     );
   }
+  if (name === 'chart-bar') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
+        <rect x="2" y="9" width="3" height="5" rx="0.6" strokeWidth="1.2" />
+        <rect x="6.5" y="6" width="3" height="8" rx="0.6" strokeWidth="1.2" />
+        <rect x="11" y="3" width="3" height="11" rx="0.6" strokeWidth="1.2" />
+      </svg>
+    );
+  }
+  if (name === 'message') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
+        <path d="M2.5 3.5h11a.5.5 0 01.5.5v7a.5.5 0 01-.5.5H5L2.5 14V4a.5.5 0 01.5-.5Z" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d="M5 7h6M5 9.5h4" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
   return null;
 }
 
 const NAV_ITEMS = [
   { label: 'Watchlist',    icon: 'grid',       path: '/watchlist' },
   { label: 'Intelligence', icon: 'sparkles',   path: '/intelligence' },
-  { label: 'Ask AI',       icon: 'ask',        path: '/ask' },
+  { label: 'Markets',      icon: 'chart-bar',  path: '/markets' },
+  { label: 'Ask AI',       icon: 'message',    path: '/ask' },
   { label: 'Scoring',      icon: 'chart-line', path: '/scoring' },
   { label: 'Alerts',       icon: 'bell',       path: '/alerts' },
 ];

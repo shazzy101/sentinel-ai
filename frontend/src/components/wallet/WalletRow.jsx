@@ -1,9 +1,11 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'motion/react';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import Tooltip from '../ui/Tooltip';
 import { ChainBadge, SignalPill } from '../ui/Badge';
+import Sparkline from '../ui/Sparkline';
+import { buildBalanceSparkline } from '../../lib/chartUtils';
 
 function truncateAddress(address) {
   if (!address) return '—';
@@ -50,6 +52,11 @@ function WalletRow({
   const balanceClass = Number(wallet.balance) > 1000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
   const isExchange = EXCHANGE_NAMES.some((n) => wallet.label?.includes(n));
 
+  const sparkData = useMemo(
+    () => buildBalanceSparkline(wallet.transactions, wallet.balance),
+    [wallet.transactions, wallet.balance]
+  );
+
   return (
     <motion.div
       layout
@@ -57,7 +64,7 @@ function WalletRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.4) }}
       whileHover={{ backgroundColor: 'rgba(26, 26, 32, 0.8)' }}
-      className={`group grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 transition-colors duration-100 cursor-pointer ${
+      className={`group grid grid-cols-[36px_minmax(0,1fr)_70px_100px_150px_90px_130px_100px_70px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 transition-colors duration-100 cursor-pointer ${
         isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
       }`.trim()}
       onClick={() => onSelect(wallet)}
@@ -97,6 +104,18 @@ function WalletRow({
       </div>
       <div className={`font-mono text-[12px] ${balanceClass}`.trim()}>
         {formatBalance(wallet.balance)}
+      </div>
+      {/* Trend sparkline */}
+      <div className="flex flex-col items-end gap-0.5">
+        <Sparkline data={sparkData} width={80} height={28} />
+        {sparkData.length >= 2 && (
+          <span className={`text-[9px] font-mono ${
+            (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0)
+              ? 'text-green' : 'text-red'
+          }`}>
+            {(sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0) ? '▲' : '▼'} YTD
+          </span>
+        )}
       </div>
       <div>
         {wallet.signal ? <SignalPill signal={wallet.signal} /> : <span className="text-text-muted">—</span>}

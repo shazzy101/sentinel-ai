@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import ScoreRing from '../ui/ScoreRing';
 import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
+import { buildBalanceSparkline } from '../../lib/chartUtils';
+import TradeModal from './TradeModal';
 
 const EXCHANGE_ADDRESSES = new Set([
   '0x28c6c06298d514db089934071355e5743bf21d60',
@@ -94,6 +97,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const [removing, setRemoving] = useState(false);
   const [userTags, setUserTags] = useState(() => getUserTags(wallet?.address));
   const [newTag, setNewTag] = useState('');
+  const [tradeOpen, setTradeOpen] = useState(false);
   const scrollRef = useRef(null);
 
   const score = Number(wallet?.score || 0);
@@ -104,6 +108,13 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
   const analysis = wallet?.analysis || {};
   const breakdown = scaleBreakdown(wallet?.score_breakdown, score);
+
+  const sparkData = useMemo(
+    () => buildBalanceSparkline(wallet?.transactions, wallet?.balance),
+    [wallet?.transactions, wallet?.balance]
+  );
+  const trendColor = (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0)
+    ? '#00D992' : '#FF4D4D';
 
   useEffect(() => {
     setUserTags(getUserTags(wallet?.address));
@@ -203,6 +214,29 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
             <BreakdownBar label="Recency" value={wallet?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
           </div>
         </div>
+
+        {/* Balance history chart */}
+        {sparkData.length >= 2 && (
+          <div className="mt-4">
+            <div className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Balance History</div>
+            <ResponsiveContainer width="100%" height={100}>
+              <AreaChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                <defs>
+                  <linearGradient id="walletGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={trendColor} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5}
+                  fill="url(#walletGrad)" dot={false} />
+                <Tooltip
+                  contentStyle={{ background: '#141418', border: '1px solid #28283A', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}
+                  formatter={(v) => [`${Number(v).toFixed(4)} ETH`, 'Balance']}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
           </TextureCardContent>
         </TextureCard>
       </div>
@@ -263,6 +297,9 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
 
       {/* Actions */}
       <div className="flex-shrink-0 px-5 py-4 bg-bg-surface border-t border-border-subtle">
+        <Button variant="primary" fullWidth className="mb-2" onClick={() => setTradeOpen(true)}>
+          ⚡ Trade
+        </Button>
         <Button variant="ghost" fullWidth onClick={onRescan}>Rescan wallet</Button>
         <Button
           variant="danger"
@@ -274,6 +311,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
           {removing ? <><Spinner size="sm" /> Removing...</> : 'Remove from watchlist'}
         </Button>
       </div>
+
+      <TradeModal isOpen={tradeOpen} onClose={() => setTradeOpen(false)} />
     </aside>
   );
 }

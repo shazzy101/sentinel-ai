@@ -8,6 +8,7 @@ import ScanIsland from '../components/ui/scan-island';
 import WalletTable from '../components/wallet/WalletTable';
 import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
 import AddWalletModal from '../components/wallet/AddWalletModal';
+import TradeModal from '../components/wallet/TradeModal';
 
 const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini', 'Bitstamp', 'Coinone', 'MEV Bot'];
 
@@ -53,6 +54,7 @@ export default function WatchlistPage() {
   const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [tradeOpen, setTradeOpen] = useState(false);
   const [scanningIds, setScanningIds] = useState(new Set());
   const [toasts, setToasts] = useState([]);
   const [sortOpen, setSortOpen] = useState(false);
@@ -282,6 +284,14 @@ export default function WatchlistPage() {
             Rescan All
           </button>
 
+          <button
+            type="button"
+            onClick={() => setTradeOpen(true)}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary border border-border-default rounded-lg px-2.5 py-1.5 hover:bg-bg-elevated transition-colors"
+          >
+            ⚡ Trade
+          </button>
+
           <Button variant="icon" onClick={refetch} disabled={loading} aria-label="Refresh watchlist">
             {loading ? <Spinner size="sm" /> : (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="stroke-current">
@@ -358,6 +368,7 @@ export default function WatchlistPage() {
         }}
       />
 
+      <TradeModal isOpen={tradeOpen} onClose={() => setTradeOpen(false)} />
       <ToastStack items={toasts} onDismiss={removeToast} />
     </div>
   );
