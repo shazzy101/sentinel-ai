@@ -10,7 +10,7 @@ import asyncio
 import os
 
 import config  # noqa: F401 — load .env before chain/API imports
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -174,6 +174,11 @@ class AddWalletRequest(BaseModel):
     label: str
     chain: str
     tags: Optional[list[str]] = []
+
+
+class AskRequest(BaseModel):
+    message: str
+    history: list[dict] = []
 
 
 # ─────────────────────────────────────────
@@ -748,3 +753,62 @@ async def get_signals():
         return success({"signals": signals, "count": len(signals)})
     except Exception:
         return success({"signals": [], "count": 0, "note": "Run wallet scans to populate signals"})
+
+
+# ─────────────────────────────────────────
+# ROUTES — ASK SENTINEL AI CHAT
+# ─────────────────────────────────────────
+
+@app.post("/api/ask")
+async def ask_sentinel(request: AskRequest):
+    """
+    Claude answers questions about wallet data.
+    Pulls live wallet + signal data as context.
+    Never hallucinates — only answers from real data.
+    """
+    try:
+        from ai.analyst import get_client
+
+        wallets_result = (
+            supabase_client.table("wallets")
+            .select("address, label, score, signal, balance")
+            .order("score", desc=True)
+            .limit(20)
+            .execute()
+        )
+        wallets = wallets_result.data if wallets_result.data else []
+
+        wallet_context = "\n".join([
+            f"- {w['label']}: score={w.get('score', 0)}, "
+            f"signal={w.get('signal', 'unknown')}, "
+            f"balance={float(w.get('balance') or 0):.2f} ETH"
+            for w in wallets[:20]
+        ])
+
+        system_prompt = f"""You are Sentinel AI's intelligence assistant. You answer questions about Ethereum whale wallet activity using ONLY the real data provided below. Never make up data. Be concise and direct. Use numbers when available.
+
+CURRENT WALLET DATA (top 20 by score):
+{wallet_context}
+
+Answer in 2-4 sentences max unless the user asks for a detailed breakdown. If asked for a list, use bullet points. Always cite specific wallet names and scores from the data above."""
+
+        client = get_client()
+        messages = request.history + [{"role": "user", "content": request.message}]
+
+        response = await asyncio.to_thread(
+            client.messages.create,
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            system=system_prompt,
+            messages=messages,
+        )
+
+        return {
+            "success": True,
+            "response": response.content[0].text,
+            "used_wallets": len(wallets),
+        }
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

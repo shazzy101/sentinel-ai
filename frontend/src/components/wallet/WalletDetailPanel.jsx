@@ -3,6 +3,7 @@ import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import ScoreRing from '../ui/ScoreRing';
 import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
+import { TextureCard, TextureCardContent } from '../ui/texture-card';
 
 const EXCHANGE_ADDRESSES = new Set([
   '0x28c6c06298d514db089934071355e5743bf21d60',
@@ -187,6 +188,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
 
       {/* Score + breakdown */}
       <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle">
+        <TextureCard>
+          <TextureCardContent className="p-4">
         <div className="flex items-start gap-1 mb-3">
           <span className="flex-1 text-[10px] uppercase tracking-[1px] text-text-muted">Score</span>
           <GradeBadge grade={grade} />
@@ -200,6 +203,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
             <BreakdownBar label="Recency" value={wallet?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
           </div>
         </div>
+          </TextureCardContent>
+        </TextureCard>
       </div>
 
       {/* Scrollable AI analysis */}
@@ -226,12 +231,14 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         )}
 
         {analysis.key_insight && (
-          <div className="bg-green-dim border border-green-border rounded-lg p-3 mt-3">
+          <TextureCard className="mt-3">
+            <TextureCardContent className="p-4 border-l-2 border-l-green">
             <div className="text-[10px] text-green uppercase tracking-[1px] mb-1.5">💡 Key insight</div>
             <p className="text-[12px] text-text-secondary leading-[1.6]">
               {analysis.key_insight}
             </p>
-          </div>
+            </TextureCardContent>
+          </TextureCard>
         )}
 
         <div className="mt-3 flex items-start gap-2">

@@ -1,26 +1,87 @@
+@import "tw-animate-css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  * { box-sizing: border-box; }
-  html, body, #root {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
     height: 100%;
   }
-  html { font-family: 'Inter', sans-serif; }
+
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+
   body {
     margin: 0;
     background: #09090B;
     color: #EEEDF0;
     -webkit-font-smoothing: antialiased;
   }
-  ::-webkit-scrollbar { width: 3px; height: 3px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: #28283A;
     border-radius: 2px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #3A3A52; }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3A3A52;
+  }
+
+  /* shadcn + premium library tokens — Sentinel dark theme */
+  :root {
+    --radius: 0.625rem;
+    --background: #09090B;
+    --foreground: #EEEDF0;
+    --card: #141418;
+    --card-foreground: #EEEDF0;
+    --popover: #1F1F26;
+    --popover-foreground: #EEEDF0;
+    --primary: #00D992;
+    --primary-foreground: #09090B;
+    --secondary: #1A1A20;
+    --secondary-foreground: #EEEDF0;
+    --muted: #1A1A20;
+    --muted-foreground: #8B8A9B;
+    --accent: #1A1A20;
+    --accent-foreground: #EEEDF0;
+    --destructive: #FF4D4D;
+    --destructive-foreground: #EEEDF0;
+    --border: #28283A;
+    --input: #28283A;
+    --ring: #00D992;
+    --chart-1: #00D992;
+    --chart-2: #627EEA;
+    --chart-3: #F59E0B;
+    --chart-4: #6366F1;
+    --chart-5: #FF4D4D;
+  }
+}
+
+/* ── Landing page hero grid ──────────────────────────────── */
+.hero-grid {
+  background-image:
+    linear-gradient(#1a1a2010 1px, transparent 1px),
+    linear-gradient(90deg, #1a1a2010 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-drift 20s linear infinite;
+}
+@keyframes grid-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
 }
 
 @layer components {
@@ -39,9 +100,13 @@
     inset: 0;
     border-radius: 50%;
     background: inherit;
-    animation: ping 1.5s cubic-bezier(0,0,.2,1) infinite;
+    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
   @keyframes ping {
-    75%, 100% { transform: scale(1.8); opacity: 0; }
+    75%,
+    100% {
+      transform: scale(1.8);
+      opacity: 0;
+    }
   }
 }

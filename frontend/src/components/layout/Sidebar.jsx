@@ -39,12 +39,22 @@ function Icon({ name }) {
       </svg>
     );
   }
+  if (name === 'ask') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
+        <circle cx="8" cy="8" r="6" strokeWidth="1.2" />
+        <path d="M6 6.5C6 5.4 6.9 4.5 8 4.5C9.1 4.5 10 5.4 10 6.5C10 7.6 8 8.5 8 9.5" strokeWidth="1.2" strokeLinecap="round" />
+        <circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
   return null;
 }
 
 const NAV_ITEMS = [
-  { label: 'Watchlist',    icon: 'grid',       path: '/' },
+  { label: 'Watchlist',    icon: 'grid',       path: '/watchlist' },
   { label: 'Intelligence', icon: 'sparkles',   path: '/intelligence' },
+  { label: 'Ask AI',       icon: 'ask',        path: '/ask' },
   { label: 'Scoring',      icon: 'chart-line', path: '/scoring' },
   { label: 'Alerts',       icon: 'bell',       path: '/alerts' },
 ];
@@ -194,7 +204,7 @@ export default function Sidebar() {
             <NavLink
               key={item.label}
               to={item.path}
-              end={item.path === '/'}
+              end={false}
               onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('sentinel-alerts-viewed')) : undefined}
             >
               {({ isActive }) => (
@@ -249,9 +259,7 @@ export default function Sidebar() {
       {/* Landing page link */}
       <div className="px-4 pb-2">
         <a
-          href="/landing"
-          target="_blank"
-          rel="noreferrer"
+          href="/"
           className="flex items-center gap-2 text-[11px] text-text-muted hover:text-text-secondary transition-colors py-1"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.1">

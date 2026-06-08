@@ -4,9 +4,12 @@ import { useAlertEngine } from './Alerts';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import { ToastStack } from '../components/ui/Toast';
+import ScanIsland from '../components/ui/scan-island';
 import WalletTable from '../components/wallet/WalletTable';
 import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
 import AddWalletModal from '../components/wallet/AddWalletModal';
+
+const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini', 'Bitstamp', 'Coinone', 'MEV Bot'];
 
 const SORT_LABEL = {
   score: 'Score ↓',
@@ -47,6 +50,7 @@ export default function WatchlistPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
   const [sortBy, setSortBy] = useState('score');
+  const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [scanningIds, setScanningIds] = useState(new Set());
@@ -123,7 +127,10 @@ export default function WatchlistPage() {
         || name.includes(searchQuery.toLowerCase())
         || address.includes(searchQuery.toLowerCase());
       const matchesSignal = signalFilter === 'all' || w.signal === signalFilter.toUpperCase();
-      return matchesSearch && matchesSignal;
+      const matchesSmartMoney = !smartMoneyOnly || (
+        !EXCHANGE_NAMES.some((n) => w.label?.includes(n)) && (w.score ?? 0) > 60
+      );
+      return matchesSearch && matchesSignal && matchesSmartMoney;
     })
     .sort((a, b) => {
       if (sortBy === 'score') return (b.score ?? 0) - (a.score ?? 0);
@@ -212,22 +219,21 @@ export default function WatchlistPage() {
           ))}
         </div>
 
-        {/* Scan stage indicator */}
-        {scanStageMessage ? (
-          <div className="flex items-center gap-2 text-[11px] text-text-muted font-mono">
-            <Spinner size="sm" />
-            {scanStageMessage}
-            {activeAddress && (
-              <span className="opacity-60">
-                {activeAddress.slice(0, 6)}…{activeAddress.slice(-4)}
-              </span>
-            )}
-          </div>
-        ) : null}
+        {/* Smart Money filter */}
+        <button
+          type="button"
+          onClick={() => setSmartMoneyOnly((prev) => !prev)}
+          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
+            smartMoneyOnly
+              ? 'bg-green/10 border-green/30 text-green'
+              : 'border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default'
+          }`}
+        >
+          Smart Money Only
+        </button>
 
         {/* Right controls */}
         <div className="ml-auto flex items-center gap-2 relative" ref={sortMenuRef}>
-          {/* Sort dropdown — styled as a real control */}
           <button
             type="button"
             onClick={() => setSortOpen((prev) => !prev)}
@@ -260,7 +266,6 @@ export default function WatchlistPage() {
             {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
           </span>
 
-          {/* Rescan All button */}
           <button
             type="button"
             onClick={handleRescanAll}
@@ -287,6 +292,30 @@ export default function WatchlistPage() {
           </Button>
         </div>
       </div>
+
+      {/* Quick stats bar */}
+      {wallets.length > 0 && (
+        <div className="flex-shrink-0 py-2 px-5 border-b border-border-subtle flex items-center gap-6 bg-bg-surface flex-wrap">
+          {[
+            { label: 'Avg Score', value: wallets.length ? Math.round(wallets.reduce((a, w) => a + (w.score ?? 0), 0) / wallets.length) : '—' },
+            { label: 'Bullish', value: wallets.filter((w) => w.signal === 'BULLISH').length, color: 'text-green' },
+            { label: 'Bearish', value: wallets.filter((w) => w.signal === 'BEARISH').length, color: 'text-red' },
+            { label: 'Top', value: [...wallets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]?.label?.split(' ')[0] || '—' },
+          ].map(({ label, value, color }, i, arr) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <span className="text-[10px] text-text-muted">{label}</span>
+              <span className={`text-[12px] font-mono font-medium ${color || 'text-text-primary'}`}>{value}</span>
+              {i < arr.length - 1 && <span className="text-text-muted ml-3">·</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ScanIsland
+        visible={Boolean(scanStageMessage)}
+        message={scanStageMessage || ''}
+        address={activeAddress}
+      />
 
       {/* Main area: table + detail panel */}
       <div className="flex-1 min-h-0 flex overflow-hidden">

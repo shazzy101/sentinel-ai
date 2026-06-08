@@ -3,6 +3,9 @@ import { useWatchlist } from '../hooks/useWatchlist';
 import ScoreRing from '../components/ui/ScoreRing';
 import { GradeBadge, SignalPill } from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
+import PremiumStatCard from '../components/ui/premium-stat-card';
+import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
+import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -44,16 +47,10 @@ function MiniBar({ value, maxColor = 'bg-score-high' }) {
 }
 
 function StatCard({ label, value, sub, colorClass = 'text-text-primary' }) {
-  return (
-    <div className="bg-bg-card border border-border-subtle rounded-xl p-4 rounded-xl">
-      <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-2">{label}</div>
-      <div className={`font-display text-[22px] font-bold ${colorClass}`}>{value}</div>
-      {sub ? <div className="text-[11px] text-text-muted mt-1">{sub}</div> : null}
-    </div>
-  );
+  return <PremiumStatCard label={label} value={value} sub={sub} valueClassName={colorClass} />;
 }
 
-function ScoreRow({ wallet, rank }) {
+function ScoreRow({ wallet, rank, onSelect }) {
   const score = Number(wallet.score ?? 0);
   const grade = gradeFromScore(score);
   const bd = scaleBreakdown(wallet.score_breakdown, score);
@@ -62,9 +59,7 @@ function ScoreRow({ wallet, rank }) {
   return (
     <div
       className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] items-center px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer"
-      onClick={() => {
-        window.dispatchEvent(new CustomEvent('scoring-select-wallet', { detail: { wallet } }));
-      }}
+      onClick={() => onSelect?.(wallet)}
     >
       {/* Rank */}
       <div className="text-[11px] text-text-muted font-mono">{rank}</div>
@@ -120,7 +115,7 @@ function ChevronIcon({ open }) {
   );
 }
 
-function GradeSection({ grade, wallets, defaultOpen = false }) {
+function GradeSection({ grade, wallets, defaultOpen = false, onSelectWallet }) {
   const [open, setOpen] = useState(defaultOpen);
   if (!wallets.length) return null;
   const gradeMeta = {
@@ -137,7 +132,7 @@ function GradeSection({ grade, wallets, defaultOpen = false }) {
     <div className={`border ${meta.border} rounded-xl overflow-hidden mb-4`}>
       <button
         type="button"
-        className="w-full px-5 py-2.5 bg-bg-surface border-b border-border-subtle flex items-center gap-2 hover:bg-bg-elevated transition-colors"
+        className="w-full px-5 py-2.5 bg-bg-surface/80 border-b border-border-subtle flex items-center gap-2 hover:bg-bg-elevated transition-colors backdrop-blur-sm"
         onClick={() => setOpen((v) => !v)}
       >
         <span className={`font-display text-[13px] font-bold ${meta.color}`}>{meta.label}</span>
@@ -158,7 +153,7 @@ function GradeSection({ grade, wallets, defaultOpen = false }) {
             <div className="text-center">Signal</div>
           </div>
           {wallets.map((w, i) => (
-            <ScoreRow key={w.address} wallet={w} rank={i + 1} />
+            <ScoreRow key={w.address} wallet={w} rank={i + 1} onSelect={onSelectWallet} />
           ))}
         </div>
       )}
@@ -167,7 +162,8 @@ function GradeSection({ grade, wallets, defaultOpen = false }) {
 }
 
 export default function ScoringPage() {
-  const { wallets, loading } = useWatchlist();
+  const { wallets, loading, refetch } = useWatchlist();
+  const [selectedWallet, setSelectedWallet] = useState(null);
 
   useEffect(() => { document.title = 'Scoring — Sentinel AI'; }, []);
 
@@ -201,7 +197,8 @@ export default function ScoringPage() {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
+    <div className="h-full min-h-0 flex overflow-hidden">
+    <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-5 py-6">
 
         {/* KPI row */}
@@ -233,14 +230,15 @@ export default function ScoringPage() {
         </div>
 
         {/* Methodology card */}
-        <div className="bg-bg-card border border-border-subtle rounded-xl p-4 mb-6">
-          <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-3">Score methodology — v2</div>
-          <div className="grid grid-cols-4 gap-4">
+        <TextureCard className="mb-6">
+          <TextureCardContent className="p-4">
+          <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-3">Score methodology — v3 strict</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Activity', pts: '35pts', desc: 'Volume, recency, consistency of transactions' },
-              { label: 'Success Rate', pts: '30pts', desc: 'Non-failed transactions vs total tx count' },
-              { label: 'Balance Weight', pts: '25pts', desc: 'ETH held — proxy for whale status' },
-              { label: 'Recency Bonus', pts: '10pts', desc: 'Active in last 7 days = full bonus' },
+              { label: 'Activity', pts: '35pts', desc: '100+ txs for max score. Logarithmic scale.' },
+              { label: 'Success Rate', pts: '30pts', desc: 'Only above 50% baseline gets credit.' },
+              { label: 'Balance Weight', pts: '25pts', desc: '50–1000 ETH smart money range. Exchanges = 0.' },
+              { label: 'Recency Bonus', pts: '10pts', desc: 'Active in last 48h = full bonus.' },
             ].map(({ label, pts, desc }) => (
               <div key={label}>
                 <div className="flex items-center gap-2 mb-1">
@@ -251,11 +249,12 @@ export default function ScoringPage() {
               </div>
             ))}
           </div>
-        </div>
+          </TextureCardContent>
+        </TextureCard>
 
         {/* Grade sections */}
         {['S', 'A', 'B', 'C', 'D', 'F'].map((g) => (
-          <GradeSection key={g} grade={g} wallets={byGrade[g]} defaultOpen={g === 'S' || g === 'A'} />
+          <GradeSection key={g} grade={g} wallets={byGrade[g]} defaultOpen={g === 'S' || g === 'A'} onSelectWallet={setSelectedWallet} />
         ))}
 
         {unscored.length > 0 && (
@@ -264,6 +263,18 @@ export default function ScoringPage() {
           </div>
         )}
       </div>
+    </div>
+    {/* Detail panel */}
+    <div className={`flex-shrink-0 h-full transition-all duration-200 ease-out ${selectedWallet ? 'w-[400px]' : 'w-0'} overflow-hidden border-l border-border-subtle`}>
+      {selectedWallet && (
+        <WalletDetailPanel
+          wallet={selectedWallet}
+          onClose={() => setSelectedWallet(null)}
+          onRescan={() => {}}
+          onRemove={() => { setSelectedWallet(null); refetch(); }}
+        />
+      )}
+    </div>
     </div>
   );
 }

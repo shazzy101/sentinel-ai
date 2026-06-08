@@ -1,11 +1,12 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Shell from './components/layout/Shell';
 import Button from './components/ui/Button';
+import LandingPage from './pages/Landing';
 import WatchlistPage from './pages/Watchlist';
 import IntelligencePage from './pages/Intelligence';
 import ScoringPage from './pages/Scoring';
 import AlertsPage from './pages/Alerts';
-import LandingPage from './pages/Landing';
+import AskSentinelPage from './pages/AskSentinel';
 
 function WatchlistRoute() {
   return (
@@ -53,15 +54,24 @@ function AlertsRoute() {
   );
 }
 
+function AskSentinelRoute() {
+  return (
+    <Shell title="Ask Sentinel">
+      <AskSentinelPage />
+    </Shell>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<WatchlistRoute />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/watchlist" element={<WatchlistRoute />} />
         <Route path="/intelligence" element={<IntelligenceRoute />} />
         <Route path="/scoring" element={<ScoringRoute />} />
         <Route path="/alerts" element={<AlertsRoute />} />
-        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/ask" element={<AskSentinelRoute />} />
       </Routes>
     </BrowserRouter>
   );

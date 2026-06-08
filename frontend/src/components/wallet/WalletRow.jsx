@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { motion } from 'motion/react';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import Tooltip from '../ui/Tooltip';
@@ -34,6 +35,8 @@ function scoreTextClass(score) {
   return 'text-score-low';
 }
 
+const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini', 'Bitstamp', 'Coinone', 'MEV Bot'];
+
 function WalletRow({
   wallet,
   index,
@@ -45,10 +48,16 @@ function WalletRow({
   const name = wallet.label || 'Unnamed wallet';
   const score = Math.round(Number(wallet.score ?? 0));
   const balanceClass = Number(wallet.balance) > 1000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
+  const isExchange = EXCHANGE_NAMES.some((n) => wallet.label?.includes(n));
 
   return (
-    <div
-      className={`group grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer ${
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.4) }}
+      whileHover={{ backgroundColor: 'rgba(26, 26, 32, 0.8)' }}
+      className={`group grid grid-cols-[36px_minmax(0,1fr)_64px_108px_150px_120px_100px_72px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 transition-colors duration-100 cursor-pointer ${
         isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
       }`.trim()}
       onClick={() => onSelect(wallet)}
@@ -61,7 +70,14 @@ function WalletRow({
       <div className="text-[11px] text-text-muted font-mono">{index + 1}</div>
       <div className="min-w-0">
         <Tooltip content={name}>
-          <div className="truncate text-[13px] font-medium text-text-primary">{name}</div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate text-[13px] font-medium text-text-primary">{name}</span>
+            {isExchange && (
+              <span className="flex-shrink-0 text-[9px] px-1 py-0.5 bg-bg-overlay border border-border-subtle rounded text-text-muted uppercase tracking-wide">
+                Exchange
+              </span>
+            )}
+          </div>
         </Tooltip>
         <div className="font-mono text-[10px] text-text-muted mt-0.5">{truncateAddress(wallet.address)}</div>
       </div>
@@ -96,7 +112,7 @@ function WalletRow({
           {isScanning ? <Spinner size="sm" /> : 'Scan'}
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

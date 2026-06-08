@@ -1,14 +1,62 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: ['class'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       fontFamily: {
         display: ['Syne', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'monospace'],
         body: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'Geist Variable', 'sans-serif'],
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        // shadcn semantic tokens (used by premium component libraries)
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        card: {
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
+        },
+        popover: {
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
+        },
+        primary: {
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+        },
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+        },
+        muted: {
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)',
+        },
+        destructive: {
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
+        },
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        chart: {
+          1: 'var(--chart-1)',
+          2: 'var(--chart-2)',
+          3: 'var(--chart-3)',
+          4: 'var(--chart-4)',
+          5: 'var(--chart-5)',
+        },
+        // Sentinel design system (existing app)
         bg: {
           base: '#09090B',
           surface: '#0F0F12',
@@ -17,6 +65,7 @@ export default {
           overlay: '#1F1F26',
         },
         border: {
+          DEFAULT: 'var(--border)',
           subtle: '#1E1E26',
           default: '#28283A',
           strong: '#3A3A52',

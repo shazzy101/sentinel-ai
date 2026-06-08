@@ -11,6 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import Button from '../components/ui/Button';
 import { SignalPill } from '../components/ui/Badge';
+import { TextureButton } from '../components/ui/texture-button';
+import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
 
 const RULES_KEY = 'sentinel_alert_rules';
 const FIRED_KEY = 'sentinel_fired_alerts';
@@ -249,16 +251,16 @@ function AlertHistory() {
           </button>
         )}
       </div>
-      <div className="bg-bg-card border border-border-subtle rounded-xl overflow-hidden">
+      <TextureCard>
         {history.length === 0 ? (
-          <div className="py-12 flex flex-col items-center text-center">
+          <TextureCardContent className="py-12 flex flex-col items-center text-center">
             <svg width="32" height="32" viewBox="0 0 16 16" fill="none" className="stroke-text-muted mb-3">
               <path d="M8 2.3C6.1 2.3 4.8 3.7 4.8 5.7V7.1C4.8 8.1 4.4 9 3.8 9.7L3.1 10.5H12.9L12.2 9.7C11.6 9 11.2 8.1 11.2 7.1V5.7C11.2 3.7 9.9 2.3 8 2.3Z" strokeWidth="1.2" />
               <path d="M6.5 12.1C6.7 12.9 7.3 13.3 8 13.3C8.7 13.3 9.3 12.9 9.5 12.1" strokeWidth="1.2" />
             </svg>
             <div className="text-[13px] text-text-muted">No alerts fired yet</div>
             <div className="text-[12px] text-text-muted mt-1 opacity-70">Alerts will appear here when your rules match</div>
-          </div>
+          </TextureCardContent>
         ) : (
           <div className="divide-y divide-border-subtle">
             {history.map((entry) => (
@@ -276,7 +278,7 @@ function AlertHistory() {
             ))}
           </div>
         )}
-      </div>
+      </TextureCard>
     </div>
   );
 }
@@ -313,6 +315,9 @@ export default function AlertsPage() {
             <div className="text-[13px] text-text-secondary">
               {rules.length === 0 ? 'No rules yet' : `${rules.filter((r) => r.active).length} active of ${rules.length}`}
             </div>
+            <p className="text-[12px] text-text-muted mt-2 max-w-md leading-relaxed">
+              Get notified when a whale changes signal, crosses a score threshold, or moves on-chain.
+            </p>
           </div>
           {!showForm && (
             <Button variant="primary" onClick={() => setShowForm(true)}>+ New alert</Button>
@@ -326,24 +331,27 @@ export default function AlertsPage() {
         )}
 
         {rules.length === 0 && !showForm ? (
-          <div className="bg-bg-card border border-border-subtle rounded-xl py-16 flex flex-col items-center text-center">
+          <TextureCard>
+            <TextureCardContent className="py-16 flex flex-col items-center text-center">
             <svg width="40" height="40" viewBox="0 0 16 16" fill="none" className="stroke-text-muted mb-3">
               <path d="M8 2.3C6.1 2.3 4.8 3.7 4.8 5.7V7.1C4.8 8.1 4.4 9 3.8 9.7L3.1 10.5H12.9L12.2 9.7C11.6 9 11.2 8.1 11.2 7.1V5.7C11.2 3.7 9.9 2.3 8 2.3Z" strokeWidth="1.2" />
               <path d="M6.5 12.1C6.7 12.9 7.3 13.3 8 13.3C8.7 13.3 9.3 12.9 9.5 12.1" strokeWidth="1.2" />
             </svg>
             <div className="text-[14px] text-text-secondary font-display mb-1">No alerts configured</div>
-            <div className="text-[12px] text-text-muted mb-4">Create rules to be notified when wallets change signal or cross a score threshold.</div>
-            <Button variant="primary" onClick={() => setShowForm(true)}>+ New alert</Button>
-          </div>
+            <div className="text-[12px] text-text-muted mb-6 max-w-sm">Create rules to be notified when wallets change signal or cross a score threshold.</div>
+            <TextureButton variant="primary" className="!w-auto" onClick={() => setShowForm(true)}>
+              <span className="px-3 text-green font-semibold">+ New alert</span>
+            </TextureButton>
+            </TextureCardContent>
+          </TextureCard>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {rules.map((rule) => (
-              <div
+              <TextureCard
                 key={rule.id}
-                className={`bg-bg-card border rounded-xl px-4 py-3.5 flex items-center gap-3 ${
-                  rule.active ? 'border-border-default' : 'border-border-subtle opacity-50'
-                }`}
+                className={rule.active ? '' : 'opacity-50'}
               >
+                <TextureCardContent className="px-4 py-3.5 flex items-center gap-3">
                 {/* Active dot */}
                 <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                   rule.active ? 'bg-green relative pulse-dot' : 'bg-border-strong'
@@ -384,7 +392,8 @@ export default function AlertsPage() {
                     ✕
                   </button>
                 </div>
-              </div>
+                </TextureCardContent>
+              </TextureCard>
             ))}
           </div>
         )}

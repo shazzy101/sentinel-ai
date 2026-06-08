@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import Spinner from '../components/ui/Spinner';
+import Button from '../components/ui/Button';
 import { ChainBadge, GradeBadge, SignalPill } from '../components/ui/Badge';
 import ScoreRing from '../components/ui/ScoreRing';
+import PremiumStatCard from '../components/ui/premium-stat-card';
+import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
+import TextShimmer from '../components/ui/text-shimmer';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -69,7 +75,7 @@ function SignalRow({ item }) {
           )}
         </div>
         {item.signal_reason && (
-          <p className="text-[11px] text-text-secondary mt-1 leading-[1.4] line-clamp-1">
+          <p className="text-[12px] text-text-secondary mt-1 leading-relaxed line-clamp-2">
             {item.signal_reason}
           </p>
         )}
@@ -106,6 +112,7 @@ function LoadingState() {
 }
 
 export default function IntelligencePage() {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [signals, setSignals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,20 +163,25 @@ export default function IntelligencePage() {
 
   const bullishCount = signals.filter((s) => s.signal === 'BULLISH').length;
   const bearishCount = signals.filter((s) => s.signal === 'BEARISH').length;
+  const neutralCount = signals.filter((s) => s.signal === 'NEUTRAL').length;
+  const flowState = bullishCount > bearishCount ? 'ACCUMULATION' : bearishCount > bullishCount ? 'DISTRIBUTION' : 'NEUTRAL';
+  const dominantSignal = bullishCount >= bearishCount && bullishCount >= neutralCount ? 'BULLISH'
+    : bearishCount >= neutralCount ? 'BEARISH' : 'NEUTRAL';
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
     {/* Top stats strip */}
-    <div className="flex items-center gap-0 border-b border-border-subtle bg-bg-surface">
+    <div className="border-b border-border-subtle py-3 px-5 flex items-center gap-6 bg-bg-surface flex-wrap">
       {[
-        { label: 'Wallets Analyzed', value: '94' },
-        { label: 'Bullish Signals', value: bullishCount },
-        { label: 'Bearish Signals', value: bearishCount },
-        { label: 'Last Updated', value: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-      ].map((stat, i) => (
-        <div key={stat.label} className={`flex flex-col px-5 py-3 ${i < 3 ? 'border-r border-border-subtle' : ''}`}>
-          <span className="text-[10px] uppercase tracking-[1px] text-text-muted">{stat.label}</span>
-          <span className="text-[14px] font-bold text-text-primary font-display">{stat.value}</span>
+        { label: 'Total Analyzed', value: signals.length || 0, color: 'text-text-primary' },
+        { label: 'Bullish', value: bullishCount, color: 'text-green' },
+        { label: 'Bearish', value: bearishCount, color: 'text-red' },
+        { label: 'Neutral', value: neutralCount, color: 'text-amber' },
+      ].map(({ label, value, color }, i, arr) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <span className="text-[10px] text-text-muted">{label}</span>
+          <span className={`text-[12px] font-mono font-medium ${color}`}>{value}</span>
+          {i < arr.length - 1 && <span className="text-text-muted ml-3">·</span>}
         </div>
       ))}
     </div>
@@ -180,70 +192,91 @@ export default function IntelligencePage() {
         </div>
       ) : null}
 
-      <section className="relative bg-bg-card border border-border-default rounded-xl p-5">
-        <div className="absolute w-[2px] left-0 top-4 bottom-4 bg-green rounded-r-full" />
-        <div className="flex items-center">
-          <span className="text-[10px] uppercase tracking-[1px] text-text-muted">Market signal</span>
-          <div className="ml-auto">
-            <SignalPill signal={summary?.top_signal || 'NEUTRAL'} />
-          </div>
-        </div>
-        <h2 className="font-display text-[17px] font-bold text-text-primary leading-[1.4] mt-2">
-          {summary?.headline || 'Ethereum smart money remains selectively constructive.'}
-        </h2>
-        <div className="text-[10px] text-text-muted mt-3 text-right">
-          Generated {new Date().toLocaleTimeString()}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-3">
-        <article className="bg-bg-card border border-border-default rounded-xl p-4">
-          <div className="flex items-center gap-2">
-            <ChainBadge chain="ethereum" />
-            <span className="text-[11px] uppercase tracking-[1px] text-text-muted">Ethereum</span>
-          </div>
-          <p className="text-[13px] text-text-secondary leading-[1.6] mt-2">
-            {summary?.ethereum_outlook || 'AI outlook not available yet.'}
-          </p>
-        </article>
-        <article className="bg-bg-card border border-border-default rounded-xl p-4">
-          <div className="flex items-center gap-2">
-            <ChainBadge chain="ethereum" />
-            <span className="text-[11px] uppercase tracking-[1px] text-text-muted">Flow state</span>
-          </div>
-          <p className="text-[16px] font-bold font-display text-text-primary mt-2">
-            {summary?.flow_state || 'NEUTRAL'}
-          </p>
-          {signals.length > 0 && (
-            <div className="mt-3 space-y-1">
-              <div className="text-[11px] text-text-muted">
-                {signals.length} wallet{signals.length !== 1 ? 's' : ''} contributing
-              </div>
-              <div className="text-[11px] text-text-secondary font-mono">
-                <span className="text-green">{bullishCount} bullish</span>
-                {' · '}
-                <span className="text-red">{bearishCount} bearish</span>
-                {' · '}
-                <span className="text-amber">{signals.length - bullishCount - bearishCount} neutral</span>
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <TextureCard>
+          <TextureCardContent className="p-5 relative">
+            <div className="absolute w-[2px] left-0 top-4 bottom-4 bg-green rounded-r-full" />
+            <div className="flex items-center">
+              <span className="text-[10px] uppercase tracking-[1px] text-text-muted">Market signal</span>
+              <div className="ml-auto">
+                <SignalPill signal={summary?.top_signal || 'NEUTRAL'} />
               </div>
             </div>
-          )}
-        </article>
+            <h2 className="font-display text-[17px] font-bold text-text-primary leading-[1.4] mt-2">
+              {summary?.headline || (
+                <>
+                  Ethereum smart money remains{' '}
+                  <TextShimmer>selectively constructive</TextShimmer>.
+                </>
+              )}
+            </h2>
+            <div className="text-[10px] text-text-muted mt-3 text-right">
+              Generated {new Date().toLocaleTimeString()}
+            </div>
+          </TextureCardContent>
+        </TextureCard>
+      </motion.section>
+
+      <section className="grid grid-cols-2 gap-3">
+        <TextureCard>
+          <TextureCardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <ChainBadge chain="ethereum" />
+              <span className="text-[11px] uppercase tracking-[1px] text-text-muted">Ethereum</span>
+            </div>
+            <p className="text-[13px] text-text-secondary leading-[1.6] mt-2">
+              {summary?.ethereum_outlook || 'AI outlook not available yet.'}
+            </p>
+          </TextureCardContent>
+        </TextureCard>
+        <TextureCard>
+          <TextureCardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ChainBadge chain="ethereum" />
+              <span className="text-[11px] uppercase tracking-[1px] text-text-muted">Flow state</span>
+            </div>
+            <p className={`text-[18px] font-bold font-display mt-1 ${flowState === 'ACCUMULATION' ? 'text-green' : flowState === 'DISTRIBUTION' ? 'text-red' : 'text-amber'}`}>
+              {flowState}
+            </p>
+            <p className="text-[11px] text-text-muted mt-0.5">
+              Dominant: <span className={dominantSignal === 'BULLISH' ? 'text-green' : dominantSignal === 'BEARISH' ? 'text-red' : 'text-amber'}>{dominantSignal}</span>
+            </p>
+            {signals.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {/* Signal breakdown bar */}
+                <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
+                  {bullishCount > 0 && <div className="bg-green" style={{ width: `${(bullishCount / signals.length) * 100}%` }} />}
+                  {neutralCount > 0 && <div className="bg-amber" style={{ width: `${(neutralCount / signals.length) * 100}%` }} />}
+                  {bearishCount > 0 && <div className="bg-red" style={{ width: `${(bearishCount / signals.length) * 100}%` }} />}
+                </div>
+                <div className="text-[10px] text-text-muted font-mono">
+                  {signals.length} wallet{signals.length !== 1 ? 's' : ''} analyzed
+                </div>
+              </div>
+            )}
+          </TextureCardContent>
+        </TextureCard>
       </section>
 
       <section>
         <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-2">Key themes</div>
         <div className="flex flex-wrap gap-2">
-          {(summary?.key_themes || ['Smart money', 'Spot accumulation', 'High conviction']).map((theme) => (
-            <span key={theme} title={theme} className="text-[11px] bg-bg-elevated border border-border-default rounded-full px-3 py-1 text-text-secondary whitespace-nowrap">
-              {shortenTheme(theme)}
-            </span>
-          ))}
+          {(summary?.key_themes || ['Smart money', 'Spot accumulation', 'High conviction']).map((theme) => {
+            const display = theme.length > 35 ? theme.slice(0, 35) + '...' : theme;
+            return (
+              <span key={theme} title={theme} className="text-[11px] bg-bg-elevated border border-border-default rounded-full px-3 py-1 text-text-secondary whitespace-nowrap">
+                {display}
+              </span>
+            );
+          })}
         </div>
       </section>
 
-      {/* Wallet signals feed */}
-      <section className="bg-bg-card border border-border-default rounded-xl overflow-hidden">
+      <TextureCard className="overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
           <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Recent signals</div>
           <div className="flex items-center gap-2">
@@ -264,7 +297,18 @@ export default function IntelligencePage() {
             ))
           )}
         </div>
-      </section>
+      </TextureCard>
+
+      {/* Ask AI shortcut */}
+      <div className="bg-bg-surface border border-green/20 rounded-xl p-5 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[14px] text-text-primary font-medium">Have a question about today's signals?</p>
+          <p className="text-[13px] text-text-muted mt-1">Ask Sentinel AI for a deeper analysis.</p>
+        </div>
+        <Button variant="primary" onClick={() => navigate('/ask')}>
+          Ask Sentinel →
+        </Button>
+      </div>
     </div>
     </div>
   );

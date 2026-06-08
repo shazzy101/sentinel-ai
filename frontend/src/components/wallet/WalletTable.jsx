@@ -1,5 +1,6 @@
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
+import { TextureCard } from '../ui/texture-card';
 import WalletRow from './WalletRow';
 
 function HeaderRow() {
@@ -66,34 +67,36 @@ export default function WalletTable({
 }) {
   if (loading) {
     return (
-      <div className="h-full min-h-0 bg-bg-card border border-border-subtle rounded-xl overflow-hidden">
+      <TextureCard className="h-full min-h-0 overflow-hidden">
         <LoadingRows />
-      </div>
+      </TextureCard>
     );
   }
 
   if (error) {
     return (
-      <div className="h-full min-h-0 bg-bg-card border border-red-border rounded-xl px-5 py-4">
-        <div className="text-red text-[13px] mb-3">{error}</div>
-        <Button variant="ghost" onClick={onRetry}>
-          <Spinner size="sm" />
-          Retry
-        </Button>
-      </div>
+      <TextureCard className="h-full min-h-0">
+        <div className="px-5 py-4">
+          <div className="text-red text-[13px] mb-3">{error}</div>
+          <Button variant="ghost" onClick={onRetry}>
+            <Spinner size="sm" />
+            Retry
+          </Button>
+        </div>
+      </TextureCard>
     );
   }
 
   if (!wallets.length) {
     return (
-      <div className="h-full min-h-0 bg-bg-card border border-border-subtle rounded-xl">
+      <TextureCard className="h-full min-h-0">
         <EmptyState onAdd={onOpenAddModal} />
-      </div>
+      </TextureCard>
     );
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-bg-card border border-border-subtle rounded-xl overflow-hidden">
+    <TextureCard className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="flex-shrink-0">
         <HeaderRow />
       </div>
@@ -110,6 +113,6 @@ export default function WalletTable({
           />
         ))}
       </div>
-    </div>
+    </TextureCard>
   );
 }

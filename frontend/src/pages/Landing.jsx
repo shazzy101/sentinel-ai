@@ -1,176 +1,487 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 
-function EyeIcon() {
-  return (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5">
-      <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5">
-      <path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z" />
-      <path d="M19 16L19.9 18.6L22.5 19.5L19.9 20.4L19 23L18.1 20.4L15.5 19.5L18.1 18.6L19 16Z" />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5">
-      <path d="M12 3C9.3 3 7.2 5.2 7.2 8V10.2C7.2 11.8 6.6 13.3 5.6 14.4L4.5 15.7H19.5L18.4 14.4C17.4 13.3 16.8 11.8 16.8 10.2V8C16.8 5.2 14.7 3 12 3Z" />
-      <path d="M9.5 17.5C9.8 18.8 10.8 19.5 12 19.5C13.2 19.5 14.2 18.8 14.5 17.5" />
-    </svg>
-  );
-}
-
-function ChartIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 17L8 12L12 15L19 8" />
-      <path d="M16 8H19V11" />
-    </svg>
-  );
-}
-
-function LightningIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2L4 14H12L11 22L20 10H12L13 2Z" />
-    </svg>
-  );
-}
-
-function UnlockIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00D992" strokeWidth="1.5">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7C7 4.8 8.8 3 11 3H12C14.2 3 16 4.8 16 7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-const STATS = ['94 wallets tracked', 'Real-time scanning', 'AI-powered signals', 'Free to use'];
-
-const NAV_LINKS = [
-  { label: 'Watchlist', to: '/' },
-  { label: 'Intelligence', to: '/intelligence' },
-  { label: 'Scoring', to: '/scoring' },
-  { label: 'Alerts', to: '/alerts' },
+/* ─── Static mock data for the animated product preview ─── */
+const MOCK_ROWS = [
+  { name: 'Wintermute',   addr: '0x3f5c…d60', score: 89, signal: 'BULLISH' },
+  { name: 'Jump Trading', addr: '0x28c6…a28', score: 76, signal: 'NEUTRAL' },
+  { name: 'Paradigm',     addr: '0xd551…4ff', score: 82, signal: 'BULLISH' },
+  { name: 'a16z Crypto',  addr: '0x4e9c…a67', score: 71, signal: 'NEUTRAL' },
+  { name: 'Dragonfly',    addr: '0x564…ced', score: 63, signal: 'BEARISH' },
 ];
+
+const COMPARISON_ROWS = [
+  { feature: 'Whale wallet tracking',     sentinel: '✓',            nansenVal: '✓',            nansenGood: true },
+  { feature: 'AI signal analysis',        sentinel: '✓ Claude 4',   nansenVal: '✓ Basic',       nansenGood: true },
+  { feature: 'Intelligence score 0–100',  sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
+  { feature: 'Exchange wallet filtering', sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
+  { feature: 'Free tier',                 sentinel: '✓ Full access', nansenVal: '✗ $150/mo',    nansenGood: false },
+  { feature: 'Real-time alerts',          sentinel: '✓',            nansenVal: '✓',            nansenGood: true },
+  { feature: 'Daily AI market brief',     sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
+  { feature: 'Pure ETH focus',            sentinel: '✓',            nansenVal: '✗ Multi-chain', nansenGood: false },
+  { feature: 'No ads, no upsells',        sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
+];
+
+/* ─── Helpers ─────────────────────────────────────────── */
+function SignalChip({ signal }) {
+  const cls = {
+    BULLISH: 'bg-green-dim border-green-border text-green',
+    BEARISH: 'bg-red-dim border-red-border text-red',
+    NEUTRAL: 'bg-amber-dim border-amber-border text-amber',
+  }[signal] || 'bg-amber-dim border-amber-border text-amber';
+  const dot = { BULLISH: 'bg-green', BEARISH: 'bg-red', NEUTRAL: 'bg-amber' }[signal] || 'bg-amber';
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${cls}`}>
+      <span className={`w-1 h-1 rounded-full ${dot}`} />
+      {signal}
+    </span>
+  );
+}
+
+function HexLogo({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 22 22" fill="none" className="flex-shrink-0">
+      <path d="M11 1.6L18.7 6.1V15.9L11 20.4L3.3 15.9V6.1L11 1.6Z" fill="#00D992" />
+    </svg>
+  );
+}
+
+/* ─── Animated browser mockup ─────────────────────────── */
+function ProductMockup() {
+  const [loaded, setLoaded] = useState(false);
+  const [row2Signal, setRow2Signal] = useState('NEUTRAL');
+  const [scanningRow, setScanningRow] = useState(-1);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setLoaded(true), 200);
+    const t2 = setTimeout(() => setRow2Signal('BULLISH'), 3000);
+    let idx = 0;
+    const iv = setInterval(() => { setScanningRow(idx % 5); idx++; }, 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(iv); };
+  }, []);
+
+  const rows = MOCK_ROWS.map((r, i) => ({
+    ...r,
+    signal: i === 1 ? row2Signal : r.signal,
+  }));
+
+  return (
+    <div className="max-w-5xl mx-auto bg-bg-surface border border-border-default rounded-2xl overflow-hidden">
+      {/* Browser bar */}
+      <div className="h-10 bg-bg-overlay border-b border-border-subtle flex items-center px-4 gap-2">
+        <span className="w-3 h-3 rounded-full bg-red/70" />
+        <span className="w-3 h-3 rounded-full bg-amber/70" />
+        <span className="w-3 h-3 rounded-full bg-green/70" />
+        <div className="flex-1 mx-4 bg-bg-elevated rounded px-3 py-1 text-[11px] text-text-muted font-mono text-center select-none">
+          sentinel-ai.pages.dev/watchlist
+        </div>
+      </div>
+
+      {/* Table header */}
+      <div className="grid grid-cols-[28px_1fr_64px_88px_110px] gap-x-3 px-4 py-2 bg-bg-surface border-b border-border-default text-[9px] uppercase tracking-[1.2px] text-text-muted">
+        <div>#</div><div>Wallet</div><div>Score</div><div>Signal</div><div>Balance</div>
+      </div>
+
+      {/* Rows */}
+      {rows.map((row, i) => (
+        <div
+          key={row.name}
+          className={`grid grid-cols-[28px_1fr_64px_88px_110px] gap-x-3 px-4 py-2.5 border-b border-border-subtle last:border-0 transition-all duration-300 ${
+            scanningRow === i ? 'border-l-2 border-l-green bg-green/5' : 'border-l-2 border-l-transparent'
+          }`}
+        >
+          <div className="text-[10px] text-text-muted font-mono self-center">{i + 1}</div>
+          <div className="self-center min-w-0">
+            <div className="text-[12px] font-medium text-text-primary truncate">{row.name}</div>
+            <div className="text-[9px] text-text-muted font-mono">{row.addr}</div>
+          </div>
+          <div className="self-center">
+            <div className="h-[2px] bg-bg-elevated rounded-full mb-1 overflow-hidden">
+              <div
+                className={row.score >= 80 ? 'h-full bg-green rounded-full' : row.score >= 60 ? 'h-full bg-amber rounded-full' : 'h-full bg-red rounded-full'}
+                style={{ width: loaded ? `${row.score}%` : '0%', transition: `width 0.9s ease ${i * 0.15}s` }}
+              />
+            </div>
+            <span className={`text-[11px] font-mono font-bold ${row.score >= 80 ? 'text-green' : row.score >= 60 ? 'text-amber' : 'text-red'}`}>
+              {row.score}
+            </span>
+          </div>
+          <div className="self-center">
+            <SignalChip signal={row.signal} />
+          </div>
+          <div className="self-center text-[10px] font-mono text-text-secondary">
+            {[1247.52, 856.14, 3120, 2450, 445.22][i].toLocaleString(undefined, { minimumFractionDigits: 2 })} ETH
+          </div>
+        </div>
+      ))}
+
+      <div className="px-4 py-2 bg-bg-overlay flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+        <span className="text-[10px] text-text-muted font-mono">
+          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}...` : 'live • 94 wallets tracked'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Feature block visuals ───────────────────────────── */
+function WatchlistVisual() {
+  const [loaded, setLoaded] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setLoaded(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="bg-bg-surface border border-border-default rounded-xl overflow-hidden">
+      {[{ name: 'Wintermute', score: 89 }, { name: 'Paradigm', score: 82 }, { name: 'Jump Trading', score: 76 }, { name: 'a16z Crypto', score: 71 }, { name: 'Dragonfly', score: 63 }]
+        .map((w, i) => (
+          <div key={w.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0">
+            <div className="text-[10px] text-text-muted font-mono w-4">{i + 1}</div>
+            <div className="flex-1 min-w-0 text-[12px] font-medium text-text-primary truncate">{w.name}</div>
+            <div className="flex items-center gap-2 w-24">
+              <div className="flex-1 h-[2px] bg-bg-elevated rounded-full overflow-hidden">
+                <div
+                  className={w.score >= 80 ? 'h-full bg-green rounded-full' : 'h-full bg-amber rounded-full'}
+                  style={{ width: loaded ? `${w.score}%` : '0%', transition: `width 0.8s ease ${i * 0.12}s` }}
+                />
+              </div>
+              <span className={`text-[11px] font-mono font-bold flex-shrink-0 ${w.score >= 80 ? 'text-green' : 'text-amber'}`}>{w.score}</span>
+            </div>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+function IntelligenceVisual() {
+  const [signal, setSignal] = useState('NEUTRAL');
+  const [typedText, setTypedText] = useState('');
+  const fullText = 'Significant accumulation detected across 3 correlated whale wallets. High conviction positioning ahead of macro event.';
+  const ref = useRef(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true;
+        setTimeout(() => setSignal('BULLISH'), 1200);
+        let i = 0;
+        const iv = setInterval(() => {
+          i++;
+          setTypedText(fullText.slice(0, i));
+          if (i >= fullText.length) clearInterval(iv);
+        }, 28);
+      }
+    }, { threshold: 0.4 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="bg-bg-surface border border-border-default rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] uppercase tracking-[1.2px] text-text-muted">Wintermute</span>
+        <SignalChip signal={signal} />
+      </div>
+      <p className="text-[12px] text-text-secondary leading-relaxed min-h-[48px]">
+        {typedText}<span className="animate-pulse">|</span>
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-[10px] text-text-muted">Risk:</span>
+        <span className="text-[10px] font-bold text-green uppercase">LOW</span>
+        <span className="text-[10px] text-text-muted ml-auto">Score: 89</span>
+      </div>
+    </div>
+  );
+}
+
+function AlertVisual() {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) setTimeout(() => setVisible(true), 600);
+    }, { threshold: 0.4 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="bg-bg-surface border border-border-default rounded-xl p-4">
+        <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-3">Alert rules</div>
+        {[
+          { label: 'Any whale → BULLISH', active: true },
+          { label: 'Score crosses 80', active: true },
+          { label: 'Wintermute changes signal', active: false },
+        ].map((r) => (
+          <div key={r.label} className="flex items-center gap-2.5 py-2 border-b border-border-subtle last:border-0">
+            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.active ? 'bg-green' : 'bg-border-strong'}`} />
+            <span className="text-[12px] text-text-secondary">{r.label}</span>
+          </div>
+        ))}
+      </div>
+      {/* Toast notification */}
+      <div
+        className={`absolute -top-2 right-0 bg-bg-elevated border border-border-strong rounded-lg px-3 py-2 shadow-lg flex items-center gap-2.5 transition-all duration-500 ${
+          visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+        }`}
+      >
+        <span className="w-2 h-2 rounded-full bg-green flex-shrink-0" />
+        <div>
+          <div className="text-[11px] font-medium text-text-primary">Alert fired</div>
+          <div className="text-[10px] text-text-muted">Wintermute → BULLISH</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page sections ───────────────────────────────────── */
+function Navbar() {
+  const navigate = useNavigate();
+  return (
+    <nav className="fixed top-0 left-0 right-0 h-14 bg-bg-base/80 backdrop-blur-md border-b border-border-subtle z-50 flex items-center px-6">
+      <div className="flex items-center gap-2">
+        <HexLogo size={22} />
+        <span className="font-display font-bold text-[15px] text-text-primary tracking-[-0.5px]">SENTINEL</span>
+        <span className="text-[9px] text-text-muted">AI</span>
+      </div>
+      <div className="hidden md:flex items-center gap-6 mx-auto">
+        {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
+          <Link key={label} to={to} className="text-[13px] text-text-muted hover:text-text-primary transition-colors">
+            {label}
+          </Link>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 ml-auto">
+        <button type="button" onClick={() => navigate('/watchlist')} className="text-[13px] text-text-muted px-4 py-2 rounded-lg hover:text-text-primary transition-colors">
+          Sign in
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/watchlist')}
+          className="text-[13px] font-semibold bg-green text-bg-base px-4 py-2 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all"
+        >
+          Launch App →
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function HeroSection() {
+  const navigate = useNavigate();
+  return (
+    <section className="min-h-screen flex flex-col items-center justify-center bg-bg-base relative overflow-hidden px-8 pt-14">
+      {/* Animated grid background */}
+      <div className="hero-grid absolute inset-0 pointer-events-none" />
+      {/* Green radial glow — hero only */}
+      <div
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full opacity-[0.06] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, #00D992 0%, transparent 70%)' }}
+      />
+      {/* Content */}
+      <div className="relative z-10 text-center max-w-4xl">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 bg-green/10 border border-green/20 rounded-full px-3 py-1.5 mb-6">
+          <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+          <span className="text-[11px] text-green font-medium tracking-wide">94 wallets tracked live</span>
+        </div>
+        {/* Headline */}
+        <h1 className="font-display font-bold text-[52px] md:text-[64px] leading-[1.05] tracking-[-2px] text-text-primary mb-6">
+          Know what smart money<br />does before you do.
+        </h1>
+        {/* Subhead */}
+        <p className="text-[18px] text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
+          Sentinel tracks 94 Ethereum whale wallets in real time. AI-powered signals, live scoring, and instant alerts — see the move before it happens.
+        </p>
+        {/* CTAs */}
+        <div className="flex items-center justify-center gap-4 mb-16">
+          <button
+            type="button"
+            onClick={() => navigate('/watchlist')}
+            className="bg-green text-bg-base font-semibold text-[15px] px-8 py-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+          >
+            Launch App →
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/intelligence')}
+            className="border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary transition-all"
+          >
+            See Intelligence
+          </button>
+        </div>
+        {/* Stats strip */}
+        <div className="flex justify-center gap-8 md:gap-12 pt-8 border-t border-border-subtle">
+          {[['94', 'Wallets Tracked'], ['6hr', 'Scan Cycle'], ['100%', 'Ethereum'], ['Free', 'During Beta']].map(([val, lbl]) => (
+            <div key={lbl} className="flex flex-col items-center gap-1">
+              <span className="font-display font-bold text-[28px] text-text-primary">{val}</span>
+              <span className="text-[11px] text-text-muted uppercase tracking-wider">{lbl}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductPreviewSection() {
+  return (
+    <section className="py-24 px-8 bg-bg-base">
+      <div className="text-center mb-12">
+        <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">The Product</div>
+        <h2 className="font-display text-[40px] font-bold text-text-primary">
+          Everything you need to follow smart money.
+        </h2>
+      </div>
+      <ProductMockup />
+    </section>
+  );
+}
+
+function FeaturesSection() {
+  const navigate = useNavigate();
+  const blocks = [
+    {
+      tag: 'Whale Watchlist',
+      title: '94 wallets. Ranked by intelligence, not balance.',
+      body: 'Every major Ethereum whale scored 0–100 using our proprietary methodology: activity, success rate, recency, and balance weight. Exchange hot wallets automatically filtered out.',
+      cta: 'View Watchlist →',
+      ctaPath: '/watchlist',
+      Visual: WatchlistVisual,
+      flip: false,
+    },
+    {
+      tag: 'AI Intelligence',
+      title: "Claude reads the chain so you don't have to.",
+      body: 'Every wallet analyzed by Claude AI. Get a structured signal (BULLISH/BEARISH/NEUTRAL), activity summary, key insight, and risk level — updated automatically every 6 hours.',
+      cta: 'See Intelligence →',
+      ctaPath: '/intelligence',
+      Visual: IntelligenceVisual,
+      flip: true,
+    },
+    {
+      tag: 'Live Alerts',
+      title: 'Get the signal the moment it fires.',
+      body: 'Set rules: notify me when any wallet goes BULLISH, when a score crosses 80, or when a specific whale changes direction. Alerts fire instantly — no polling, no lag.',
+      cta: 'Set Up Alerts →',
+      ctaPath: '/alerts',
+      Visual: AlertVisual,
+      flip: false,
+    },
+  ];
+
+  return (
+    <section className="py-24 px-8 max-w-6xl mx-auto">
+      <div className="flex flex-col gap-24">
+        {blocks.map(({ tag, title, body, cta, ctaPath, Visual, flip }) => (
+          <div key={tag} className={`flex flex-col md:flex-row items-center gap-12 md:gap-16 ${flip ? 'md:flex-row-reverse' : ''}`}>
+            <div className="flex-1 max-w-lg">
+              <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">{tag}</div>
+              <h3 className="font-display text-[28px] font-bold text-text-primary leading-[1.2] mb-4">{title}</h3>
+              <p className="text-[15px] text-text-secondary leading-relaxed mb-5">{body}</p>
+              <button
+                type="button"
+                onClick={() => navigate(ctaPath)}
+                className="text-[14px] font-medium text-green hover:underline"
+              >
+                {cta}
+              </button>
+            </div>
+            <div className="flex-1 w-full max-w-md">
+              <Visual />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ComparisonSection() {
+  return (
+    <section className="py-24 px-8 max-w-4xl mx-auto text-center">
+      <h2 className="font-display text-[36px] font-bold text-text-primary mb-4">How Sentinel compares.</h2>
+      <p className="text-text-muted text-[16px] mb-16">We built what Nansen should have been.</p>
+      <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden text-left">
+        {/* Header */}
+        <div className="grid grid-cols-3 bg-bg-overlay px-6 py-3 border-b border-border-subtle">
+          <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted">Feature</div>
+          <div className="text-[11px] uppercase tracking-[1.2px] text-green font-bold text-center">Sentinel AI</div>
+          <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted text-center">Nansen AI</div>
+        </div>
+        {COMPARISON_ROWS.map((row, i) => (
+          <div key={row.feature} className={`grid grid-cols-3 px-6 py-4 border-b border-border-subtle last:border-0 ${i % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-card'}`}>
+            <div className="text-[13px] text-text-secondary self-center">{row.feature}</div>
+            <div className="text-[13px] text-green font-medium text-center self-center">{row.sentinel}</div>
+            <div className={`text-[13px] font-medium text-center self-center ${row.nansenGood ? 'text-text-secondary' : 'text-red'}`}>
+              {row.nansenVal}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-bg-surface border-t border-border-subtle">
+      <div className="max-w-6xl mx-auto py-12 px-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <HexLogo size={20} />
+              <span className="font-display font-bold text-[14px] text-text-primary tracking-[-0.5px]">SENTINEL AI</span>
+            </div>
+            <p className="text-[13px] text-text-muted mt-2">Ethereum whale intelligence.</p>
+            <p className="text-[12px] text-text-muted mt-1">Built by Shazaib Amlani</p>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-text-muted mb-3">Product</div>
+            {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
+              <Link key={label} to={to} className="text-[13px] text-text-muted hover:text-text-secondary block mb-2 transition-colors">
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-text-muted mb-3">Sentinel</div>
+            {['Free during beta', 'Ethereum only', '94 wallets tracked', 'Powered by Claude AI'].map((item) => (
+              <span key={item} className="text-[13px] text-text-muted block mb-2">{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className="mt-8 pt-6 border-t border-border-subtle flex justify-between text-[11px] text-text-muted">
+          <span>© 2026 Sentinel AI</span>
+          <span>Not financial advice.</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
 
 export default function LandingPage() {
   useEffect(() => {
     document.title = 'Sentinel AI — Ethereum Whale Intelligence';
   }, []);
 
-  const features = [
-    { Icon: EyeIcon, title: '94 tracked wallets', body: 'Every major Ethereum whale, scored and ranked by trading intelligence. Not balance size.' },
-    { Icon: SparkleIcon, title: 'Claude-powered analysis', body: 'Every wallet analyzed by Claude AI. Bullish, bearish, or neutral — with the reasoning.' },
-    { Icon: BellIcon, title: 'Instant alerts', body: 'Set rules. Get notified the moment a whale changes signal or crosses your score threshold.' },
-    { Icon: ChartIcon, title: '0–100 intelligence score', body: 'Proprietary scoring based on activity, success rate, and recency. Not just balance.' },
-    { Icon: LightningIcon, title: 'Daily market brief', body: 'AI-generated morning note on what smart money is doing. Updated automatically.' },
-    { Icon: UnlockIcon, title: 'No paywall', body: 'Full watchlist, all signals, all alerts. Free while in beta.' },
-  ];
-
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#09090B', color: '#EEEDF0', fontFamily: 'Inter, sans-serif' }}>
-
-      {/* Nav */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 32px', borderBottom: '1px solid #1E1E26' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M11 1.6L18.7 6.1V15.9L11 20.4L3.3 15.9V6.1L11 1.6Z" fill="#00D992" />
-          </svg>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontSize: '15px', fontWeight: 700, letterSpacing: '-0.5px', color: '#EEEDF0' }}>SENTINEL</span>
-          <span style={{ fontSize: '9px', color: '#4A4A5E', letterSpacing: '1.5px', textTransform: 'uppercase', marginLeft: '4px' }}>AI</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          {NAV_LINKS.map((l) => (
-            <Link key={l.label} to={l.to} style={{ fontSize: '13px', color: '#4A4A5E', textDecoration: 'none' }}>{l.label}</Link>
-          ))}
-          <Link to="/" style={{ background: '#00D992', color: '#09090B', fontWeight: 600, fontSize: '13px', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}>
-            Open App →
-          </Link>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section style={{ minHeight: 'calc(100vh - 57px)', display: 'flex', alignItems: 'center' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '80px 32px', width: '100%' }}>
-          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#00D992', marginBottom: '16px' }}>
-            Ethereum Whale Intelligence
-          </div>
-          <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: '52px', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-1px', color: '#EEEDF0', margin: 0 }}>
-            Know what smart<br />money does next.
-          </h1>
-          <p style={{ fontSize: '18px', color: '#8B8A9B', lineHeight: 1.7, maxWidth: '520px', marginTop: '16px' }}>
-            Sentinel tracks 94 Ethereum whale wallets in real time.
-            AI-powered signals, live scoring, and instant alerts —
-            before the move happens.
-          </p>
-
-          {/* CTAs */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-            <Link to="/" style={{ background: '#00D992', color: '#09090B', fontWeight: 600, fontSize: '15px', padding: '12px 24px', borderRadius: '8px', textDecoration: 'none', display: 'inline-block' }}>
-              View Watchlist →
-            </Link>
-            <Link to="/intelligence" style={{ border: '1px solid #28283A', color: '#8B8A9B', fontSize: '15px', padding: '12px 24px', borderRadius: '8px', textDecoration: 'none', display: 'inline-block' }}>
-              See Intelligence
-            </Link>
-          </div>
-
-          {/* Stats strip */}
-          <div style={{ display: 'flex', gap: '32px', marginTop: '48px', paddingTop: '32px', borderTop: '1px solid #1E1E26' }}>
-            {STATS.map((stat) => (
-              <div key={stat} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4A4A5E' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00D992', flexShrink: 0, display: 'inline-block' }} />
-                {stat}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section style={{ padding: '96px 32px', borderTop: '1px solid #1E1E26' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '4px', color: '#00D992', marginBottom: '12px' }}>Why Sentinel</div>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: '36px', fontWeight: 700, color: '#EEEDF0', marginBottom: '64px', marginTop: 0 }}>
-            Built for serious traders.
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-            {features.map(({ Icon, title, body }) => (
-              <div key={title} style={{ background: '#0F0F12', border: '1px solid #1E1E26', borderRadius: '12px', padding: '24px' }}>
-                <div style={{ marginBottom: '16px' }}><Icon /></div>
-                <div style={{ fontSize: '15px', fontWeight: 600, color: '#EEEDF0', marginBottom: '8px' }}>{title}</div>
-                <p style={{ fontSize: '13px', color: '#8B8A9B', lineHeight: 1.6, margin: 0 }}>{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid #1E1E26', padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-            <path d="M11 1.6L18.7 6.1V15.9L11 20.4L3.3 15.9V6.1L11 1.6Z" fill="#00D992" />
-          </svg>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontSize: '13px', fontWeight: 700, color: '#EEEDF0' }}>SENTINEL</span>
-          <span style={{ fontSize: '9px', color: '#4A4A5E', letterSpacing: '1.5px', textTransform: 'uppercase' }}>AI</span>
-          <span style={{ fontSize: '12px', color: '#4A4A5E', marginLeft: '12px' }}>© 2026 Sentinel AI. Built by Shazaib Amlani.</span>
-        </div>
-        <div style={{ display: 'flex', gap: '24px' }}>
-          {NAV_LINKS.map((l) => (
-            <Link key={l.label} to={l.to} style={{ fontSize: '12px', color: '#4A4A5E', textDecoration: 'none' }}>{l.label}</Link>
-          ))}
-        </div>
-      </footer>
+    <div className="min-h-screen bg-bg-base text-text-primary">
+      <Navbar />
+      <HeroSection />
+      <ProductPreviewSection />
+      <FeaturesSection />
+      <ComparisonSection />
+      <Footer />
     </div>
   );
 }
