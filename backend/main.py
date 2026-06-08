@@ -845,3 +845,108 @@ async def get_eth_market_data():
         "ts": datetime.now(timezone.utc),
     }
     return data
+
+
+def _build_copy_suggestion(tx: dict, wallet: dict, signal: str | None) -> dict | None:
+    """Map a whale on-chain move to an actionable copy-trade for the Invest UI."""
+    value = float(tx.get("value") or 0)
+    if value < 5:
+        return None
+
+    direction = tx.get("direction", "unknown")
+    sig = (signal or wallet.get("signal") or "NEUTRAL").upper()
+
+    if direction == "out":
+        whale_action = f"Sent {value:,.2f} ETH"
+        if sig == "BEARISH":
+            from_t, to_t = "ETH", "USDC"
+            reason = "Whale taking profit → mirror into stables"
+        else:
+            from_t, to_t = "ETH", "WETH"
+            reason = "Whale deploying capital → mirror position"
+    elif direction == "in":
+        whale_action = f"Received {value:,.2f} ETH"
+        from_t, to_t = "USDC", "ETH"
+        reason = "Whale accumulating ETH → mirror buy"
+    else:
+        return None
+
+    suggested = round(min(max(value * 0.01, 0.01), 2.0), 4)
+
+    return {
+        "id": tx.get("hash") or f"{wallet.get('address')}-{tx.get('timestamp')}",
+        "whaleLabel": wallet.get("label") or "Unknown whale",
+        "whaleAddress": wallet.get("address"),
+        "whaleScore": wallet.get("score") or 0,
+        "signal": sig,
+        "whaleAction": whale_action,
+        "suggestedFrom": from_t,
+        "suggestedTo": to_t,
+        "suggestedAmount": suggested,
+        "copyPct": 1,
+        "reason": reason,
+        "timestamp": tx.get("timestamp"),
+        "txHash": tx.get("hash"),
+    }
+
+
+@app.get("/api/invest/whale-trades")
+async def get_whale_trades():
+    """
+    Recent significant whale moves with suggested copy-trades for the Invest page.
+    Non-custodial: suggestions only — user executes via MetaMask.
+    """
+    try:
+        tx_rows = (
+            supabase_client.table("transactions")
+            .select("hash, timestamp, value, value_symbol, direction, wallet_id")
+            .order("timestamp", desc=True)
+            .limit(80)
+            .execute()
+        )
+        txs = tx_rows.data or []
+        if not txs:
+            return success({"trades": [], "count": 0})
+
+        wallet_ids = list({t["wallet_id"] for t in txs if t.get("wallet_id")})
+        wallets_by_id: dict = {}
+        if wallet_ids:
+            w_rows = (
+                supabase_client.table("wallets")
+                .select("id, address, label, score")
+                .in_("id", wallet_ids)
+                .execute()
+            )
+            wallets_by_id = {w["id"]: w for w in (w_rows.data or [])}
+
+        signals_by_wallet = fetch_latest_analyses(wallet_ids)
+
+        trades: list[dict] = []
+        seen_whales: set[str] = set()
+
+        for tx in txs:
+            wid = tx.get("wallet_id")
+            wallet = wallets_by_id.get(wid)
+            if not wallet:
+                continue
+
+            # One copy suggestion per whale (most recent move)
+            addr = wallet.get("address", "")
+            if addr in seen_whales:
+                continue
+
+            analysis = signals_by_wallet.get(wid) or {}
+            signal = analysis.get("signal")
+
+            suggestion = _build_copy_suggestion(tx, wallet, signal)
+            if not suggestion:
+                continue
+
+            seen_whales.add(addr)
+            trades.append(suggestion)
+            if len(trades) >= 12:
+                break
+
+        return success({"trades": trades, "count": len(trades)})
+    except Exception as e:
+        return error("WHALE_TRADES_FAILED", str(e), status_code=500)

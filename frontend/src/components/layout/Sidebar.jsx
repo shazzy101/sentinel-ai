@@ -1,98 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
+import {
+  LayoutGrid, Sparkles, BarChart3, MessageSquare,
+  LineChart, Bell, ExternalLink, Search, Zap,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { motionTokens } from '@/design/motion';
+import SentinelLogo from '../ui/SentinelLogo';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-function Icon({ name }) {
-  if (name === 'grid') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <rect x="2" y="2" width="4" height="4" rx="1" strokeWidth="1.2" />
-        <rect x="10" y="2" width="4" height="4" rx="1" strokeWidth="1.2" />
-        <rect x="2" y="10" width="4" height="4" rx="1" strokeWidth="1.2" />
-        <rect x="10" y="10" width="4" height="4" rx="1" strokeWidth="1.2" />
-      </svg>
-    );
-  }
-  if (name === 'sparkles') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <path d="M8 1.8L8.9 4.4L11.5 5.3L8.9 6.2L8 8.8L7.1 6.2L4.5 5.3L7.1 4.4L8 1.8Z" strokeWidth="1.1" />
-        <path d="M12.5 8.8L13 10.1L14.3 10.6L13 11.1L12.5 12.4L12 11.1L10.7 10.6L12 10.1L12.5 8.8Z" strokeWidth="1.1" />
-        <path d="M3.5 9.4L4 10.5L5.1 11L4 11.5L3.5 12.6L3 11.5L1.9 11L3 10.5L3.5 9.4Z" strokeWidth="1.1" />
-      </svg>
-    );
-  }
-  if (name === 'bell') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <path d="M8 2.3C6.1 2.3 4.8 3.7 4.8 5.7V7.1C4.8 8.1 4.4 9 3.8 9.7L3.1 10.5H12.9L12.2 9.7C11.6 9 11.2 8.1 11.2 7.1V5.7C11.2 3.7 9.9 2.3 8 2.3Z" strokeWidth="1.2" />
-        <path d="M6.5 12.1C6.7 12.9 7.3 13.3 8 13.3C8.7 13.3 9.3 12.9 9.5 12.1" strokeWidth="1.2" />
-      </svg>
-    );
-  }
-  if (name === 'chart-line') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <path d="M2.2 11.6L5.9 7.9L8.1 10.1L13.8 4.4" strokeWidth="1.2" />
-        <path d="M11 4.4H13.8V7.2" strokeWidth="1.2" />
-      </svg>
-    );
-  }
-  if (name === 'ask') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <circle cx="8" cy="8" r="6" strokeWidth="1.2" />
-        <path d="M6 6.5C6 5.4 6.9 4.5 8 4.5C9.1 4.5 10 5.4 10 6.5C10 7.6 8 8.5 8 9.5" strokeWidth="1.2" strokeLinecap="round" />
-        <circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
-      </svg>
-    );
-  }
-  if (name === 'chart-bar') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <rect x="2" y="9" width="3" height="5" rx="0.6" strokeWidth="1.2" />
-        <rect x="6.5" y="6" width="3" height="8" rx="0.6" strokeWidth="1.2" />
-        <rect x="11" y="3" width="3" height="11" rx="0.6" strokeWidth="1.2" />
-      </svg>
-    );
-  }
-  if (name === 'message') {
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="stroke-current">
-        <path d="M2.5 3.5h11a.5.5 0 01.5.5v7a.5.5 0 01-.5.5H5L2.5 14V4a.5.5 0 01.5-.5Z" strokeWidth="1.2" strokeLinejoin="round" />
-        <path d="M5 7h6M5 9.5h4" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return null;
-}
-
 const NAV_ITEMS = [
-  { label: 'Watchlist',    icon: 'grid',       path: '/watchlist' },
-  { label: 'Intelligence', icon: 'sparkles',   path: '/intelligence' },
-  { label: 'Markets',      icon: 'chart-bar',  path: '/markets' },
-  { label: 'Ask AI',       icon: 'message',    path: '/ask' },
-  { label: 'Scoring',      icon: 'chart-line', path: '/scoring' },
-  { label: 'Alerts',       icon: 'bell',       path: '/alerts' },
+  { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist' },
+  { label: 'Intelligence', icon: Sparkles, path: '/intelligence' },
+  { label: 'Markets', icon: BarChart3, path: '/markets' },
+  { label: 'Invest', icon: Zap, path: '/invest' },
+  { label: 'Ask AI', icon: MessageSquare, path: '/ask' },
+  { label: 'Scoring', icon: LineChart, path: '/scoring' },
+  { label: 'Alerts', icon: Bell, path: '/alerts' },
 ];
 
 function useAlertBadge() {
   const [count, setCount] = useState(0);
-
   useEffect(() => {
     const handler = () => setCount((n) => n + 1);
     window.addEventListener('sentinel-alert-fired', handler);
     return () => window.removeEventListener('sentinel-alert-fired', handler);
   }, []);
-
-  // Clear badge when user visits /alerts
   useEffect(() => {
     const clear = () => setCount(0);
     window.addEventListener('sentinel-alerts-viewed', clear);
     return () => window.removeEventListener('sentinel-alerts-viewed', clear);
   }, []);
-
   return count;
 }
 
@@ -101,21 +41,16 @@ function useSidebarStats() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
       try {
         const [watchlistRes, cronRes] = await Promise.all([
           fetch(`${API_BASE}/api/watchlist`),
           fetch(`${API_BASE}/api/admin/cron-status`),
         ]);
-
         if (!watchlistRes.ok) return;
         const body = await watchlistRes.json();
         if (cancelled || !body.success) return;
-
         const wallets = body.data?.wallets || [];
-        const count = wallets.length;
-
         let latestMs = 0;
         for (const w of wallets) {
           if (w.last_scanned) {
@@ -123,20 +58,15 @@ function useSidebarStats() {
             if (ms > latestMs) latestMs = ms;
           }
         }
-
         let nextScan = null;
         if (cronRes.ok) {
           const cronBody = await cronRes.json();
           const nextRun = cronBody.data?.top_cron?.next_run;
           if (nextRun) nextScan = new Date(nextRun);
         }
-
-        setStats({ count, lastScanned: latestMs > 0 ? new Date(latestMs) : null, nextScan });
-      } catch {
-        // silently ignore
-      }
+        setStats({ count: wallets.length, lastScanned: latestMs > 0 ? new Date(latestMs) : null, nextScan });
+      } catch { /* ignore */ }
     }
-
     load();
     const interval = setInterval(load, 60_000);
     return () => { cancelled = true; clearInterval(interval); };
@@ -147,10 +77,8 @@ function useSidebarStats() {
 
 function useCountdown(targetDate) {
   const [label, setLabel] = useState('');
-
   useEffect(() => {
     if (!targetDate) { setLabel(''); return; }
-
     function compute() {
       const ms = targetDate.getTime() - Date.now();
       if (ms <= 0) { setLabel('now'); return; }
@@ -161,12 +89,10 @@ function useCountdown(targetDate) {
       else if (m === 0) setLabel(`${h}h`);
       else setLabel(`${h}h ${m}m`);
     }
-
     compute();
     const t = setInterval(compute, 60_000);
     return () => clearInterval(t);
   }, [targetDate]);
-
   return label;
 }
 
@@ -181,122 +107,116 @@ function relativeLastScan(date) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export default function Sidebar() {
+function NavItem({ item, isActive, badge }) {
+  const Icon = item.icon;
+  return (
+    <div className="relative">
+      {isActive && (
+        <motion.div
+          layoutId="nav-active"
+          className="absolute inset-0 rounded-xl bg-white/[0.06] border border-white/[0.08] shadow-card"
+          transition={motionTokens.springSoft}
+        />
+      )}
+      <div
+        className={cn(
+          'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200',
+          isActive ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary',
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2 : 1.75} />
+        <span className="font-medium">{item.label}</span>
+        {badge ? (
+          <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-green px-1 text-[9px] font-bold text-text-inverse">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar({ onOpenCommand }) {
   const { count, lastScanned, nextScan } = useSidebarStats();
   const alertCount = useAlertBadge();
   const nextScanLabel = useCountdown(nextScan);
+  const location = useLocation();
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-bg-surface border-r border-border-subtle flex flex-col">
+    <aside className="relative z-30 flex w-[240px] flex-shrink-0 flex-col p-3">
+      <div className="glass-surface flex h-full flex-col overflow-hidden rounded-2xl shadow-card">
+        {/* Logo → landing page */}
+        <div className="border-b border-white/[0.06] px-4 py-4">
+          <SentinelLogo size={24} showWordmark />
+        </div>
 
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-border-subtle flex items-center gap-2.5">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true" className="flex-shrink-0">
-          <path d="M11 1.6L18.7 6.1V15.9L11 20.4L3.3 15.9V6.1L11 1.6Z" fill="#00D992" />
-        </svg>
-        <span className="font-display text-[15px] font-bold tracking-[-0.5px] text-text-primary">SENTINEL</span>
-        <span className="text-[9px] font-bold text-green tracking-[2px] uppercase bg-green/10 px-1.5 py-0.5 rounded">AI</span>
-      </div>
+        {/* Command shortcut (mobile-visible) */}
+        <div className="px-3 pt-3 md:hidden">
+          <button
+            type="button"
+            onClick={onOpenCommand}
+            className="flex w-full items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] text-text-muted"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Search...
+          </button>
+        </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-3 flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => {
-          if (item.soon) {
+        {/* Nav */}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+          {NAV_ITEMS.map((item) => {
+            const badge = item.label === 'Alerts' && alertCount > 0 ? alertCount : null;
             return (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 px-3 py-2 text-[13px] relative select-none text-text-muted rounded-lg"
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('sentinel-alerts-viewed')) : undefined}
               >
-                <Icon name={item.icon} />
-                <span>{item.label}</span>
-                <span className="ml-auto text-[9px] px-1.5 py-0.5 bg-bg-overlay border border-border-default rounded text-text-muted uppercase tracking-[1px]">
-                  Soon
-                </span>
-              </div>
+                {({ isActive }) => (
+                  <NavItem item={item} isActive={isActive || location.pathname === item.path} badge={badge} />
+                )}
+              </NavLink>
             );
-          }
+          })}
+        </nav>
 
-          const badge = item.label === 'Alerts' && alertCount > 0 ? alertCount : null;
-
-          return (
-            <NavLink
-              key={item.label}
-              to={item.path}
-              end={false}
-              onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('sentinel-alerts-viewed')) : undefined}
-            >
-              {({ isActive }) => (
-                <div className={`flex items-center gap-3 py-2 text-[13px] relative select-none rounded-lg transition-colors duration-150 ${
-                  isActive
-                    ? 'bg-bg-elevated text-text-primary pl-[10px] pr-3 border-l-2 border-green'
-                    : 'px-3 text-text-muted hover:text-text-secondary hover:bg-bg-elevated'
-                }`.trim()}>
-                  {isActive ? null : null}
-                  <Icon name={item.icon} />
-                  <span>{item.label}</span>
-                  {badge ? (
-                    <span className="ml-auto text-[9px] min-w-[18px] h-[18px] rounded-full bg-green text-text-inverse font-bold flex items-center justify-center px-1">
-                      {badge > 9 ? '9+' : badge}
-                    </span>
-                  ) : null}
-                </div>
-              )}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      {/* Live stats */}
-      <div className="px-4 py-3 border-t border-border-subtle space-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="h-[6px] w-[6px] rounded-full bg-green relative pulse-dot flex-shrink-0" />
-          <span className="text-[11px] text-text-muted">
-            {count !== null ? `${count} wallet${count !== 1 ? 's' : ''} tracked` : 'Loading...'}
-          </span>
+        {/* Live stats */}
+        <div className="space-y-2 border-t border-white/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot" />
+            <span className="text-[11px] text-text-muted">
+              {count !== null ? `${count} wallet${count !== 1 ? 's' : ''} tracked` : 'Loading...'}
+            </span>
+          </div>
+          <div className="text-[11px] text-text-secondary">
+            Last scan · {relativeLastScan(lastScanned)}
+          </div>
+          <div className="text-[11px] text-text-muted">
+            {nextScanLabel ? `Next · ${nextScanLabel}` : 'Auto-scan · 6h'}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6b7280" strokeWidth="1.1" className="flex-shrink-0">
-            <circle cx="6" cy="6" r="4.2" />
-            <path d="M6 3.7V6L7.6 7.1" strokeLinecap="round" />
-          </svg>
-          <span className="text-[11px] text-text-secondary">
-            Last: {relativeLastScan(lastScanned)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6b7280" strokeWidth="1.1" className="flex-shrink-0">
-            <path d="M6 2v4l2.5 2.5" strokeLinecap="round" />
-            <circle cx="6" cy="6" r="4.5" />
-          </svg>
-          <span className="text-[11px] text-text-secondary">
-            {nextScanLabel ? `Next scan in ${nextScanLabel}` : 'Auto-scan: 6h cycle'}
-          </span>
-        </div>
-      </div>
 
-      {/* Landing page link */}
-      <div className="px-4 pb-2">
-        <a
-          href="/"
-          className="flex items-center gap-2 text-[11px] text-text-muted hover:text-text-secondary transition-colors py-1"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.1">
-            <path d="M6 1.5h4.5V6M5 7L10.5 1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5.5 2.5H2A.5.5 0 001.5 3v7a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V6.5" strokeLinecap="round" />
-          </svg>
-          View Landing Page
-        </a>
-      </div>
+        {/* Landing link */}
+        <div className="border-t border-white/[0.06] px-4 py-3">
+          <a
+            href="/"
+            className="flex items-center gap-2 text-[11px] text-text-muted transition-colors hover:text-text-secondary"
+          >
+            <ExternalLink className="h-3 w-3" strokeWidth={1.75} />
+            View landing page
+          </a>
+        </div>
 
-      {/* User */}
-      <div className="px-4 py-3 border-t border-border-subtle flex items-center gap-2">
-        <span className="h-7 w-7 rounded-full bg-blue-dim border border-blue-border flex items-center justify-center text-[11px] text-blue font-medium flex-shrink-0">
-          SA
-        </span>
-        <span className="text-[11px] text-text-secondary truncate">Shazaib</span>
-        <span className="text-[9px] bg-green-dim text-green px-1.5 rounded uppercase tracking-wide ml-auto flex-shrink-0">
-          Pro
-        </span>
+        {/* User */}
+        <div className="flex items-center gap-2.5 border-t border-white/[0.06] px-4 py-3">
+          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue">
+            SA
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-medium text-text-primary">Shazaib</div>
+            <div className="text-[10px] text-text-muted">Pro plan</div>
+          </div>
+        </div>
       </div>
     </aside>
   );

@@ -1,6 +1,6 @@
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
-import { TextureCard } from '../ui/texture-card';
+import GlassCard from '../primitives/GlassCard';
 import WalletRow from './WalletRow';
 
 function HeaderRow() {
@@ -69,15 +69,15 @@ export default function WalletTable({
 }) {
   if (loading) {
     return (
-      <TextureCard className="h-full min-h-0 overflow-hidden">
+      <GlassCard padding={false} className="h-full min-h-0 overflow-hidden">
         <LoadingRows />
-      </TextureCard>
+      </GlassCard>
     );
   }
 
   if (error) {
     return (
-      <TextureCard className="h-full min-h-0">
+      <GlassCard className="h-full min-h-0">
         <div className="px-5 py-4">
           <div className="text-red text-[13px] mb-3">{error}</div>
           <Button variant="ghost" onClick={onRetry}>
@@ -85,20 +85,20 @@ export default function WalletTable({
             Retry
           </Button>
         </div>
-      </TextureCard>
+      </GlassCard>
     );
   }
 
   if (!wallets.length) {
     return (
-      <TextureCard className="h-full min-h-0">
+      <GlassCard className="h-full min-h-0">
         <EmptyState onAdd={onOpenAddModal} />
-      </TextureCard>
+      </GlassCard>
     );
   }
 
   return (
-    <TextureCard className="h-full min-h-0 flex flex-col overflow-hidden">
+    <GlassCard padding={false} className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="flex-shrink-0">
         <HeaderRow />
       </div>
@@ -115,6 +115,6 @@ export default function WalletTable({
           />
         ))}
       </div>
-    </TextureCard>
+    </GlassCard>
   );
 }

@@ -35,4 +35,9 @@ export const api = {
       `?tokenIn=${fromToken}&tokenOut=${toToken}` +
       `&amountIn=${amount}&chain=ethereum&slippage=0.5`
     ).then((r) => r.json()),
+
+  getWhaleTrades: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/invest/whale-trades`)
+      .then((r) => r.json())
+      .then((body) => (body.success ? body.data?.trades : body.trades) || []),
 };

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import ScrollWhalePaths from '../components/landing/ScrollWhalePaths';
+import InvestShowcase from '../components/landing/InvestShowcase';
+import AppBackground from '../components/primitives/AppBackground';
+import MagneticButton from '../components/primitives/MagneticButton';
+import AnimatedCounter from '../components/primitives/AnimatedCounter';
+import SentinelLogo from '../components/ui/SentinelLogo';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
@@ -20,7 +26,8 @@ const COMPARISON_ROWS = [
   { feature: 'Real-time alerts',          sentinel: '✓',            nansenVal: '✓',            nansenGood: true },
   { feature: 'Daily AI market brief',     sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
   { feature: 'Pure ETH focus',            sentinel: '✓',            nansenVal: '✗ Multi-chain', nansenGood: false },
-  { feature: 'No ads, no upsells',        sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
+  { feature: 'Copy whale trades',           sentinel: '✓ One-click',     nansenVal: '✗',            nansenGood: false },
+  { feature: 'Non-custodial DEX swaps',     sentinel: '✓ MetaMask',      nansenVal: 'Partial',      nansenGood: true },
 ];
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -74,7 +81,7 @@ function ProductMockup() {
         <span className="w-3 h-3 rounded-full bg-amber/70" />
         <span className="w-3 h-3 rounded-full bg-green/70" />
         <div className="flex-1 mx-4 bg-bg-elevated rounded px-3 py-1 text-[11px] text-text-muted font-mono text-center select-none">
-          sentinel-ai.pages.dev/watchlist
+          sentinel-ai-905.pages.dev/watchlist
         </div>
       </div>
 
@@ -244,34 +251,127 @@ function AlertVisual() {
   );
 }
 
+function MarketsVisual() {
+  const [price, setPrice] = useState(3842);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    let iv;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !iv) {
+        iv = setInterval(() => {
+          setPrice((p) => Math.round(p + (Math.random() - 0.48) * 12));
+        }, 800);
+      }
+    }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => { obs.disconnect(); if (iv) clearInterval(iv); };
+  }, []);
+
+  return (
+    <div ref={ref} className="glass-border rounded-2xl p-4 overflow-hidden">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-xs font-bold text-text-primary">ETH / USD</span>
+        <span className="text-sm font-mono font-bold text-green">${price.toLocaleString()}</span>
+      </div>
+      <svg viewBox="0 0 280 80" className="w-full h-20">
+        <defs>
+          <linearGradient id="mvGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#00D992" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#00D992" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M0 60 Q40 20, 80 45 T160 30 T280 15 V80 H0 Z" fill="url(#mvGrad)" />
+        <path d="M0 60 Q40 20, 80 45 T160 30 T280 15" fill="none" stroke="#00D992" strokeWidth="2" />
+      </svg>
+      <div className="grid grid-cols-3 gap-2 mt-3">
+        {['UNI', 'LINK', 'AAVE'].map((sym, i) => (
+          <div key={sym} className="rounded-lg bg-white/[0.03] px-2 py-1.5 text-center">
+            <div className="text-[10px] text-text-muted">{sym}</div>
+            <div className={`text-[11px] font-mono font-bold ${i !== 2 ? 'text-green' : 'text-red'}`}>
+              {i !== 2 ? '+' : ''}{i === 0 ? '2.4' : i === 1 ? '1.1' : '-0.8'}%
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InvestVisual() {
+  const [step, setStep] = useState(0);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    let iv;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !iv) {
+        iv = setInterval(() => setStep((s) => (s + 1) % 3), 2200);
+      }
+    }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => { obs.disconnect(); if (iv) clearInterval(iv); };
+  }, []);
+
+  const labels = ['Whale move detected', 'Copy trade prefilled', 'Confirmed on-chain'];
+
+  return (
+    <div ref={ref} className="glass-border rounded-2xl p-4">
+      <div className="rounded-xl border border-green/25 bg-green/10 p-3 mb-3">
+        <div className="text-[10px] uppercase tracking-widest text-green font-bold mb-1">Wintermute</div>
+        <div className="text-xs font-mono text-text-primary">Sent 847.52 ETH</div>
+      </div>
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-4"
+      >
+        <div className="text-sm font-semibold text-text-primary mb-1">{labels[step]}</div>
+        {step === 1 && (
+          <div className="text-xs font-mono text-green mt-2">8.47 ETH → WETH</div>
+        )}
+        {step === 2 && (
+          <div className="text-xs text-green mt-2 flex items-center justify-center gap-1">
+            ✓ View on Etherscan
+          </div>
+        )}
+      </motion.div>
+      <div className="flex gap-1.5 justify-center mt-2">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`h-1 rounded-full transition-all ${i === step ? 'w-4 bg-green' : 'w-1 bg-white/20'}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Page sections ───────────────────────────────────── */
 function Navbar() {
   const navigate = useNavigate();
   return (
-    <nav className="fixed top-0 left-0 right-0 h-14 bg-bg-base/80 backdrop-blur-md border-b border-border-subtle z-50 flex items-center px-6">
-      <div className="flex items-center gap-2">
-        <HexLogo size={22} />
-        <span className="font-display font-bold text-[15px] text-text-primary tracking-[-0.5px]">SENTINEL</span>
-        <span className="text-[9px] text-text-muted">AI</span>
-      </div>
-      <div className="hidden md:flex items-center gap-6 mx-auto">
-        {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
-          <Link key={label} to={to} className="text-[13px] text-text-muted hover:text-text-primary transition-colors">
-            {label}
-          </Link>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 ml-auto">
-        <button type="button" onClick={() => navigate('/watchlist')} className="text-[13px] text-text-muted px-4 py-2 rounded-lg hover:text-text-primary transition-colors">
-          Sign in
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/watchlist')}
-          className="text-[13px] font-semibold bg-green text-bg-base px-4 py-2 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all"
-        >
-          Launch App →
-        </button>
+    <nav className="fixed top-0 left-0 right-0 z-50 px-4 pt-4 md:px-6">
+      <div className="glass-surface mx-auto flex h-14 max-w-6xl items-center rounded-2xl px-5 shadow-card">
+        <SentinelLogo size={24} showWordmark />
+        <div className="hidden md:flex items-center gap-8 mx-auto">
+          {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
+            <Link key={label} to={to} className="text-sm text-text-muted hover:text-text-primary transition-colors duration-200">
+              {label}
+            </Link>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <button type="button" onClick={() => navigate('/watchlist')} className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
+            Sign in
+          </button>
+          <MagneticButton
+            type="button"
+            onClick={() => navigate('/watchlist')}
+            className="text-sm font-semibold bg-green text-text-inverse px-4 py-2 rounded-xl shadow-glow hover:bg-green-bright transition-colors"
+          >
+            Launch App →
+          </MagneticButton>
+        </div>
       </div>
     </nav>
   );
@@ -280,56 +380,76 @@ function Navbar() {
 function HeroSection() {
   const navigate = useNavigate();
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center bg-bg-base relative overflow-hidden px-8 pt-14">
-      {/* Animated grid background */}
-      <div className="hero-grid absolute inset-0 pointer-events-none" />
-      {/* Green radial glow — hero only */}
+    <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 pt-24 pb-16 md:px-8">
+      <div className="hero-grid absolute inset-0 pointer-events-none opacity-60" />
       <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full opacity-[0.06] pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, #00D992 0%, transparent 70%)' }}
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[480px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, rgba(0,217,146,0.14) 0%, transparent 65%)' }}
       />
-      {/* Content */}
-      <div className="relative z-10 text-center max-w-4xl">
-        {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 bg-green/10 border border-green/20 rounded-full px-3 py-1.5 mb-6">
-          <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-          <span className="text-[11px] text-green font-medium tracking-wide">94 wallets tracked live</span>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 text-center max-w-4xl"
+      >
+        <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/10 px-3.5 py-1.5 mb-8">
+          <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot" />
+          <span className="text-xs font-medium tracking-wide text-green">94 wallets tracked live</span>
         </div>
-        {/* Headline */}
-        <h1 className="font-display font-bold text-[52px] md:text-[64px] leading-[1.05] tracking-[-2px] text-text-primary mb-6">
-          Know what smart money<br />does before you do.
+        <h1 className="font-display font-bold text-4xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-text-primary mb-6">
+          Know what smart money
+          <br />
+          <span className="gradient-text-accent">does before you do.</span>
         </h1>
-        {/* Subhead */}
-        <p className="text-[18px] text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
-          Sentinel tracks 94 Ethereum whale wallets in real time. AI-powered signals, live scoring, and instant alerts — see the move before it happens.
+        <p className="text-lg text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
+          Enterprise-grade Ethereum whale intelligence. AI signals, live scoring, and instant alerts — built for analysts who need conviction, not noise.
         </p>
-        {/* CTAs */}
-        <div className="flex items-center justify-center gap-4 mb-16">
-          <button
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
+          <MagneticButton
             type="button"
             onClick={() => navigate('/watchlist')}
-            className="bg-green text-bg-base font-semibold text-[15px] px-8 py-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+            className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
           >
             Launch App →
-          </button>
+          </MagneticButton>
           <button
             type="button"
             onClick={() => navigate('/intelligence')}
-            className="border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary transition-all"
+            className="w-full sm:w-auto glass-border text-text-secondary text-base px-8 py-3.5 rounded-2xl hover:bg-white/[0.04] hover:text-text-primary transition-all duration-200"
           >
             See Intelligence
           </button>
         </div>
-        {/* Stats strip */}
-        <div className="flex justify-center gap-8 md:gap-12 pt-8 border-t border-border-subtle">
-          {[['94', 'Wallets Tracked'], ['6hr', 'Scan Cycle'], ['100%', 'Ethereum'], ['Free', 'During Beta']].map(([val, lbl]) => (
-            <div key={lbl} className="flex flex-col items-center gap-1">
-              <span className="font-display font-bold text-[28px] text-text-primary">{val}</span>
-              <span className="text-[11px] text-text-muted uppercase tracking-wider">{lbl}</span>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 pt-10 border-t border-white/[0.06] max-w-3xl mx-auto">
+          {[
+            { val: 94, lbl: 'Wallets Tracked', suffix: '' },
+            { val: 6, lbl: 'Hour Scan Cycle', suffix: 'hr' },
+            { val: 100, lbl: 'Ethereum Focus', suffix: '%' },
+            { val: 0, lbl: 'Cost During Beta', prefix: '$' },
+          ].map(({ val, lbl, suffix, prefix }, i) => (
+            <motion.div
+              key={lbl}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.08, duration: 0.4 }}
+              className="flex flex-col items-center gap-1"
+            >
+              <span className="font-display font-bold text-3xl text-text-primary">
+                {lbl.includes('Beta') ? (
+                  'Free'
+                ) : (
+                  <>
+                    {prefix}
+                    <AnimatedCounter value={val} decimals={0} />
+                    {suffix}
+                  </>
+                )}
+              </span>
+              <span className="text-2xs text-text-muted uppercase tracking-widest">{lbl}</span>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -368,6 +488,24 @@ function FeaturesSection() {
       ctaPath: '/intelligence',
       Visual: IntelligenceVisual,
       flip: true,
+    },
+    {
+      tag: 'Live Markets',
+      title: 'ETH price, ecosystem tokens, live charts.',
+      body: 'Real-time market data from CoinGecko. ETH hero charts, top ecosystem tokens, volume sparklines, and whale sentiment derived from your tracked wallets.',
+      cta: 'Open Markets →',
+      ctaPath: '/markets',
+      Visual: MarketsVisual,
+      flip: true,
+    },
+    {
+      tag: 'Invest & Copy',
+      title: 'Mirror whale moves. Execute via MetaMask.',
+      body: 'When a tracked whale makes a significant move, copy the trade at your size. Best-rate routing across all DEXs via DefiLlama — Sentinel never holds your keys.',
+      cta: 'Start Investing →',
+      ctaPath: '/invest',
+      Visual: InvestVisual,
+      flip: false,
     },
     {
       tag: 'Live Alerts',
@@ -448,7 +586,7 @@ function Footer() {
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[1.5px] text-text-muted mb-3">Product</div>
-            {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
+            {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
               <Link key={label} to={to} className="text-[13px] text-text-muted hover:text-text-secondary block mb-2 transition-colors">
                 {label}
               </Link>
@@ -476,10 +614,12 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-bg-base text-text-primary">
+    <div className="min-h-screen bg-bg-base text-text-primary relative">
+      <AppBackground variant="landing" />
       <ScrollWhalePaths />
       <Navbar />
       <HeroSection />
+      <InvestShowcase />
       <ProductPreviewSection />
       <FeaturesSection />
       <ComparisonSection />

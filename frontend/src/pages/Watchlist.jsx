@@ -9,6 +9,9 @@ import WalletTable from '../components/wallet/WalletTable';
 import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
 import AddWalletModal from '../components/wallet/AddWalletModal';
 import TradeModal from '../components/wallet/TradeModal';
+import { BentoGrid, BentoItem } from '../components/primitives/BentoGrid';
+import StatWidget from '../components/primitives/StatWidget';
+import { TrendingUp, TrendingDown, Award, BarChart2 } from 'lucide-react';
 
 const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini', 'Bitstamp', 'Coinone', 'MEV Bot'];
 
@@ -182,7 +185,8 @@ export default function WatchlistPage() {
     <div className="h-full min-h-0 flex flex-col">
 
       {/* Filter bar */}
-      <div className="flex-shrink-0 bg-bg-surface border-b border-border-subtle px-5 py-2.5 flex items-center gap-3">
+      <div className="flex-shrink-0 px-4 py-3 md:px-5">
+        <div className="glass-surface flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2.5 shadow-card">
         {/* Search */}
         <div className="relative">
           <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5 pointer-events-none" viewBox="0 0 14 14" fill="none">
@@ -301,23 +305,45 @@ export default function WatchlistPage() {
             )}
           </Button>
         </div>
+        </div>
       </div>
 
-      {/* Quick stats bar */}
+      {/* Quick stats — bento dashboard strip */}
       {wallets.length > 0 && (
-        <div className="flex-shrink-0 py-2 px-5 border-b border-border-subtle flex items-center gap-6 bg-bg-surface flex-wrap">
-          {[
-            { label: 'Avg Score', value: wallets.length ? Math.round(wallets.reduce((a, w) => a + (w.score ?? 0), 0) / wallets.length) : '—' },
-            { label: 'Bullish', value: wallets.filter((w) => w.signal === 'BULLISH').length, color: 'text-green' },
-            { label: 'Bearish', value: wallets.filter((w) => w.signal === 'BEARISH').length, color: 'text-red' },
-            { label: 'Top', value: [...wallets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]?.label?.split(' ')[0] || '—' },
-          ].map(({ label, value, color }, i, arr) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <span className="text-[10px] text-text-muted">{label}</span>
-              <span className={`text-[12px] font-mono font-medium ${color || 'text-text-primary'}`}>{value}</span>
-              {i < arr.length - 1 && <span className="text-text-muted ml-3">·</span>}
-            </div>
-          ))}
+        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04]">
+          <BentoGrid cols={4} className="gap-2">
+            <BentoItem delay={0}>
+              <StatWidget
+                label="Avg Score"
+                value={Math.round(wallets.reduce((a, w) => a + (w.score ?? 0), 0) / wallets.length)}
+                icon={BarChart2}
+              />
+            </BentoItem>
+            <BentoItem delay={0.04}>
+              <StatWidget
+                label="Bullish"
+                value={wallets.filter((w) => w.signal === 'BULLISH').length}
+                sub="signals"
+                icon={TrendingUp}
+              />
+            </BentoItem>
+            <BentoItem delay={0.08}>
+              <StatWidget
+                label="Bearish"
+                value={wallets.filter((w) => w.signal === 'BEARISH').length}
+                sub="signals"
+                icon={TrendingDown}
+              />
+            </BentoItem>
+            <BentoItem delay={0.12}>
+              <StatWidget
+                label="Top Wallet"
+                value={[...wallets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0]?.label?.split(' ')[0] || '—'}
+                animate={false}
+                icon={Award}
+              />
+            </BentoItem>
+          </BentoGrid>
         </div>
       )}
 

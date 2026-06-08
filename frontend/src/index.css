@@ -1,4 +1,5 @@
 @import "tw-animate-css";
+@import "@fontsource-variable/geist";
 
 @tailwind base;
 @tailwind components;
@@ -16,83 +17,161 @@
   }
 
   html {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Geist Variable', 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    text-rendering: optimizeLegibility;
   }
 
   body {
     margin: 0;
-    background: #09090B;
-    color: #EEEDF0;
+    background: #070708;
+    color: #F4F4F5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   ::-webkit-scrollbar {
-    width: 3px;
-    height: 3px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #28283A;
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3A3A52;
+    background: rgba(255, 255, 255, 0.14);
   }
 
-  /* shadcn + premium library tokens — Sentinel dark theme */
   :root {
-    --radius: 0.625rem;
-    --background: #09090B;
-    --foreground: #EEEDF0;
-    --card: #141418;
-    --card-foreground: #EEEDF0;
-    --popover: #1F1F26;
-    --popover-foreground: #EEEDF0;
+    /* ── Radius (large, Apple/Linear strategy) ── */
+    --radius: 0.875rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+    --radius-2xl: 1.5rem;
+
+    /* ── 8px spacing scale ── */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    /* ── Typography scale ── */
+    --text-xs: 0.6875rem;
+    --text-sm: 0.8125rem;
+    --text-base: 0.9375rem;
+    --text-lg: 1.0625rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.75rem;
+    --leading-tight: 1.15;
+    --leading-snug: 1.35;
+    --leading-normal: 1.5;
+    --tracking-tight: -0.025em;
+    --tracking-wide: 0.06em;
+
+    /* ── Depth / shadows (layered, not flat) ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.16);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.18);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.48), 0 8px 16px rgba(0, 0, 0, 0.24);
+    --shadow-glow: 0 0 0 1px rgba(0, 217, 146, 0.12), 0 8px 32px rgba(0, 217, 146, 0.08);
+
+    /* ── Semantic colors (refined contrast) ── */
+    --background: #070708;
+    --foreground: #F4F4F5;
+    --card: #0E0E11;
+    --card-foreground: #F4F4F5;
+    --popover: #121216;
+    --popover-foreground: #F4F4F5;
     --primary: #00D992;
-    --primary-foreground: #09090B;
-    --secondary: #1A1A20;
-    --secondary-foreground: #EEEDF0;
-    --muted: #1A1A20;
-    --muted-foreground: #8B8A9B;
-    --accent: #1A1A20;
-    --accent-foreground: #EEEDF0;
-    --destructive: #FF4D4D;
-    --destructive-foreground: #EEEDF0;
-    --border: #28283A;
-    --input: #28283A;
+    --primary-foreground: #041510;
+    --secondary: #16161A;
+    --secondary-foreground: #F4F4F5;
+    --muted: #16161A;
+    --muted-foreground: #71717A;
+    --accent: #1A1A1F;
+    --accent-foreground: #F4F4F5;
+    --destructive: #EF4444;
+    --destructive-foreground: #F4F4F5;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.08);
     --ring: #00D992;
     --chart-1: #00D992;
     --chart-2: #627EEA;
     --chart-3: #F59E0B;
-    --chart-4: #6366F1;
-    --chart-5: #FF4D4D;
+    --chart-4: #818CF8;
+    --chart-5: #EF4444;
   }
 }
 
-/* ── Landing page hero grid ──────────────────────────────── */
+/* ── Noise texture overlay ── */
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Glass surface utility ── */
+.glass-surface {
+  background: rgba(14, 14, 17, 0.72);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-border {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Landing hero grid ── */
 .hero-grid {
   background-image:
-    linear-gradient(#1a1a2010 1px, transparent 1px),
-    linear-gradient(90deg, #1a1a2010 1px, transparent 1px);
-  background-size: 40px 40px;
-  animation: grid-drift 20s linear infinite;
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: grid-drift 24s linear infinite;
 }
 @keyframes grid-drift {
   0%   { background-position: 0 0; }
-  100% { background-position: 40px 40px; }
+  100% { background-position: 48px 48px; }
 }
 
 @layer components {
   .skeleton {
-    background: linear-gradient(90deg, #141418 25%, #1A1A20 50%, #141418 75%);
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 75%
+    );
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 1.8s ease-in-out infinite;
   }
   @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+  }
+
+  .pulse-dot {
+    position: relative;
   }
   .pulse-dot::before {
     content: '';
@@ -103,10 +182,28 @@
     animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
   @keyframes ping {
-    75%,
-    100% {
+    75%, 100% {
       transform: scale(1.8);
       opacity: 0;
     }
+  }
+
+  .text-display {
+    font-family: 'Syne', 'Geist Variable', sans-serif;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #F4F4F5 0%, #A1A1AA 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-text-accent {
+    background: linear-gradient(135deg, #00D992 0%, #00F5A0 50%, #818CF8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
