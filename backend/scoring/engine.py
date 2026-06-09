@@ -61,8 +61,8 @@ _ENTITY_KEYWORDS = {
     "yellowcard", "coins.ph", "swyftx", "coinjar", "easycrypto", "kanga", "zonda",
     "coinmate", "cex.io", "gmo", "liquid", "zaif", "foblgate", "gdac", "hanbitco",
     "p2pb2b", "coinsbit", "digifinex", "xt.com", "bitrue", "coinw", "tokocrypto",
-    "independent reserve", "kanga", "bitazza", "max ", "bitopro", "ace ", "rain",
-    "cryptomkt", "buda", "ripio", "lemon", "naira", "quidax", "busha", "roqqu",
+    "independent reserve", "kanga", "bitazza", "bitopro",
+    "cryptomkt", "buda", "ripio", "quidax", "busha", "roqqu",
     # custodians / market makers / OTC / funds
     "falconx", "bitgo", "cumberland", "wintermute", "jump", "b2c2", "genesis", "gsr",
     "dwf", "circle", "paxos", "tether", "matrixport", "amber", "qcp", "galaxy",
