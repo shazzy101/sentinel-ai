@@ -142,7 +142,15 @@ export function subscribeWallet(callbacks) {
 export async function getExistingWallet() {
   if (!window.ethereum) return null;
   const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-  return accounts[0] || null;
+  const addr = accounts[0] || null;
+  if (addr) {
+    try {
+      await ensureMainnet();
+    } catch {
+      // User may decline network switch on restore — still return address
+    }
+  }
+  return addr;
 }
 
 /** Convenience namespace for Invest / copy-trade flows */

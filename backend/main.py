@@ -5,8 +5,10 @@ FastAPI Backend
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 import asyncio
+import json
 import os
 
 import config  # noqa: F401 — load .env before chain/API imports
@@ -19,7 +21,7 @@ from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transact
 from db.supabase import supabase_client
 from integrations import dune
 from responses import error, success
-from performance import compute_ytd_growth
+from performance import build_copy_trader_sparkline, compute_ytd_growth, downsample_sparkline
 from scoring.engine import score_wallet
 
 
@@ -191,7 +193,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_CORS_ORIGINS_DEFAULT = "http://localhost:5173,http://127.0.0.1:5173"
+_CORS_ORIGINS_DEFAULT = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:5174,http://127.0.0.1:5174,"
+    "http://localhost:5176,http://127.0.0.1:5176"
+)
 _cors_origins = [
     o.strip()
     for o in os.getenv("CORS_ORIGINS", _CORS_ORIGINS_DEFAULT).split(",")
@@ -216,6 +222,7 @@ class WalletScanRequest(BaseModel):
     address: str
     label: Optional[str] = None
     chain: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 class AddWalletRequest(BaseModel):
@@ -435,8 +442,26 @@ async def health():
             "etherscan": bool(os.getenv("ETHERSCAN_API_KEY")),
             "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
             "supabase": bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_KEY")),
+            "dune": dune.is_configured(),
         },
+        "claude_calls_remaining": calls_remaining(),
     })
+
+
+@app.get("/api/stats")
+async def get_stats():
+    """Lightweight stats for the sidebar — just count and last scan time."""
+    try:
+        def _fetch():
+            count_res = supabase_client.table("wallets").select("id", count="exact").execute()
+            last_res  = supabase_client.table("wallets").select("last_scanned").order("last_scanned", desc=True).limit(1).execute()
+            count = count_res.count or (len(count_res.data) if count_res.data else 0)
+            last_scanned = (last_res.data or [{}])[0].get("last_scanned")
+            return count, last_scanned
+        count, last_scanned = await asyncio.to_thread(_fetch)
+        return success({"count": count, "last_scanned": last_scanned})
+    except Exception:
+        return success({"count": 0, "last_scanned": None})
 
 
 # ─────────────────────────────────────────
@@ -474,7 +499,7 @@ async def scan_wallet(request: WalletScanRequest):
             "address": address,
             "label": label,
             "chain": chain,
-            "tags": [],
+            "tags": request.tags or [],
             "score": score_result["score"],
             "score_breakdown": score_result.get("breakdown", {}),
             "balance": balance,
@@ -558,14 +583,19 @@ async def force_refresh_scan(address: str):
 # ROUTES — WATCHLIST
 # ─────────────────────────────────────────
 
-def fetch_wallet_transactions(wallet_ids: list[str], limit_per_wallet: int = 120) -> dict[str, list]:
-    """Batch-fetch recent transactions grouped by wallet_id."""
-    grouped: dict[str, list] = {wid: [] for wid in wallet_ids}
-    if not wallet_ids:
+def fetch_wallet_transactions(
+    wallet_ids: list[str],
+    limit_per_wallet: int = 40,
+    max_wallets: int = 50,
+) -> dict[str, list]:
+    """Batch-fetch recent transactions grouped by wallet_id (capped to avoid DB timeout)."""
+    grouped: dict[str, list] = {wid: [] for wid in wallet_ids[:max_wallets]}
+    ids = wallet_ids[:max_wallets]
+    if not ids:
         return grouped
 
-    for i in range(0, len(wallet_ids), 40):
-        chunk = wallet_ids[i : i + 40]
+    for i in range(0, len(ids), 15):
+        chunk = ids[i : i + 15]
         result = (
             supabase_client.table("transactions")
             .select("wallet_id, hash, timestamp, value, value_symbol, direction")
@@ -581,11 +611,19 @@ def fetch_wallet_transactions(wallet_ids: list[str], limit_per_wallet: int = 120
     return grouped
 
 
-def enrich_wallet_performance(wallet: dict, transactions: list[dict]) -> None:
-    """Attach YTD growth + sparkline txs to a wallet dict in-place."""
+def enrich_wallet_performance(
+    wallet: dict,
+    transactions: list[dict],
+    *,
+    lite: bool = False,
+) -> None:
+    """Attach YTD growth + sparkline to a wallet dict in-place."""
     perf = compute_ytd_growth(transactions, float(wallet.get("balance") or 0))
     wallet["ytd_growth_pct"] = perf["ytd_pct"]
     wallet["ytd_start_balance"] = perf["ytd_start_balance"]
+    wallet["ytd_sparkline"] = downsample_sparkline(perf["sparkline"]) if lite else perf["sparkline"]
+    if lite:
+        return
     wallet["transactions"] = [
         {
             **tx,
@@ -604,9 +642,10 @@ def enrich_wallet_performance(wallet: dict, transactions: list[dict]) -> None:
 async def get_watchlist(
     limit: int = 100,
     smart_only: bool = False,
-    include_ytd: bool = True,
+    include_ytd: bool = False,
+    lite: bool = True,
 ):
-    """Return tracked whale wallets sorted by score. Default: top 100 with YTD growth."""
+    """Return tracked whale wallets sorted by score. Fast by default (no tx payload)."""
     try:
         fetch_limit = min(max(limit, 1), 500)
         result = (
@@ -657,7 +696,11 @@ async def get_watchlist(
                         "generated_at": latest.get("generated_at"),
                     }
                 if include_ytd and wid:
-                    enrich_wallet_performance(wallet, tx_by_wallet.get(wid, []))
+                    enrich_wallet_performance(
+                        wallet,
+                        tx_by_wallet.get(wid, []),
+                        lite=lite,
+                    )
 
         if not wallets:
             return success({
@@ -977,19 +1020,63 @@ async def api_usage():
 # ─────────────────────────────────────────
 
 @app.get("/api/intelligence/summary")
-async def market_summary():
+async def market_summary(refresh: bool = False):
     try:
-        result = (
+        from ai.analyst import _market_summary_cache
+
+        if refresh:
+            _market_summary_cache["data"] = None
+            _market_summary_cache["generated_at"] = None
+
+        tx_result = (
             supabase_client.table("transactions")
             .select("*")
             .order("timestamp", desc=True)
             .limit(50)
             .execute()
         )
-        summary = await get_market_summary(result.data or [])
+        whale_count_res = supabase_client.table("wallets").select("id", count="exact").execute()
+        whale_count = whale_count_res.count or 0
+
+        signals_result = (
+            supabase_client.table("analyses")
+            .select("signal, signal_reason, wallet_id, wallets(label, score)")
+            .order("generated_at", desc=True)
+            .limit(10)
+            .execute()
+        )
+        whale_signals = []
+        seen_wids: set = set()
+        for row in signals_result.data or []:
+            wid = row.get("wallet_id")
+            if not wid or wid in seen_wids:
+                continue
+            seen_wids.add(wid)
+            w = row.get("wallets") or {}
+            whale_signals.append({
+                "wallet_label": w.get("label", "Whale"),
+                "score": w.get("score", 0),
+                "signal": row.get("signal", "NEUTRAL"),
+            })
+
+        copy_traders = _filter_copy_traders(
+            _load_copy_trading_wallets(),
+            qualified_only=True,
+            strict=False,
+        )[:8]
+
+        context = {
+            "recent_tx_count": len(tx_result.data or []),
+            "whale_count": whale_count,
+            "whale_signals": whale_signals,
+            "copy_traders": copy_traders,
+        }
+        summary = await get_market_summary(context, force_refresh=refresh)
         return success({
             "summary": summary,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "whale_count": whale_count,
+            "copy_trader_count": len(_load_copy_trading_wallets()),
         })
     except RuntimeError as e:
         return error("AI_UNAVAILABLE", str(e), status_code=503)
@@ -1002,33 +1089,64 @@ async def get_signals():
     try:
         result = (
             supabase_client.table("analyses")
-            .select("signal, signal_reason, generated_at, wallet_id, wallets(label, chain, address, score)")
+            .select("signal, signal_reason, generated_at, wallet_id, wallets(label, chain, address, score, tags)")
             .order("generated_at", desc=True)
-            .limit(15)
+            .limit(20)
             .execute()
         )
-        # De-duplicate: keep only the most recent entry per wallet
         seen: set[str] = set()
-        signals = []
+        whale_signals = []
         for row in result.data or []:
             wallet = row.get("wallets") or {}
             wid = row.get("wallet_id")
             if not wid or wid in seen:
                 continue
             seen.add(wid)
-            score = wallet.get("score") or 0
-            signals.append({
+            tags = wallet.get("tags") or []
+            whale_signals.append({
+                "wallet_type": "copy_trader" if "copy-trading" in tags else "whale",
                 "wallet_label": wallet.get("label", "Unknown"),
                 "wallet_address": wallet.get("address", ""),
                 "chain": "ethereum",
                 "signal": row.get("signal", "NEUTRAL"),
                 "signal_reason": row.get("signal_reason"),
-                "score": score,
+                "score": wallet.get("score") or 0,
                 "generated_at": row.get("generated_at"),
             })
-        return success({"signals": signals, "count": len(signals)})
+
+        copy_leaders = []
+        for t in _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True)[:10]:
+            m = t.get("metrics") or {}
+            copy_leaders.append({
+                "wallet_type": "copy_trader",
+                "wallet_label": _copy_trader_label(t),
+                "wallet_address": t.get("address", ""),
+                "chain": "ethereum",
+                "signal": "BULLISH" if (m.get("win_rate_pct") or 0) >= 70 else "NEUTRAL",
+                "signal_reason": (
+                    f"{m.get('win_rate_pct')}% win rate · PF {m.get('profit_factor')} · "
+                    f"{m.get('track_record_days')}d track · Copy score {t.get('copy_trading_score')}"
+                ),
+                "score": t.get("copy_trading_score") or 0,
+                "copy_metrics": m,
+                "rank": t.get("rank"),
+                "generated_at": _copy_trading_cache.get("loaded_at"),
+            })
+
+        return success({
+            "signals": whale_signals + copy_leaders,
+            "whale_signals": whale_signals,
+            "copy_trader_signals": copy_leaders,
+            "count": len(whale_signals) + len(copy_leaders),
+        })
     except Exception:
-        return success({"signals": [], "count": 0, "note": "Run wallet scans to populate signals"})
+        return success({
+            "signals": [],
+            "whale_signals": [],
+            "copy_trader_signals": [],
+            "count": 0,
+            "note": "Run wallet scans to populate signals",
+        })
 
 
 # ─────────────────────────────────────────
@@ -1043,7 +1161,15 @@ async def ask_sentinel(request: AskRequest):
     Never hallucinates — only answers from real data.
     """
     try:
-        from ai.analyst import get_client
+        from ai.analyst import _rate_limit_ok, get_client
+
+        if not _rate_limit_ok():
+            return {
+                "success": False,
+                "response": "Sentinel AI is at its hourly analysis budget. Try again in a few minutes, or check Intelligence for cached insights.",
+                "rate_limited": True,
+                "used_wallets": 0,
+            }
 
         wallets_result = (
             supabase_client.table("wallets")
@@ -1070,11 +1196,13 @@ Answer in 2-4 sentences max unless the user asks for a detailed breakdown. If as
 
         client = get_client()
         messages = request.history + [{"role": "user", "content": request.message}]
+        # Short questions use Haiku; longer follow-ups use Sonnet (cheaper default).
+        use_haiku = len(request.message) < 120 and len(request.history) <= 2
 
         response = await asyncio.to_thread(
             client.messages.create,
-            model="claude-sonnet-4-6",
-            max_tokens=500,
+            model="claude-haiku-4-5-20251001" if use_haiku else "claude-sonnet-4-6",
+            max_tokens=350 if use_haiku else 500,
             system=system_prompt,
             messages=messages,
         )
@@ -1344,3 +1472,293 @@ async def get_whale_trades():
         return success({"trades": trades, "count": len(trades)})
     except Exception as e:
         return error("WHALE_TRADES_FAILED", str(e), status_code=500)
+
+
+# ─────────────────────────────────────────
+# ROUTES — COPY TRADING INTELLIGENCE
+# ─────────────────────────────────────────
+
+_COPY_TRADING_PATH = Path(__file__).resolve().parent / "data" / "copy_trading_top_wallets.json"
+_copy_trading_cache: dict = {"data": None, "loaded_at": None}
+
+
+def _load_copy_trading_wallets() -> list[dict]:
+    """Load ranked copy-trading candidates from offline Dune pipeline."""
+    if _copy_trading_cache["data"] is not None:
+        return _copy_trading_cache["data"]
+    if not _COPY_TRADING_PATH.exists():
+        return []
+    with open(_COPY_TRADING_PATH, encoding="utf-8") as f:
+        data = json.load(f)
+    _copy_trading_cache["data"] = data if isinstance(data, list) else []
+    _copy_trading_cache["loaded_at"] = datetime.now(timezone.utc).isoformat()
+    return _copy_trading_cache["data"]
+
+
+def _find_copy_trader(address: str) -> dict | None:
+    addr = (address or "").strip().lower()
+    if not addr:
+        return None
+    for w in _load_copy_trading_wallets():
+        if (w.get("address") or "").lower() == addr:
+            return w
+    return None
+
+
+def _copy_trader_label(trader: dict) -> str:
+    rank = trader.get("rank")
+    label = trader.get("label") or ""
+    if label.startswith("Dune DEX Trader") or not label.strip():
+        return f"DEX Trader #{rank}" if rank else "DEX Trader"
+    return label
+
+
+def _filter_copy_traders(
+    wallets: list[dict],
+    *,
+    min_win_rate: float = 0,
+    min_profit_factor: float = 0,
+    min_track_days: int = 0,
+    max_drawdown: float | None = None,
+    qualified_only: bool = True,
+    strict: bool = False,
+) -> list[dict]:
+    """
+    Filter copy-trading wallets.
+    qualified_only: exclude MEV/arb bots (>100 trades/day) — dataset is already pre-ranked.
+    strict: apply trader-quality thresholds (60% WR, 2.0 PF, 90d track).
+    """
+    if strict:
+        min_win_rate = max(min_win_rate, 60)
+        min_profit_factor = max(min_profit_factor, 2.0)
+        min_track_days = max(min_track_days, 90)
+        if max_drawdown is None:
+            max_drawdown = 20
+
+    filtered = []
+    for w in wallets:
+        m = w.get("metrics") or {}
+        oc = w.get("on_chain_data") or {}
+        tpd = float(oc.get("trades_per_day") or 0)
+
+        if qualified_only and tpd > 100:
+            continue
+
+        wr = float(m.get("win_rate_pct") or 0)
+        pf = float(m.get("profit_factor") or 0)
+        tr = int(m.get("track_record_days") or 0)
+        dd = m.get("max_drawdown_pct")
+
+        if wr < min_win_rate or pf < min_profit_factor or tr < min_track_days:
+            continue
+        if max_drawdown is not None and dd is not None and float(dd) > max_drawdown:
+            continue
+        filtered.append(w)
+    return filtered
+
+
+def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
+    key_map = {
+        "copy_score": lambda w: float(w.get("copy_trading_score") or 0),
+        "win_rate": lambda w: float((w.get("metrics") or {}).get("win_rate_pct") or 0),
+        "profit_factor": lambda w: float((w.get("metrics") or {}).get("profit_factor") or 0),
+        "track_record": lambda w: int((w.get("metrics") or {}).get("track_record_days") or 0),
+        "drawdown": lambda w: float((w.get("metrics") or {}).get("max_drawdown_pct") or 999),
+        "duration": lambda w: float((w.get("metrics") or {}).get("avg_trade_duration_hrs") or 0),
+    }
+    fn = key_map.get(sort, key_map["copy_score"])
+    reverse = sort != "drawdown"
+    return sorted(wallets, key=fn, reverse=reverse)
+
+
+def _enrich_copy_trader(wallet: dict) -> dict:
+    """Attach performance sparkline for list/detail views."""
+    sparkline, return_pct = build_copy_trader_sparkline(wallet)
+    out = {**wallet}
+    out["performance_sparkline"] = sparkline
+    out["estimated_return_pct"] = return_pct
+    return out
+
+
+@app.get("/api/copy-trading/top")
+async def copy_trading_top(
+    limit: int = 50,
+    offset: int = 0,
+    sort: str = "copy_score",
+    min_win_rate: float = 0,
+    min_profit_factor: float = 0,
+    min_track_days: int = 0,
+    max_drawdown: float | None = None,
+    qualified_only: bool = True,
+    strict: bool = False,
+):
+    """
+    Top-ranked DEX traders for copy-trading.
+    2,796 qualified wallets after bot/MEV filtering.
+    Pass strict=true for 60% WR / 2.0 PF / 90d track filters.
+    """
+    all_wallets = _load_copy_trading_wallets()
+    pool = _filter_copy_traders(
+        all_wallets,
+        min_win_rate=min_win_rate,
+        min_profit_factor=min_profit_factor,
+        min_track_days=min_track_days,
+        max_drawdown=max_drawdown,
+        qualified_only=qualified_only,
+        strict=strict,
+    )
+
+    pool = _sort_copy_traders(pool, sort)
+    page_limit = max(1, min(limit, 100))
+    page_offset = max(0, offset)
+    page = pool[page_offset : page_offset + page_limit]
+    enriched = [_enrich_copy_trader(w) for w in page]
+
+    return success({
+        "wallets": enriched,
+        "count": len(enriched),
+        "total_qualified": len(pool),
+        "total_in_dataset": len(all_wallets),
+        "stats_labels": [
+            "Win Rate",
+            "Profit Factor",
+            "Max Drawdown",
+            "Avg Duration",
+            "Track Record",
+        ],
+        "source": "dune_dex_trades",
+        "loaded_at": _copy_trading_cache.get("loaded_at"),
+    })
+
+
+@app.get("/api/copy-trading/{address}")
+async def copy_trading_detail(address: str):
+    """Full copy-trader profile by address."""
+    addr = address.strip().lower()
+    for w in _load_copy_trading_wallets():
+        if (w.get("address") or "").lower() == addr:
+            return success({"wallet": _enrich_copy_trader(w)})
+    return error("NOT_FOUND", "Copy trader not found", status_code=404)
+
+
+@app.post("/api/copy-trading/{address}/track")
+async def track_copy_trader(address: str):
+    """
+    Add a ranked copy trader to the user's watchlist.
+    Preserves Dune copy-trading tags and runs a full whale scan + AI analysis.
+    """
+    trader = _find_copy_trader(address)
+    if not trader:
+        return error("NOT_FOUND", "Copy trader not found in ranked dataset", status_code=404)
+
+    addr = (trader.get("address") or address).strip().lower()
+    label = _copy_trader_label(trader)
+    tags = list(dict.fromkeys((trader.get("tags") or []) + ["copy-trading", "dex-trader"]))
+
+    existing = supabase_client.table("wallets").select("*").eq("address", addr).execute()
+    if existing.data:
+        row = existing.data[0]
+        merged_tags = list(dict.fromkeys((row.get("tags") or []) + tags))
+        if merged_tags != (row.get("tags") or []):
+            supabase_client.table("wallets").update({"tags": merged_tags}).eq("address", addr).execute()
+            row = {**row, "tags": merged_tags}
+        enriched = _enrich_copy_trader({**trader, **row})
+        return success({
+            "wallet": enriched,
+            "trader": _enrich_copy_trader(trader),
+            "already_tracked": True,
+        })
+
+    try:
+        chain = "ethereum"
+        balance, transactions, token_transfers = await asyncio.gather(
+            get_eth_balance(addr),
+            get_eth_transactions(addr, limit=50),
+            get_eth_token_transfers(addr, limit=20),
+        )
+        all_transactions = transactions + token_transfers
+        analysis = await analyze_wallet(
+            wallet_name=label,
+            transactions=transactions[:10],
+            balance=balance,
+            chain=chain,
+            address=addr,
+        )
+        score_result = score_wallet(all_transactions, balance, chain, address=addr, label=label)
+        wallet_payload = {
+            "address": addr,
+            "label": label,
+            "chain": chain,
+            "tags": tags,
+            "score": score_result["score"],
+            "score_breakdown": score_result.get("breakdown", {}),
+            "balance": balance,
+            "last_scanned": datetime.now(timezone.utc).isoformat(),
+        }
+        upserted = (
+            supabase_client.table("wallets")
+            .upsert(wallet_payload, on_conflict="address", ignore_duplicates=False)
+            .execute()
+        )
+        wallet_id = (upserted.data or [{}])[0].get("id")
+        if wallet_id:
+            try:
+                supabase_client.table("analyses").update({"wallet_id": wallet_id}).eq("wallet_address", addr).execute()
+            except Exception:
+                pass
+
+        wallet_out = {
+            **wallet_payload,
+            "grade": score_result["grade"],
+            "signal": analysis.get("signal", "NEUTRAL"),
+            "analysis": analysis,
+        }
+        enriched = _enrich_copy_trader({**trader, **wallet_out})
+        return success({
+            "wallet": enriched,
+            "trader": _enrich_copy_trader(trader),
+            "already_tracked": False,
+        })
+    except Exception as e:
+        return error("TRACK_FAILED", str(e), status_code=500)
+
+
+@app.get("/api/transactions/latest")
+async def latest_transactions(limit: int = 15):
+    """Most recent on-chain moves across Sentinel's tracked watchlist."""
+    try:
+        tx_rows = (
+            supabase_client.table("transactions")
+            .select("hash, timestamp, value, value_symbol, direction, status, wallet_id")
+            .order("timestamp", desc=True)
+            .limit(max(1, min(limit, 50)))
+            .execute()
+        )
+        txs = tx_rows.data or []
+        if not txs:
+            return success({"transactions": [], "count": 0})
+
+        wallet_ids = list({t["wallet_id"] for t in txs if t.get("wallet_id")})
+        wallets_by_id: dict = {}
+        if wallet_ids:
+            w_rows = (
+                supabase_client.table("wallets")
+                .select("id, address, label, score, signal")
+                .in_("id", wallet_ids)
+                .execute()
+            )
+            wallets_by_id = {w["id"]: w for w in (w_rows.data or [])}
+
+        enriched = []
+        for tx in txs:
+            w = wallets_by_id.get(tx.get("wallet_id")) or {}
+            enriched.append({
+                **tx,
+                "wallet_address": w.get("address"),
+                "wallet_label": w.get("label"),
+                "wallet_score": w.get("score"),
+                "wallet_signal": w.get("signal"),
+            })
+        return success({"transactions": enriched, "count": len(enriched)})
+    except Exception as e:
+        return error("LATEST_TX_FAILED", str(e), status_code=500)

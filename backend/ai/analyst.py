@@ -88,7 +88,7 @@ async def analyze_wallet(
     """
     Run Claude analysis on a wallet's recent activity.
     Returns structured dict with signal, insights, risk.
-    Checks cache first (6-hour TTL) unless force_refresh=True.
+    Checks cache first (24-hour TTL) unless force_refresh=True.
     """
     # Check cache first (skip if force_refresh)
     if address and not force_refresh:
@@ -178,33 +178,65 @@ Return JSON only, no other text:
 _market_summary_cache: dict = {"data": None, "generated_at": None}
 
 
-async def get_market_summary(recent_transactions: list[dict]) -> dict:
+async def get_market_summary(context: dict | list | None = None, *, force_refresh: bool = False) -> dict:
     """
-    Feed recent cross-wallet activity to Claude.
+    Feed whale + copy-trader activity to Claude.
     Returns a market-wide intelligence summary.
     Caches result for 2 hours to avoid redundant API calls.
     """
     cache = _market_summary_cache
-    if cache["data"] and cache["generated_at"]:
+    if not force_refresh and cache["data"] and cache["generated_at"]:
         age = (datetime.now(timezone.utc) - cache["generated_at"]).total_seconds()
         if age < 7200:  # 2 hours
             return cache["data"]
 
-    if not recent_transactions:
-        context = "No recent transaction data available."
+    if isinstance(context, list):
+        # Legacy: plain transaction list
+        ctx = {"recent_tx_count": len(context), "whale_count": 0, "copy_traders": []}
+    elif isinstance(context, dict):
+        ctx = context
     else:
-        eth_txs = [t for t in recent_transactions if t.get("chain") == "ethereum"]
-        context = f"""
-Recent activity across tracked whale wallets:
-- {len(eth_txs)} Ethereum transactions
-- Time range: last 24 hours
-"""
+        ctx = {}
 
+    recent_tx_count = ctx.get("recent_tx_count", 0)
+    whale_count = ctx.get("whale_count", 0)
+    copy_traders = ctx.get("copy_traders") or []
+    whale_signals = ctx.get("whale_signals") or []
+
+    copy_lines = []
+    for t in copy_traders[:5]:
+        m = t.get("metrics") or {}
+        copy_lines.append(
+            f"- #{t.get('rank')} {t.get('label', 'DEX Trader')}: "
+            f"{m.get('win_rate_pct')}% win rate, PF {m.get('profit_factor')}, "
+            f"{m.get('track_record_days')}d track, score {t.get('copy_trading_score')}"
+        )
+
+    whale_lines = []
+    for s in whale_signals[:5]:
+        whale_lines.append(
+            f"- {s.get('wallet_label', 'Whale')}: score {s.get('score')}, signal {s.get('signal')}"
+        )
+
+    context_text = f"""
+Sentinel tracks two wallet types on Ethereum:
+1. WHALE WATCHLIST — large-balance smart money wallets ({whale_count} tracked)
+2. COPY TRADERS — ranked DEX traders with measurable win rate & profit factor ({len(copy_traders)} top performers in dataset)
+
+Recent whale on-chain activity: {recent_tx_count} transactions in latest batch.
+
+Top copy-trading performers (Dune-ranked, bots filtered):
+{chr(10).join(copy_lines) if copy_lines else '- No copy trader data loaded'}
+
+Recent whale AI signals:
+{chr(10).join(whale_lines) if whale_lines else '- Run wallet scans to populate signals'}
+"""
     prompt = f"""You are the AI intelligence layer for Sentinel, a professional crypto whale tracking platform.
 
-{context}
+{context_text}
 
-Generate a market intelligence brief for our users. Return a JSON object:
+Synthesize BOTH whale watchlist activity AND top copy-trader performance into one actionable brief.
+Mention copy-trader quality (win rate, profit factor) when relevant — users copy-trade these wallets.
 {{
   "headline": "One sharp, specific sentence about what smart money is doing right now",
   "ethereum_outlook": "2-3 sentences on ETH smart money behavior",

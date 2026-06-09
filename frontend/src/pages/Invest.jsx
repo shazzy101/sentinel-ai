@@ -13,6 +13,7 @@ import { useWallet } from '../hooks/useWallet';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useTransaction, useTradeHistory } from '../hooks/useTrade';
 import { api } from '../lib/api';
+import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
 import {
   TOKEN_ADDRESSES, FROM_TOKENS, TO_TOKENS, POPULAR_PAIRS,
   toTokenUnits, parseQuoteOutput, flattenProtocols,
@@ -138,6 +139,7 @@ export default function InvestPage() {
   const [error, setError] = useState(null);
   const [ethPrice, setEthPrice] = useState(null);
   const [selectedWallet, setSelectedWallet] = useState(null);
+  const [selectedTradeId, setSelectedTradeId] = useState(null);
   const [tokenBalance, setTokenBalance] = useState(null);
 
   useEffect(() => {
@@ -269,11 +271,20 @@ export default function InvestPage() {
     setSelectedWallet(null);
   };
 
-  const handleCopyTrade = (w) => {
-    setSelectedWallet(w);
-    setFromToken('USDC');
-    setToToken('ETH');
-    setAmount('');
+  const handleCopyTrade = (tradeOrWallet) => {
+    if (tradeOrWallet?.suggestedFrom) {
+      setSelectedWallet({ address: tradeOrWallet.whaleAddress, label: tradeOrWallet.whaleLabel });
+      setSelectedTradeId(tradeOrWallet.id);
+      setFromToken(tradeOrWallet.suggestedFrom);
+      setToToken(tradeOrWallet.suggestedTo);
+      setAmount(String(tradeOrWallet.suggestedAmount ?? ''));
+    } else {
+      setSelectedWallet(tradeOrWallet);
+      setSelectedTradeId(null);
+      setFromToken('USDC');
+      setToToken('ETH');
+      setAmount('');
+    }
     setQuote(null);
     setStep('configure');
     setError(null);
@@ -297,7 +308,11 @@ export default function InvestPage() {
       </div>
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        <div className="flex-1 min-w-0 p-5 overflow-hidden flex flex-col">
+        <div className="flex-1 min-w-0 p-5 overflow-y-auto flex flex-col gap-4">
+          <WhaleTradesPanel
+            onCopyTrade={handleCopyTrade}
+            activeTradeId={selectedTradeId}
+          />
           <LiveWhaleMovesFeed wallets={wallets} onCopyTrade={handleCopyTrade} selectedAddress={selectedWallet?.address} />
         </div>
 
@@ -333,7 +348,13 @@ export default function InvestPage() {
                     {tokenBalance != null ? tokenBalance.toFixed(4) : wallet.balance?.toFixed(4)} {fromToken}
                   </span>
                   {!wallet.isMainnet && (
-                    <span className="text-[10px] text-amber uppercase font-medium">Wrong network</span>
+                    <button
+                      type="button"
+                      onClick={wallet.switchToMainnet}
+                      className="text-[10px] text-amber uppercase font-medium hover:underline"
+                    >
+                      Switch to Mainnet
+                    </button>
                   )}
                 </div>
               )}

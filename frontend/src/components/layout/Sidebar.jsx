@@ -3,11 +3,13 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   LayoutGrid, Sparkles, BarChart3, MessageSquare,
-  LineChart, Bell, ExternalLink, Search, Zap,
+  Bell, ExternalLink, Search, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
 import SentinelLogo from '../ui/SentinelLogo';
+import { useWallet } from '@/hooks/useWallet';
+import { formatWalletAddress } from '@/lib/web3';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -17,7 +19,6 @@ const NAV_ITEMS = [
   { label: 'Markets', icon: BarChart3, path: '/markets' },
   { label: 'Invest', icon: Zap, path: '/invest' },
   { label: 'Ask AI', icon: MessageSquare, path: '/ask' },
-  { label: 'Scoring', icon: LineChart, path: '/scoring' },
   { label: 'Alerts', icon: Bell, path: '/alerts' },
 ];
 
@@ -43,32 +44,20 @@ function useSidebarStats() {
     let cancelled = false;
     async function load() {
       try {
-        const [watchlistRes, cronRes] = await Promise.all([
-          fetch(`${API_BASE}/api/watchlist`),
-          fetch(`${API_BASE}/api/admin/cron-status`),
-        ]);
-        if (!watchlistRes.ok) return;
-        const body = await watchlistRes.json();
+        const res = await fetch(`${API_BASE}/api/stats`);
+        if (!res.ok) return;
+        const body = await res.json();
         if (cancelled || !body.success) return;
-        const wallets = body.data?.wallets || [];
-        let latestMs = 0;
-        for (const w of wallets) {
-          if (w.last_scanned) {
-            const ms = new Date(w.last_scanned).getTime();
-            if (ms > latestMs) latestMs = ms;
-          }
-        }
-        let nextScan = null;
-        if (cronRes.ok) {
-          const cronBody = await cronRes.json();
-          const nextRun = cronBody.data?.top_cron?.next_run;
-          if (nextRun) nextScan = new Date(nextRun);
-        }
-        setStats({ count: wallets.length, lastScanned: latestMs > 0 ? new Date(latestMs) : null, nextScan });
+        const { count, last_scanned } = body.data || {};
+        setStats({
+          count: count ?? null,
+          lastScanned: last_scanned ? new Date(last_scanned) : null,
+          nextScan: null,
+        });
       } catch { /* ignore */ }
     }
     load();
-    const interval = setInterval(load, 60_000);
+    const interval = setInterval(load, 120_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
@@ -141,6 +130,7 @@ export default function Sidebar({ onOpenCommand }) {
   const alertCount = useAlertBadge();
   const nextScanLabel = useCountdown(nextScan);
   const location = useLocation();
+  const wallet = useWallet();
 
   return (
     <aside className="relative z-30 flex w-[240px] flex-shrink-0 flex-col p-3">
@@ -207,14 +197,42 @@ export default function Sidebar({ onOpenCommand }) {
           </a>
         </div>
 
-        {/* User */}
-        <div className="flex items-center gap-2.5 border-t border-white/[0.06] px-4 py-3">
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue">
-            SA
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium text-text-primary">Shazaib</div>
-            <div className="text-[10px] text-text-muted">Beta</div>
+        {/* User + MetaMask */}
+        <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
+          {wallet.isConnected ? (
+            <div className="rounded-xl border border-green/20 bg-green/5 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot shrink-0" />
+                <span className="font-mono text-[11px] text-text-secondary truncate">{formatWalletAddress(wallet.address)}</span>
+              </div>
+              {!wallet.isMainnet && (
+                <button
+                  type="button"
+                  onClick={wallet.switchToMainnet}
+                  className="mt-1.5 w-full text-[10px] text-amber hover:text-amber/80 transition-colors text-left"
+                >
+                  Switch to Mainnet →
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={wallet.connectWallet}
+              disabled={wallet.connecting}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-green/30 bg-green/10 px-3 py-2 text-[11px] font-medium text-green hover:bg-green/15 transition-colors disabled:opacity-50"
+            >
+              {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
+            </button>
+          )}
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue">
+              SA
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-medium text-text-primary">Shazaib</div>
+              <div className="text-[10px] text-text-muted">Pro plan</div>
+            </div>
           </div>
         </div>
       </div>

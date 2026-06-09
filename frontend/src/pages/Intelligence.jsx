@@ -5,11 +5,9 @@ import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import { ChainBadge, GradeBadge, SignalPill } from '../components/ui/Badge';
 import ScoreRing from '../components/ui/ScoreRing';
-import PremiumStatCard from '../components/ui/premium-stat-card';
 import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
 import TextShimmer from '../components/ui/text-shimmer';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { apiFetch } from '../lib/apiClient';
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -47,6 +45,30 @@ function relativeTime(ts) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+function CopyTraderSignalRow({ item }) {
+  const m = item.copy_metrics || {};
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-border-subtle last:border-0">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green/15 border border-green/25 flex items-center justify-center">
+        <span className="text-[11px] font-bold font-mono text-green">#{item.rank}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[13px] font-medium text-text-primary truncate">{item.wallet_label}</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-green/10 text-green border border-green/20 uppercase tracking-wide">Copy</span>
+        </div>
+        <p className="text-[11px] text-text-muted mt-0.5 font-mono">
+          {m.win_rate_pct}% WR · PF {Number(m.profit_factor || 0).toFixed(1)} · {m.track_record_days}d
+        </p>
+        {item.signal_reason && (
+          <p className="text-[12px] text-text-secondary mt-1 leading-relaxed line-clamp-2">{item.signal_reason}</p>
+        )}
+      </div>
+      <SignalPill signal={item.signal || 'NEUTRAL'} />
+    </div>
+  );
 }
 
 function SignalRow({ item }) {
@@ -114,7 +136,9 @@ function LoadingState() {
 export default function IntelligencePage() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
-  const [signals, setSignals] = useState([]);
+  const [whaleSignals, setWhaleSignals] = useState([]);
+  const [copySignals, setCopySignals] = useState([]);
+  const [meta, setMeta] = useState({ whale_count: 0, copy_trader_count: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -123,19 +147,25 @@ export default function IntelligencePage() {
     document.title = 'Intelligence — Sentinel AI';
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     setLoading(true);
     setError('');
     try {
-      const [summaryRes, signalsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/intelligence/summary`),
-        fetch(`${API_BASE}/api/intelligence/signals`),
+      const summaryPath = refresh ? '/api/intelligence/summary?refresh=true' : '/api/intelligence/summary';
+      const [summaryBody, signalsBody] = await Promise.all([
+        apiFetch(summaryPath, { timeoutMs: 45000 }),
+        apiFetch('/api/intelligence/signals', { timeoutMs: 20000 }),
       ]);
-      const summaryBody = await summaryRes.json();
       if (!summaryBody.success) throw new Error(summaryBody.error?.message || 'Failed to load intelligence');
       setSummary(summaryBody.data?.summary || null);
-      const signalsBody = await signalsRes.json();
-      if (signalsBody.success) setSignals(signalsBody.data?.signals || []);
+      setMeta({
+        whale_count: summaryBody.data?.whale_count || 0,
+        copy_trader_count: summaryBody.data?.copy_trader_count || 0,
+      });
+      if (signalsBody.success) {
+        setWhaleSignals(signalsBody.data?.whale_signals || []);
+        setCopySignals(signalsBody.data?.copy_trader_signals || []);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -144,11 +174,11 @@ export default function IntelligencePage() {
   }, []);
 
   useEffect(() => {
-    load();
+    load(false);
   }, [load]);
 
   useEffect(() => {
-    const regenerate = () => load();
+    const regenerate = () => load(true);
     window.addEventListener('regenerate-intelligence', regenerate);
     return () => window.removeEventListener('regenerate-intelligence', regenerate);
   }, [load]);
@@ -161,9 +191,10 @@ export default function IntelligencePage() {
     );
   }
 
-  const bullishCount = signals.filter((s) => s.signal === 'BULLISH').length;
-  const bearishCount = signals.filter((s) => s.signal === 'BEARISH').length;
-  const neutralCount = signals.filter((s) => s.signal === 'NEUTRAL').length;
+  const allSignals = [...whaleSignals, ...copySignals];
+  const bullishCount = allSignals.filter((s) => s.signal === 'BULLISH').length;
+  const bearishCount = allSignals.filter((s) => s.signal === 'BEARISH').length;
+  const neutralCount = allSignals.filter((s) => s.signal === 'NEUTRAL').length;
   const flowState = bullishCount > bearishCount ? 'ACCUMULATION' : bearishCount > bullishCount ? 'DISTRIBUTION' : 'NEUTRAL';
   const dominantSignal = bullishCount >= bearishCount && bullishCount >= neutralCount ? 'BULLISH'
     : bearishCount >= neutralCount ? 'BEARISH' : 'NEUTRAL';
@@ -173,7 +204,8 @@ export default function IntelligencePage() {
     {/* Top stats strip */}
     <div className="border-b border-border-subtle py-3 px-5 flex items-center gap-6 bg-bg-surface flex-wrap">
       {[
-        { label: 'Total Analyzed', value: signals.length || 0, color: 'text-text-primary' },
+        { label: 'Whales Tracked', value: meta.whale_count, color: 'text-blue' },
+        { label: 'Copy Traders', value: meta.copy_trader_count, color: 'text-green' },
         { label: 'Bullish', value: bullishCount, color: 'text-green' },
         { label: 'Bearish', value: bearishCount, color: 'text-red' },
         { label: 'Neutral', value: neutralCount, color: 'text-amber' },
@@ -245,16 +277,15 @@ export default function IntelligencePage() {
             <p className="text-[11px] text-text-muted mt-0.5">
               Dominant: <span className={dominantSignal === 'BULLISH' ? 'text-green' : dominantSignal === 'BEARISH' ? 'text-red' : 'text-amber'}>{dominantSignal}</span>
             </p>
-            {signals.length > 0 && (
+            {allSignals.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                {/* Signal breakdown bar */}
                 <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
-                  {bullishCount > 0 && <div className="bg-green" style={{ width: `${(bullishCount / signals.length) * 100}%` }} />}
-                  {neutralCount > 0 && <div className="bg-amber" style={{ width: `${(neutralCount / signals.length) * 100}%` }} />}
-                  {bearishCount > 0 && <div className="bg-red" style={{ width: `${(bearishCount / signals.length) * 100}%` }} />}
+                  {bullishCount > 0 && <div className="bg-green" style={{ width: `${(bullishCount / allSignals.length) * 100}%` }} />}
+                  {neutralCount > 0 && <div className="bg-amber" style={{ width: `${(neutralCount / allSignals.length) * 100}%` }} />}
+                  {bearishCount > 0 && <div className="bg-red" style={{ width: `${(bearishCount / allSignals.length) * 100}%` }} />}
                 </div>
                 <div className="text-[10px] text-text-muted font-mono">
-                  {signals.length} wallet{signals.length !== 1 ? 's' : ''} analyzed
+                  {whaleSignals.length} whale{whaleSignals.length !== 1 ? 's' : ''} · {copySignals.length} copy traders
                 </div>
               </div>
             )}
@@ -278,22 +309,35 @@ export default function IntelligencePage() {
 
       <TextureCard className="overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-          <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Recent signals</div>
-          <div className="flex items-center gap-2">
-            {signals.length > 0 && (
-              <span className="text-[10px] text-text-muted">{signals.length} wallets</span>
-            )}
-            <ChainBadge chain="ethereum" />
-          </div>
+          <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Whale signals</div>
+          <ChainBadge chain="ethereum" />
         </div>
         <div className="px-5">
-          {signals.length === 0 ? (
-            <div className="py-8 text-center text-[12px] text-text-muted">
-              No signals yet — scan wallets on the Watchlist to generate AI signals.
+          {whaleSignals.length === 0 ? (
+            <div className="py-6 text-center text-[12px] text-text-muted">
+              No whale signals yet — scan wallets on My Watchlist.
             </div>
           ) : (
-            signals.map((item) => (
+            whaleSignals.map((item) => (
               <SignalRow key={item.wallet_address || item.wallet_label} item={item} />
+            ))
+          )}
+        </div>
+      </TextureCard>
+
+      <TextureCard className="overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
+          <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Top copy traders</div>
+          <span className="text-[10px] text-green font-medium">Dune-ranked</span>
+        </div>
+        <div className="px-5">
+          {copySignals.length === 0 ? (
+            <div className="py-6 text-center text-[12px] text-text-muted">
+              Copy trader rankings loading…
+            </div>
+          ) : (
+            copySignals.slice(0, 8).map((item) => (
+              <CopyTraderSignalRow key={item.wallet_address} item={item} />
             ))
           )}
         </div>

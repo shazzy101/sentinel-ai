@@ -1,11 +1,9 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { motion } from 'motion/react';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import Tooltip from '../ui/Tooltip';
 import { ChainBadge, SignalPill } from '../ui/Badge';
-import Sparkline from '../ui/Sparkline';
-import { buildBalanceSparkline } from '../../lib/chartUtils';
 
 function truncateAddress(address) {
   if (!address) return '—';
@@ -51,28 +49,15 @@ function WalletRow({
   const score = Math.round(Number(wallet.score ?? 0));
   const balanceClass = Number(wallet.balance) > 1000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
   const isExchange = EXCHANGE_NAMES.some((n) => wallet.label?.includes(n));
-
-  const sparkData = useMemo(() => {
-    if (wallet.transactions?.length) {
-      return buildBalanceSparkline(wallet.transactions, wallet.balance);
-    }
-    if (wallet.ytd_growth_pct != null && wallet.balance != null) {
-      const start = wallet.ytd_start_balance ?? wallet.balance * 0.9;
-      return [{ balance: start }, { balance: wallet.balance }];
-    }
-    return [];
-  }, [wallet.transactions, wallet.balance, wallet.ytd_growth_pct, wallet.ytd_start_balance]);
-
-  const ytdPct = wallet.ytd_growth_pct;
+  const isCopyTrader = (wallet.tags || []).includes('copy-trading');
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.4) }}
+      initial={index < 20 ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.12 }}
       whileHover={{ backgroundColor: 'rgba(26, 26, 32, 0.8)' }}
-      className={`group grid grid-cols-[36px_minmax(0,1fr)_70px_100px_150px_90px_130px_100px_70px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 transition-colors duration-100 cursor-pointer ${
+      className={`group grid grid-cols-[36px_minmax(0,1fr)_70px_110px_170px_120px_130px_70px] gap-x-3 px-4 py-3.5 border-b border-border-subtle last:border-0 transition-colors duration-100 cursor-pointer ${
         isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
       }`.trim()}
       onClick={() => onSelect(wallet)}
@@ -90,6 +75,11 @@ function WalletRow({
             {isExchange && (
               <span className="flex-shrink-0 text-[9px] px-1 py-0.5 bg-bg-overlay border border-border-subtle rounded text-text-muted uppercase tracking-wide">
                 Exchange
+              </span>
+            )}
+            {isCopyTrader && (
+              <span className="flex-shrink-0 text-[9px] px-1 py-0.5 bg-green/10 border border-green/20 rounded text-green uppercase tracking-wide">
+                Copy
               </span>
             )}
           </div>
@@ -112,19 +102,6 @@ function WalletRow({
       </div>
       <div className={`font-mono text-[12px] ${balanceClass}`.trim()}>
         {formatBalance(wallet.balance)}
-      </div>
-      {/* Trend sparkline */}
-      <div className="flex flex-col items-end gap-0.5">
-        <Sparkline data={sparkData} width={80} height={28} />
-        {sparkData.length >= 2 && (
-          <span className={`text-[9px] font-mono ${
-            (ytdPct ?? 0) >= 0 ? 'text-green' : 'text-red'
-          }`}>
-            {ytdPct != null
-              ? `${ytdPct >= 0 ? '+' : ''}${ytdPct.toFixed(1)}% YTD`
-              : (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0) ? '▲ YTD' : '▼ YTD'}
-          </span>
-        )}
       </div>
       <div>
         {wallet.signal ? <SignalPill signal={wallet.signal} /> : <span className="text-text-muted">—</span>}

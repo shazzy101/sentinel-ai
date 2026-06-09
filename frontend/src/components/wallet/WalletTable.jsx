@@ -5,13 +5,12 @@ import WalletRow from './WalletRow';
 
 function HeaderRow() {
   return (
-    <div className="grid grid-cols-[36px_minmax(0,1fr)_70px_100px_150px_90px_130px_100px_70px] gap-x-3 px-4 py-3 bg-bg-surface border-b border-border-default text-[10px] uppercase tracking-[1.2px] text-text-muted">
+    <div className="grid grid-cols-[36px_minmax(0,1fr)_70px_110px_170px_120px_130px_70px] gap-x-3 px-4 py-3 bg-bg-surface border-b border-border-default text-[10px] uppercase tracking-[1.2px] text-text-muted">
       <div>#</div>
       <div>Wallet</div>
       <div>Chain</div>
       <div>Score</div>
       <div>Balance</div>
-      <div>YTD</div>
       <div>Signal</div>
       <div>Last Active</div>
       <div>Actions</div>
@@ -24,7 +23,7 @@ function LoadingRows() {
     <div className="p-5">
       <div className="skeleton h-8 rounded mb-3" />
       {Array.from({ length: 8 }).map((_, idx) => (
-          <div key={idx} className="grid grid-cols-[36px_minmax(0,1fr)_70px_100px_150px_90px_130px_100px_70px] gap-x-3 px-4 items-center py-3.5 border-b border-border-subtle">
+          <div key={idx} className="grid grid-cols-[36px_minmax(0,1fr)_70px_110px_170px_120px_130px_70px] gap-x-3 px-4 items-center py-3.5 border-b border-border-subtle">
           <div className="skeleton rounded h-3 w-4" />
           <div className="space-y-2">
             <div className="skeleton rounded h-3 w-24" />
@@ -33,7 +32,6 @@ function LoadingRows() {
           <div className="skeleton rounded h-3 w-12" />
           <div className="skeleton rounded h-3 w-16" />
           <div className="skeleton rounded h-3 w-20" />
-          <div className="skeleton rounded h-3 w-16" />
           <div className="skeleton rounded h-3 w-16" />
           <div className="skeleton rounded h-3 w-12" />
           <div className="skeleton rounded h-3 w-12" />
@@ -78,12 +76,10 @@ export default function WalletTable({
   if (error) {
     return (
       <GlassCard className="h-full min-h-0">
-        <div className="px-5 py-4">
-          <div className="text-red text-[13px] mb-3">{error}</div>
-          <Button variant="ghost" onClick={onRetry}>
-            <Spinner size="sm" />
-            Retry
-          </Button>
+        <div className="px-5 py-8 text-center">
+          <div className="text-red text-[14px] font-medium mb-2">Could not load watchlist</div>
+          <div className="text-[12px] text-text-muted mb-4">{error}</div>
+          <Button variant="primary" onClick={onRetry}>Retry</Button>
         </div>
       </GlassCard>
     );

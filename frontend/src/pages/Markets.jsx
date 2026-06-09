@@ -4,6 +4,8 @@ import { api } from '../lib/api';
 import Spinner from '../components/ui/Spinner';
 import NansenTradingTerminal from '../components/markets/NansenTradingTerminal';
 import NetworkDashboard from '../components/markets/NetworkDashboard';
+import CopyTradingIntelligence from '../components/markets/CopyTradingIntelligence';
+import EthYtdChart from '../components/charts/EthYtdChart';
 
 function fmt(n, dec = 2) {
   return Number(n ?? 0).toLocaleString('en-US', {
@@ -55,6 +57,12 @@ export default function MarketsPage() {
       <div className="p-5 flex flex-col gap-5 max-w-[1600px] mx-auto">
         {/* Network intelligence — Dune-powered on-chain dashboard */}
         <NetworkDashboard />
+
+        {/* Copy-trading judgment layer — top wallets, latest txs, chain trades */}
+        <CopyTradingIntelligence />
+
+        {/* ETH year-to-date price chart */}
+        <EthYtdChart />
 
         {/* Nansen-style trading terminal */}
         <NansenTradingTerminal

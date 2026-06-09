@@ -14,7 +14,7 @@ import {
   TOKEN_ADDRESSES, TO_TOKENS,
   toTokenUnits, parseQuoteOutput,
 } from '../../lib/tokens';
-import { buildBalanceSparkline } from '../../lib/chartUtils';
+import { resolveSparklineData } from '../../lib/chartUtils';
 import { getSpendableBalance, validateSwapInputs } from '../../lib/swapExecution';
 import { useTransaction } from '../../hooks/useTrade';
 
@@ -270,7 +270,7 @@ function TopTradersTable({ wallets }) {
         {displayed.length === 0 ? (
           <div className="px-4 py-8 text-center text-[12px] text-text-muted">No smart money wallets with score ≥ 60 yet. Run Scan 500 on Watchlist.</div>
         ) : displayed.map((w) => {
-          const sparkData = buildBalanceSparkline(w.transactions, w.balance);
+          const sparkData = resolveSparklineData(w);
           return (
             <div key={w.address} className="grid grid-cols-[1fr_100px_100px_90px_80px] gap-2 px-4 py-2.5 border-b border-white/[0.03] hover:bg-white/[0.02] items-center min-w-[520px]">
               <div className="min-w-0">

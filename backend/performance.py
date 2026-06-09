@@ -87,3 +87,47 @@ def compute_ytd_growth(transactions: list[dict], current_balance: float) -> dict
         "ytd_end_balance": round(current, 6),
         "sparkline": sparkline,
     }
+
+
+def downsample_sparkline(sparkline: list[dict], max_points: int = 20) -> list[dict]:
+    """Reduce sparkline payload for fast list views."""
+    if len(sparkline) <= max_points:
+        return sparkline
+    step = max(1, len(sparkline) // max_points)
+    sampled = [sparkline[i] for i in range(0, len(sparkline), step)]
+    if sampled[-1] != sparkline[-1]:
+        sampled.append(sparkline[-1])
+    return sampled
+
+
+def build_copy_trader_sparkline(wallet: dict) -> tuple[list[dict], float | None]:
+    """
+    Estimated cumulative P&L curve from Dune DEX trade metrics.
+    Used when per-trade P&L history isn't stored in the JSON export.
+    """
+    import math
+
+    metrics = wallet.get("metrics") or {}
+    oc = wallet.get("on_chain_data") or {}
+
+    track_days = max(int(metrics.get("track_record_days") or oc.get("active_days") or 90), 30)
+    win_rate = float(metrics.get("win_rate_pct") or 0) / 100
+    profit_factor = min(float(metrics.get("profit_factor") or 1), 15)
+
+    if win_rate <= 0:
+        return [], None
+
+    # Conservative return estimate — capped for display sanity
+    edge = win_rate * math.log1p(profit_factor) - (1 - win_rate) * 0.35
+    est_return_pct = round(min(max(edge * 25, -40), 180), 2)
+
+    n_points = min(24, max(8, track_days // 7))
+    base = 100.0
+    sparkline = [{"balance": base, "index": 0}]
+
+    for i in range(1, n_points + 1):
+        progress = i / n_points
+        balance = base * (1 + (est_return_pct / 100) * progress)
+        sparkline.append({"balance": round(balance, 2), "index": i})
+
+    return sparkline, est_return_pct

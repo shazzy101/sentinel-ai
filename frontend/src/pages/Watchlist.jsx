@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useWatchlist, useScanWallet } from '../hooks/useWatchlist';
+import { useCopyTraders } from '../hooks/useCopyTraders';
 import { useAlertEngine } from './Alerts';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import { ToastStack } from '../components/ui/Toast';
 import ScanIsland from '../components/ui/scan-island';
 import WalletTable from '../components/wallet/WalletTable';
+import CopyTraderTable from '../components/wallet/CopyTraderTable';
 import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
+import CopyTraderDetailPanel from '../components/wallet/CopyTraderDetailPanel';
 import AddWalletModal from '../components/wallet/AddWalletModal';
 import TradeModal from '../components/wallet/TradeModal';
 import { BentoGrid, BentoItem } from '../components/primitives/BentoGrid';
 import StatWidget from '../components/primitives/StatWidget';
-import { TrendingUp, TrendingDown, Award, BarChart2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet } from 'lucide-react';
+import { apiFetch } from '../lib/apiClient';
+import { api } from '../lib/api';
 
 const EXCHANGE_NAMES = [
   'Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini',
@@ -32,6 +38,15 @@ const SORT_LABEL = {
   ytd: 'YTD ↓',
   name: 'Name A–Z',
   lastActive: 'Last Active',
+};
+
+const COPY_SORT_LABEL = {
+  copy_score: 'Copy Score ↓',
+  win_rate: 'Win Rate ↓',
+  profit_factor: 'Profit Factor ↓',
+  track_record: 'Track Record ↓',
+  drawdown: 'Low Drawdown ↑',
+  duration: 'Duration ↓',
 };
 
 const SIGNAL_FILTER_OPTIONS = [
@@ -57,7 +72,25 @@ function filterButtonClass(isActive) {
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function WatchlistPage() {
-  const { wallets, loading, error, refetch } = useWatchlist();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState('copy'); // copy | watchlist
+  const [strictCopyFilter, setStrictCopyFilter] = useState(false);
+  const [copySortBy, setCopySortBy] = useState('copy_score');
+  const [trackingId, setTrackingId] = useState(null);
+  const { wallets, loading, error, refetch } = useWatchlist({ enabled: true });
+  const {
+    wallets: copyTraders,
+    totalQualified,
+    totalInDataset,
+    loading: copyLoading,
+    error: copyError,
+    refetch: refetchCopy,
+  } = useCopyTraders({
+    enabled: viewMode === 'copy',
+    limit: 50,
+    sort: copySortBy,
+    strict: strictCopyFilter,
+  });
   const { scan, loading: isScanning, activeAddress, stage } = useScanWallet();
   useAlertEngine(wallets);
 
@@ -127,8 +160,7 @@ export default function WatchlistPage() {
     if (isBatchIngesting) return;
     setIsBatchIngesting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/batch-ingest?limit=500`, { method: 'POST' });
-      const json = await res.json();
+      const json = await apiFetch('/api/admin/batch-ingest?limit=500', { method: 'POST', timeoutMs: 30000 });
       const queued = json?.data?.queued ?? 0;
       addToast(`Scanning ${queued} whale wallets via Etherscan…`, 'success');
       setTimeout(() => refetch(), 15000);
@@ -143,8 +175,7 @@ export default function WatchlistPage() {
     if (isRescanningAll) return;
     setIsRescanningAll(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/rescan-all`, { method: 'POST' });
-      const json = await res.json();
+      const json = await apiFetch('/api/admin/rescan-all', { method: 'POST', timeoutMs: 30000 });
       const count = json?.data?.queued ?? wallets.length;
       addToast(`Rescanning ${count} wallets with v3 scoring engine…`, 'success');
       setTimeout(() => { refetch(); }, 10000);
@@ -181,6 +212,15 @@ export default function WatchlistPage() {
     return showAll ? limited : limited.slice(0, 50);
   }, [filteredWallets, showAll, showTop100]);
 
+  const filteredCopyTraders = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return copyTraders.filter((w) => {
+      if (!q) return true;
+      return (w.label || '').toLowerCase().includes(q)
+        || (w.address || '').toLowerCase().includes(q);
+    });
+  }, [copyTraders, searchQuery]);
+
   // Keep selected wallet in sync after refetch
   useEffect(() => {
     if (!selectedWallet?.address) return;
@@ -214,6 +254,56 @@ export default function WatchlistPage() {
     setSelectedWallet((prev) => prev?.address === wallet.address ? null : wallet);
   }, []);
 
+  const handleTrackCopyTrader = useCallback(async (trader) => {
+    if (!trader?.address) return;
+    setTrackingId(trader.address);
+    setIsAddModalOpen(false);
+    try {
+      const body = await api.trackCopyTrader(trader.address);
+      if (!body.success) {
+        throw new Error(body.error?.message || 'Failed to track wallet');
+      }
+      await refetch();
+      setViewMode('watchlist');
+      setSelectedWallet(body.data?.wallet || trader);
+      addToast(
+        body.data?.already_tracked
+          ? `${trader.label || 'Trader'} is already on your watchlist`
+          : `${trader.label || 'Trader'} added — scoring & AI analysis complete`,
+        'success',
+      );
+    } catch (err) {
+      addToast(err.message || 'Failed to track wallet', 'error');
+    } finally {
+      setTrackingId(null);
+    }
+  }, [refetch, addToast]);
+
+  const trackedAddresses = useMemo(
+    () => new Set(wallets.map((w) => (w.address || '').toLowerCase())),
+    [wallets],
+  );
+
+  // Deep-link: /watchlist?tab=watchlist&add=0x...
+  const addHandled = useRef(false);
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const add = searchParams.get('add');
+    if (tab === 'watchlist') setViewMode('watchlist');
+    else if (tab === 'copy') setViewMode('copy');
+    if (add && !addHandled.current) {
+      addHandled.current = true;
+      const addr = add.toLowerCase();
+      if (/^0x[a-f0-9]{40}$/.test(addr)) {
+        api.getCopyTrader(addr).then((t) => {
+          if (t) handleTrackCopyTrader(t);
+          else addToast('Address not found in copy-trader rankings', 'error');
+        });
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, handleTrackCopyTrader, addToast]);
+
   const scanStageMessage = isScanning && activeAddress && stage !== 'idle'
     ? STAGE_MESSAGES[stage] || 'Scanning...'
     : null;
@@ -224,6 +314,32 @@ export default function WatchlistPage() {
       {/* Filter bar */}
       <div className="flex-shrink-0 px-4 py-3 md:px-5">
         <div className="glass-surface flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2.5 shadow-card">
+        {/* View mode tabs */}
+        <div className="flex gap-1 p-0.5 rounded-lg bg-bg-elevated border border-border-subtle">
+          {[
+            { key: 'copy', label: 'Copy Traders', count: totalQualified, accent: 'green' },
+            { key: 'watchlist', label: 'My Watchlist', count: wallets.length, accent: 'blue' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => { setViewMode(tab.key); setSelectedWallet(null); }}
+              className={`text-[11px] px-3 py-1.5 rounded-md transition-colors ${
+                viewMode === tab.key
+                  ? tab.accent === 'green'
+                    ? 'bg-green/15 text-green border border-green/25 font-semibold'
+                    : 'bg-blue/15 text-blue border border-blue/25 font-semibold'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className="ml-1 opacity-70">{tab.count.toLocaleString()}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Search */}
         <div className="relative">
           <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted w-3.5 h-3.5 pointer-events-none" viewBox="0 0 14 14" fill="none">
@@ -248,45 +364,63 @@ export default function WatchlistPage() {
           ) : null}
         </div>
 
-        {/* Signal filter pills */}
-        <div className="flex gap-1.5">
-          {SIGNAL_FILTER_OPTIONS.map((option) => (
+        {viewMode === 'watchlist' && (
+          <>
+            <div className="flex gap-1.5">
+              {SIGNAL_FILTER_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setSignalFilter(option.key)}
+                  className={filterButtonClass(signalFilter === option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <button
-              key={option.key}
               type="button"
-              onClick={() => setSignalFilter(option.key)}
-              className={filterButtonClass(signalFilter === option.key)}
+              onClick={() => setShowTop100((prev) => !prev)}
+              className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
+                showTop100
+                  ? 'bg-blue/10 border-blue/30 text-blue'
+                  : 'border-border-subtle text-text-muted hover:text-text-secondary'
+              }`}
             >
-              {option.label}
+              Top 100
             </button>
-          ))}
-        </div>
-
-        {/* Top 100 toggle */}
-        <button
-          type="button"
-          onClick={() => setShowTop100((prev) => !prev)}
-          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
-            showTop100
-              ? 'bg-blue/10 border-blue/30 text-blue'
-              : 'border-border-subtle text-text-muted hover:text-text-secondary'
-          }`}
-        >
-          Top 100
-        </button>
-
-        {/* Smart Money filter */}
-        <button
-          type="button"
-          onClick={() => { setSmartMoneyOnly((prev) => !prev); setShowAll(false); }}
-          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
-            smartMoneyOnly
-              ? 'bg-green/10 border-green/30 text-green'
-              : 'border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default'
-          }`}
-        >
-          {smartMoneyOnly ? `◈ Smart Money · ${filteredWallets.length}` : 'Show all wallets'}
-        </button>
+            <button
+              type="button"
+              onClick={() => { setSmartMoneyOnly((prev) => !prev); setShowAll(false); }}
+              className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
+                smartMoneyOnly
+                  ? 'bg-green/10 border-green/30 text-green'
+                  : 'border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default'
+              }`}
+            >
+              {smartMoneyOnly ? `◈ Smart Money · ${filteredWallets.length}` : 'Show all wallets'}
+            </button>
+          </>
+        )}
+        {viewMode === 'copy' && (
+          <>
+            <button
+              type="button"
+              onClick={() => setStrictCopyFilter((p) => !p)}
+              className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
+                strictCopyFilter
+                  ? 'bg-green/10 border-green/30 text-green'
+                  : 'border-border-subtle text-text-muted hover:text-text-secondary'
+              }`}
+              title="Win rate ≥60%, profit factor ≥2, track record ≥90 days"
+            >
+              {strictCopyFilter ? 'Strict filters on' : 'Strict filters'}
+            </button>
+            <span className="text-[10px] text-text-muted hidden sm:inline">
+              {totalInDataset.toLocaleString()} ranked · bots filtered
+            </span>
+          </>
+        )}
 
         {/* Right controls */}
         <div className="ml-auto flex items-center gap-2 relative" ref={sortMenuRef}>
@@ -298,19 +432,27 @@ export default function WatchlistPage() {
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-text-muted flex-shrink-0">
               <path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
-            <span className="flex-1 text-left">{SORT_LABEL[sortBy]}</span>
+            <span className="flex-1 text-left">
+              {viewMode === 'copy' ? COPY_SORT_LABEL[copySortBy] : SORT_LABEL[sortBy]}
+            </span>
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`text-text-muted transition-transform ${sortOpen ? 'rotate-180' : ''}`}>
               <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           {sortOpen ? (
             <div className="absolute top-9 right-0 bg-bg-overlay border border-border-default rounded-lg text-[12px] text-text-secondary min-w-[130px] z-20 shadow-xl overflow-hidden">
-              {Object.entries(SORT_LABEL).map(([key, lbl]) => (
+              {Object.entries(viewMode === 'copy' ? COPY_SORT_LABEL : SORT_LABEL).map(([key, lbl]) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => { setSortBy(key); setSortOpen(false); }}
-                  className={`w-full text-left px-3 py-2 hover:bg-bg-elevated transition-colors ${sortBy === key ? 'text-green' : ''}`}
+                  onClick={() => {
+                    if (viewMode === 'copy') setCopySortBy(key);
+                    else setSortBy(key);
+                    setSortOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 hover:bg-bg-elevated transition-colors ${
+                    (viewMode === 'copy' ? copySortBy : sortBy) === key ? 'text-green' : ''
+                  }`}
                 >
                   {lbl}
                 </button>
@@ -319,37 +461,40 @@ export default function WatchlistPage() {
           ) : null}
 
           <span className="text-[11px] text-text-muted whitespace-nowrap px-1">
-            {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
-            {smartMoneyOnly && filteredWallets.length < 5 && (
-              <span className="text-amber ml-1" title="Turn off Smart Money Only to see all tracked wallets">· few match</span>
-            )}
+            {viewMode === 'copy'
+              ? `${filteredCopyTraders.length} shown`
+              : (
+                <>
+                  {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
+                  {smartMoneyOnly && filteredWallets.length < 5 && (
+                    <span className="text-amber ml-1">· few match</span>
+                  )}
+                </>
+              )}
           </span>
 
-          <button
-            type="button"
-            onClick={handleBatchIngest}
-            disabled={isBatchIngesting}
-            title="Discover and scan up to 500 top whale wallets via Etherscan"
-            className="flex items-center gap-1.5 text-[11px] text-green border border-green/30 rounded-lg px-2.5 py-1.5 hover:bg-green/10 transition-colors disabled:opacity-40"
-          >
-            {isBatchIngesting ? <Spinner size="sm" /> : 'Scan 500'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleRescanAll}
-            disabled={isRescanningAll}
-            title="Apply new scoring engine to all wallets"
-            className="flex items-center gap-1.5 text-[11px] text-text-muted border border-border-subtle rounded-lg px-2.5 py-1.5 hover:border-border-default hover:text-text-secondary transition-colors disabled:opacity-40"
-          >
-            {isRescanningAll ? <Spinner size="sm" /> : (
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                <path d="M9.5 3.5A4 4 0 1 0 10 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                <path d="M10 1.5v2.5H7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-            Rescan All
-          </button>
+          {viewMode === 'watchlist' && (
+            <>
+              <button
+                type="button"
+                onClick={handleBatchIngest}
+                disabled={isBatchIngesting}
+                title="Discover and scan up to 500 top whale wallets via Etherscan"
+                className="flex items-center gap-1.5 text-[11px] text-green border border-green/30 rounded-lg px-2.5 py-1.5 hover:bg-green/10 transition-colors disabled:opacity-40"
+              >
+                {isBatchIngesting ? <Spinner size="sm" /> : 'Scan 500'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRescanAll}
+                disabled={isRescanningAll}
+                title="Apply new scoring engine to all wallets"
+                className="flex items-center gap-1.5 text-[11px] text-text-muted border border-border-subtle rounded-lg px-2.5 py-1.5 hover:border-border-default hover:text-text-secondary transition-colors disabled:opacity-40"
+              >
+                {isRescanningAll ? <Spinner size="sm" /> : 'Rescan All'}
+              </button>
+            </>
+          )}
 
           <button
             type="button"
@@ -359,8 +504,13 @@ export default function WatchlistPage() {
             ⚡ Trade
           </button>
 
-          <Button variant="icon" onClick={refetch} disabled={loading} aria-label="Refresh watchlist">
-            {loading ? <Spinner size="sm" /> : (
+          <Button
+            variant="icon"
+            onClick={() => (viewMode === 'copy' ? refetchCopy() : refetch())}
+            disabled={viewMode === 'copy' ? copyLoading : loading}
+            aria-label="Refresh"
+          >
+            {(viewMode === 'copy' ? copyLoading : loading) ? <Spinner size="sm" /> : (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="stroke-current">
                 <path d="M11.7 5A5 5 0 1 0 12 7" strokeWidth="1.3" strokeLinecap="round" />
                 <path d="M12 2.5V5.5H9" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -371,8 +521,61 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      {/* Quick stats — bento dashboard strip */}
-      {wallets.length > 0 && (
+      {/* Section banner — distinct identity per tab */}
+      <div className={`flex-shrink-0 px-5 py-2 border-b ${
+        viewMode === 'copy' ? 'border-green/10 bg-green/[0.03]' : 'border-blue/10 bg-blue/[0.03]'
+      }`}>
+        {viewMode === 'copy' ? (
+          <div className="flex items-center gap-2 text-[12px]">
+            <Target className="h-3.5 w-3.5 text-green shrink-0" />
+            <span className="text-text-secondary">
+              <span className="text-green font-medium">Copy Traders</span>
+              {' — '}
+              {totalQualified.toLocaleString()} human DEX traders ranked by win rate, profit factor & track record. Bots filtered.
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-[12px]">
+            <Wallet className="h-3.5 w-3.5 text-blue shrink-0" />
+            <span className="text-text-secondary">
+              <span className="text-blue font-medium">My Watchlist</span>
+              {' — '}
+              Your tracked whales & smart-money wallets with AI scoring and on-chain signals.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Quick stats */}
+      {viewMode === 'copy' && copyTraders.length > 0 && (
+        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04]">
+          <BentoGrid cols={4} className="gap-2">
+            <BentoItem delay={0}>
+              <StatWidget label="Qualified" value={totalQualified} sub="DEX traders" icon={Users} />
+            </BentoItem>
+            <BentoItem delay={0.04}>
+              <StatWidget
+                label="Avg Win Rate"
+                value={`${(copyTraders.reduce((a, w) => a + (w.metrics?.win_rate_pct ?? 0), 0) / copyTraders.length).toFixed(1)}%`}
+                animate={false}
+                icon={TrendingUp}
+              />
+            </BentoItem>
+            <BentoItem delay={0.08}>
+              <StatWidget
+                label="Avg PF"
+                value={(copyTraders.reduce((a, w) => a + (w.metrics?.profit_factor ?? 0), 0) / copyTraders.length).toFixed(1)}
+                animate={false}
+                icon={BarChart2}
+              />
+            </BentoItem>
+            <BentoItem delay={0.12}>
+              <StatWidget label="#1 Trader" value={`#${copyTraders[0]?.rank ?? 1}`} animate={false} icon={Award} />
+            </BentoItem>
+          </BentoGrid>
+        </div>
+      )}
+      {viewMode === 'watchlist' && wallets.length > 0 && (
         <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04]">
           <BentoGrid cols={4} className="gap-2">
             <BentoItem delay={0}>
@@ -383,20 +586,10 @@ export default function WatchlistPage() {
               />
             </BentoItem>
             <BentoItem delay={0.04}>
-              <StatWidget
-                label="Bullish"
-                value={wallets.filter((w) => w.signal === 'BULLISH').length}
-                sub="signals"
-                icon={TrendingUp}
-              />
+              <StatWidget label="Bullish" value={wallets.filter((w) => w.signal === 'BULLISH').length} sub="signals" icon={TrendingUp} />
             </BentoItem>
             <BentoItem delay={0.08}>
-              <StatWidget
-                label="Bearish"
-                value={wallets.filter((w) => w.signal === 'BEARISH').length}
-                sub="signals"
-                icon={TrendingDown}
-              />
+              <StatWidget label="Bearish" value={wallets.filter((w) => w.signal === 'BEARISH').length} sub="signals" icon={TrendingDown} />
             </BentoItem>
             <BentoItem delay={0.12}>
               <StatWidget
@@ -416,45 +609,72 @@ export default function WatchlistPage() {
         address={activeAddress}
       />
 
-      {/* Main area: table + detail panel */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        <div className="flex-1 min-h-0 min-w-0 p-5">
-          <WalletTable
-            wallets={displayWallets}
-            loading={loading}
-            error={error}
+      {/* Main area — table stays full width; detail opens as overlay */}
+      <div className="flex-1 min-h-0 p-5 overflow-hidden">
+        {viewMode === 'copy' ? (
+          <CopyTraderTable
+            wallets={filteredCopyTraders}
+            loading={copyLoading}
+            error={copyError}
             selectedWallet={selectedWallet}
-            scanningIds={scanningIds}
             onSelectWallet={handleSelectWallet}
-            onScanWallet={handleScan}
-            onRetry={refetch}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onRetry={refetchCopy}
+            totalQualified={totalQualified}
+            trackedAddresses={trackedAddresses}
           />
-          {!showAll && filteredWallets.length > 50 && (
-            <button
-              type="button"
-              onClick={() => setShowAll(true)}
-              className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-border-subtle text-center hover:bg-bg-elevated transition-colors"
-            >
-              Show all {filteredWallets.length} wallets ↓
-            </button>
-          )}
-        </div>
-        <div
-          className={`flex-shrink-0 h-full transition-all duration-200 ease-out ${
-            selectedWallet ? 'w-[400px]' : 'w-0'
-          } overflow-hidden`}
-        >
-          {selectedWallet && (
-            <WalletDetailPanel
-              wallet={selectedWallet}
-              onClose={() => setSelectedWallet(null)}
-              onRescan={() => handleScan(selectedWallet)}
-              onRemove={handleRemoveWallet}
+        ) : (
+          <>
+            <WalletTable
+              wallets={displayWallets}
+              loading={loading}
+              error={error}
+              selectedWallet={selectedWallet}
+              scanningIds={scanningIds}
+              onSelectWallet={handleSelectWallet}
+              onScanWallet={handleScan}
+              onRetry={refetch}
+              onOpenAddModal={() => setIsAddModalOpen(true)}
             />
-          )}
-        </div>
+            {!showAll && filteredWallets.length > 50 && (
+              <button
+                type="button"
+                onClick={() => setShowAll(true)}
+                className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-border-subtle text-center hover:bg-bg-elevated transition-colors"
+              >
+                Show all {filteredWallets.length} wallets ↓
+              </button>
+            )}
+          </>
+        )}
       </div>
+
+      {selectedWallet && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setSelectedWallet(null)}
+            aria-hidden="true"
+          />
+          <div className="fixed right-0 top-0 bottom-0 w-[min(520px,92vw)] z-50 animate-in slide-in-from-right duration-200">
+            {viewMode === 'copy' ? (
+              <CopyTraderDetailPanel
+                wallet={selectedWallet}
+                onClose={() => setSelectedWallet(null)}
+                onTrack={handleTrackCopyTrader}
+                isTracked={trackedAddresses.has((selectedWallet.address || '').toLowerCase())}
+                isTracking={trackingId === selectedWallet.address}
+              />
+            ) : (
+              <WalletDetailPanel
+                wallet={selectedWallet}
+                onClose={() => setSelectedWallet(null)}
+                onRescan={() => handleScan(selectedWallet)}
+                onRemove={handleRemoveWallet}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       <AddWalletModal
         open={isAddModalOpen}

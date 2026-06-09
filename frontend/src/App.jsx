@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import Shell from './components/layout/Shell';
 import Button from './components/ui/Button';
@@ -7,7 +7,6 @@ import LandingPage from './pages/Landing';
 import WatchlistPage from './pages/Watchlist';
 import IntelligencePage from './pages/Intelligence';
 import MarketsPage, { EthPriceBadge } from './pages/Markets';
-import ScoringPage from './pages/Scoring';
 import AlertsPage from './pages/Alerts';
 import InvestPage from './pages/Invest';
 import AskSentinelPage from './pages/AskSentinel';
@@ -38,14 +37,6 @@ function IntelligenceRoute() {
       }
     >
       <IntelligencePage />
-    </Shell>
-  );
-}
-
-function ScoringRoute() {
-  return (
-    <Shell title="Scoring">
-      <ScoringPage />
     </Shell>
   );
 }
@@ -101,7 +92,7 @@ function AnimatedRoutes() {
         <Route path="/markets" element={<MotionPage><MarketsRoute /></MotionPage>} />
         <Route path="/invest" element={<MotionPage><InvestRoute /></MotionPage>} />
         <Route path="/ask" element={<MotionPage><AskSentinelRoute /></MotionPage>} />
-        <Route path="/scoring" element={<MotionPage><ScoringRoute /></MotionPage>} />
+        <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
         <Route path="/alerts" element={<MotionPage><AlertsRoute /></MotionPage>} />
       </Routes>
     </AnimatePresence>

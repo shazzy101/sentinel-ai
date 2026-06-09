@@ -1,4 +1,39 @@
 /**
+ * Use backend-computed YTD sparkline (Jan 1 → today) when available.
+ */
+export function buildYtdSparkline(ytdSparkline) {
+  if (!ytdSparkline?.length) return [];
+  return ytdSparkline.map((p, i) => ({ balance: p.balance, index: i }));
+}
+
+/**
+ * Prefer backend YTD series; fall back to full tx reconstruction.
+ */
+export function resolveSparklineData(wallet) {
+  const perf = buildYtdSparkline(wallet?.performance_sparkline);
+  if (perf.length >= 2) return perf;
+  const ytd = buildYtdSparkline(wallet?.ytd_sparkline);
+  if (ytd.length >= 2) return ytd;
+  if (wallet?.transactions?.length) {
+    return buildBalanceSparkline(wallet.transactions, wallet.balance);
+  }
+  if (wallet?.ytd_growth_pct != null && wallet?.balance != null) {
+    const start = wallet.ytd_start_balance ?? wallet.balance * 0.9;
+    return [{ balance: start }, { balance: wallet.balance }];
+  }
+  if (wallet?.estimated_return_pct != null) {
+    const end = 100 + wallet.estimated_return_pct;
+    return [{ balance: 100 }, { balance: end }];
+  }
+  return [];
+}
+
+export function sparklineReturnPct(wallet) {
+  if (wallet?.estimated_return_pct != null) return wallet.estimated_return_pct;
+  return wallet?.ytd_growth_pct ?? null;
+}
+
+/**
  * Reconstruct wallet ETH balance history from transaction array.
  * Walks backwards from current balance, reversing each tx.
  */

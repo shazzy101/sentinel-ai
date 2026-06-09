@@ -1,44 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  AreaChart, Area, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid,
+} from 'recharts';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import ScoreRing from '../ui/ScoreRing';
 import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
-import { buildBalanceSparkline } from '../../lib/chartUtils';
 import TradeModal from './TradeModal';
-
-const EXCHANGE_ADDRESSES = new Set([
-  '0x28c6c06298d514db089934071355e5743bf21d60',
-  '0x21a31ee1afc51d94c2efccaa1486ffa9c4a2a28',
-  '0x56eddb7aa87536c09ccc2793473599fd21a8b17f',
-  '0x4634d53b02f8329a07f5f60e9ac0b35843be9a72',
-  '0x0dfd5e9a5e0d5b8a8d5e8a4a8f3b0e7c1e8b3a2e',
-  '0x9696c1b0e96eea04dcef3d8d0d9c2e6f4c7a1b3',
-  '0x4976c1b0e96eea04dcef3d8d0d9c2e6f4c7a2327',
-  '0xcffa43e5e01c0ae7b09e7d5e8a4a8f3b0e7c0703',
-  '0x6262c1b0e96eea04dcef3d8d0d9c2e6f4c7a2a23',
-]);
-
-function getAutoTags(wallet, score) {
-  const tags = [];
-  const addrLower = (wallet.address || '').toLowerCase();
-  const isExchange = EXCHANGE_ADDRESSES.has(addrLower);
-  if (isExchange) tags.push('Exchange');
-  if (!isExchange && score > 90) tags.push('High Conviction');
-  if (!isExchange && score > 80) tags.push('Smart Money');
-  return tags;
-}
-
-function getUserTags(address) {
-  try {
-    return JSON.parse(localStorage.getItem(`sentinel-tags-${address}`) || '[]');
-  } catch { return []; }
-}
-
-function saveUserTags(address, tags) {
-  localStorage.setItem(`sentinel-tags-${address}`, JSON.stringify(tags));
-}
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -51,44 +21,70 @@ function gradeFromScore(score) {
   return 'F';
 }
 
-// Scale raw breakdown points to 0-100 percentages for visual bars.
-// API returns: activity (0-35), success_rate (0-30), balance (0-25), recency (0-10).
-function scaleBreakdown(breakdown, score) {
-  if (!breakdown) {
-    const base = score;
-    return {
-      activity: Math.max(20, Math.min(100, base - 6)),
-      success_rate: Math.max(20, Math.min(100, base + 4)),
-      balance: Math.max(20, Math.min(100, base - 2)),
-      recency: Math.max(20, Math.min(100, base + 8)),
-    };
-  }
-  return {
-    activity: Math.round(((breakdown.activity ?? 0) / 35) * 100),
-    success_rate: Math.round(((breakdown.success_rate ?? 0) / 30) * 100),
-    balance: Math.round(((breakdown.balance ?? 0) / 25) * 100),
-    recency: Math.round(((breakdown.recency ?? 0) / 10) * 100),
-  };
+function getUserTags(address) {
+  try { return JSON.parse(localStorage.getItem(`sentinel-tags-${address}`) || '[]'); }
+  catch { return []; }
+}
+function saveUserTags(address, tags) {
+  localStorage.setItem(`sentinel-tags-${address}`, JSON.stringify(tags));
 }
 
-function BreakdownBar({ label, value, maxPts }) {
-  const pct = maxPts > 0 ? Math.round((value / maxPts) * 100) : 0;
-  // Ensure even tiny values are visible (at least 4% wide if non-zero)
+// v4 scoring engine weights: Recency/25, Activity/25, DeFi/25, SuccessRate/15, Balance/10
+const V4_BREAKDOWN = [
+  { key: 'activity',     label: 'Activity',     max: 25 },
+  { key: 'defi',         label: 'DeFi Engage',  max: 25 },
+  { key: 'recency',      label: 'Recency',       max: 25 },
+  { key: 'success_rate', label: 'Success Rate',  max: 15 },
+  { key: 'balance',      label: 'Balance',       max: 10 },
+];
+
+function BreakdownBar({ label, value, max }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   const barPct = value > 0 ? Math.max(pct, 4) : 0;
   const colorClass = pct >= 70 ? 'fill-score-high' : pct >= 40 ? 'fill-score-mid' : 'fill-score-low';
+  const textClass  = pct >= 70 ? 'text-green'       : pct >= 40 ? 'text-amber'     : 'text-red';
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] text-text-muted">{label}</span>
-        <span className="text-[11px] font-mono text-text-secondary">
-          {value}<span className="text-text-muted">/{maxPts}</span>
+        <span className={`text-[11px] font-mono font-medium ${textClass}`}>
+          {value}<span className="text-text-muted font-normal">/{max}</span>
         </span>
       </div>
-      <svg className="h-[2px] w-full overflow-visible" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true">
-        <rect x="0" y="0" width="100" height="2" className="fill-bg-elevated" rx="1" />
-        <rect x="0" y="0" width={barPct} height="2" className={colorClass} rx="1" />
+      <svg className="h-[3px] w-full overflow-visible" viewBox="0 0 100 3" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="0" y="0" width="100" height="3" className="fill-bg-elevated" rx="1.5" />
+        <rect x="0" y="0" width={barPct} height="3" className={colorClass} rx="1.5" />
       </svg>
     </div>
+  );
+}
+
+const CustomYtdTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const val = payload[0]?.value;
+  return (
+    <div className="bg-bg-surface border border-border-subtle rounded-lg px-3 py-2 text-[11px] shadow-lg">
+      <div className="text-text-muted mb-0.5">{label}</div>
+      <div className="font-mono font-medium text-text-primary">
+        {val != null ? `${Number(val).toFixed(4)} ETH` : '—'}
+      </div>
+    </div>
+  );
+};
+
+function TabBtn({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 text-[12px] font-medium rounded-lg transition-colors ${
+        active
+          ? 'bg-white/[0.08] text-text-primary'
+          : 'text-text-muted hover:text-text-secondary'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -96,6 +92,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const [copied, setCopied] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [detail, setDetail] = useState(wallet);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState('overview');
   const [userTags, setUserTags] = useState(() => getUserTags(wallet?.address));
   const [newTag, setNewTag] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
@@ -104,39 +102,59 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const score = Number(detail?.score || 0);
   const grade = gradeFromScore(score);
   const risk = detail?.analysis?.risk_level || (score >= 80 ? 'LOW' : score >= 60 ? 'MEDIUM' : 'HIGH');
-  const analysisTags = (detail?.analysis?.tags?.length ? detail.analysis.tags : detail?.tags) || [];
-  const autoTags = getAutoTags(detail || {}, score);
-  const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
   const analysis = detail?.analysis || {};
-  const breakdown = scaleBreakdown(detail?.score_breakdown, score);
+  const analysisTags = (detail?.analysis?.tags?.length ? detail.analysis.tags : detail?.tags) || [];
+  const autoTags = useMemo(() => {
+    const tags = [];
+    if (score > 90) tags.push('High Conviction');
+    if (score > 80) tags.push('Smart Money');
+    return tags;
+  }, [score]);
+  const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
 
-  const sparkData = useMemo(
-    () => buildBalanceSparkline(detail?.transactions, detail?.balance),
-    [detail?.transactions, detail?.balance]
+  // Score breakdown — use raw values from API (v4 engine)
+  const bd = detail?.score_breakdown || {};
+
+  // YTD sparkline from detail (full fetch)
+  const sparkData = useMemo(() => {
+    const raw = detail?.ytd_sparkline;
+    if (!Array.isArray(raw) || raw.length < 2) return [];
+    return raw.map((pt) => ({
+      date: pt.date
+        ? new Date(pt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : '',
+      balance: typeof pt.balance === 'number' ? pt.balance : (pt.value ?? pt.balance ?? 0),
+    }));
+  }, [detail]);
+
+  const sparkFirst = sparkData[0]?.balance ?? 0;
+  const sparkLast  = sparkData[sparkData.length - 1]?.balance ?? 0;
+  const sparkUp    = sparkLast >= sparkFirst;
+  const trendColor = sparkUp ? '#00D992' : '#FF4D4D';
+  const ytdPct     = detail?.ytd_growth_pct ?? (
+    sparkFirst > 0 ? ((sparkLast - sparkFirst) / sparkFirst * 100) : null
   );
-  const trendColor = (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0)
-    ? '#00D992' : '#FF4D4D';
 
+  const recentTxs = detail?.recent_transactions || [];
+
+  // Fetch full wallet detail (with ytd_sparkline) when panel opens
   useEffect(() => {
-    setDetail(wallet);
     if (!wallet?.address) return;
+    setDetail(wallet);
+    setLoading(true);
     let cancelled = false;
     fetch(`${API_BASE}/api/wallets/${wallet.address}`)
       .then((r) => r.json())
       .then((body) => {
         if (!cancelled && body.success) setDetail(body.data?.wallet || wallet);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [wallet?.address]);
 
-  useEffect(() => {
-    setUserTags(getUserTags(wallet?.address));
-  }, [wallet?.address]);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [wallet?.address]);
+  useEffect(() => { setUserTags(getUserTags(wallet?.address)); }, [wallet?.address]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; setTab('overview'); }, [wallet?.address]);
 
   if (!detail) return null;
 
@@ -155,36 +173,44 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     <aside className="w-full h-full min-h-0 bg-bg-surface border-l border-border-subtle flex flex-col">
 
       {/* Header */}
-      <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle relative">
-        <div className="font-display text-[15px] font-bold text-text-primary pr-8 leading-tight">
-          {detail.label || 'Unnamed wallet'}
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <ChainBadge chain={detail.chain} />
-          {detail.balance != null && (
-            <span className="text-[11px] font-mono text-text-secondary">
-              {Number(detail.balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
-            </span>
-          )}
-          {detail.ytd_growth_pct != null && (
-            <span className={`text-[11px] font-mono font-medium ${detail.ytd_growth_pct >= 0 ? 'text-green' : 'text-red'}`}>
-              {detail.ytd_growth_pct >= 0 ? '+' : ''}{detail.ytd_growth_pct.toFixed(1)}% YTD
-            </span>
-          )}
-        </div>
-        <Button variant="icon" className="absolute right-4 top-3" onClick={onClose} aria-label="Close panel">
-          ✕
-        </Button>
-      </div>
-
-      {/* Address + Tags */}
-      <div className="flex-shrink-0 px-5 py-3 border-b border-border-subtle">
-        <div className="flex items-start gap-2">
-          <div className="font-mono text-[11px] text-text-secondary break-all flex-1 leading-relaxed">
-            {detail.address}
+      <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="font-display text-[15px] font-bold text-text-primary leading-tight truncate">
+              {detail.label || 'Unnamed wallet'}
+            </div>
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+              <ChainBadge chain={detail.chain} />
+              {detail.balance != null && (
+                <span className="text-[11px] font-mono text-text-secondary">
+                  {Number(detail.balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
+                </span>
+              )}
+              {ytdPct != null && (
+                <span className={`text-[11px] font-mono font-semibold ${ytdPct >= 0 ? 'text-green' : 'text-red'}`}>
+                  {ytdPct >= 0 ? '+' : ''}{ytdPct.toFixed(1)}% YTD
+                </span>
+              )}
+              {loading && <Spinner size="sm" />}
+            </div>
           </div>
-          <Button
-            variant="icon"
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-shrink-0 mt-0.5 h-7 w-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.06] transition-colors text-[14px]"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Address */}
+        <div className="mt-2.5 flex items-center gap-2">
+          <span className="font-mono text-[10px] text-text-muted break-all leading-relaxed flex-1">
+            {detail.address}
+          </span>
+          <button
+            type="button"
             aria-label="Copy address"
             onClick={async () => {
               if (!detail.address) return;
@@ -192,19 +218,25 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
+            className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-text-muted hover:text-green transition-colors"
           >
-            {copied ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-green stroke-current">
-                <path d="M2.5 7L5.5 10L11.5 4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="stroke-current">
-                <rect x="5" y="1" width="8" height="10" rx="1.5" strokeWidth="1.2" />
-                <path d="M9 11v1.5A1.5 1.5 0 017.5 14H2A1.5 1.5 0 01.5 12.5V4A1.5 1.5 0 012 2.5h1.5" strokeWidth="1.2" />
-              </svg>
-            )}
-          </Button>
+            {copied
+              ? <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="stroke-green"><path d="M2 6.5L5 9.5L11 3.5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              : <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="stroke-current"><rect x="4.5" y="1" width="7.5" height="9.5" rx="1.5" strokeWidth="1.2" /><path d="M8.5 10.5V12A1.5 1.5 0 017 13H2A1.5 1.5 0 01.5 11.5V4A1.5 1.5 0 012 2.5H4.5" strokeWidth="1.2" /></svg>
+            }
+          </button>
+          <a
+            href={`https://etherscan.io/address/${detail.address}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-text-muted hover:text-blue transition-colors"
+            title="View on Etherscan"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="stroke-current"><path d="M1 11L11 1M11 1H4M11 1V8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </a>
         </div>
+
+        {/* Tags */}
         {allTags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
             {allTags.map((tag) => (
@@ -216,118 +248,299 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         )}
       </div>
 
-      {/* Score + breakdown */}
-      <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle">
-        <TextureCard>
-          <TextureCardContent className="p-4">
-        <div className="flex items-start gap-1 mb-3">
-          <span className="flex-1 text-[10px] uppercase tracking-[1px] text-text-muted">Score</span>
-          <GradeBadge grade={grade} />
-        </div>
-        <div className="flex gap-4">
-          <ScoreRing score={score} size={64} />
-          <div className="flex-1 flex flex-col gap-2.5">
-            <BreakdownBar label="Activity" value={detail?.score_breakdown?.activity ?? breakdown.activity} maxPts={35} />
-            <BreakdownBar label="Success Rate" value={detail?.score_breakdown?.success_rate ?? breakdown.success_rate} maxPts={30} />
-            <BreakdownBar label="Balance" value={detail?.score_breakdown?.balance ?? breakdown.balance} maxPts={25} />
-            <BreakdownBar label="Recency" value={detail?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
-          </div>
-        </div>
-
-        {/* Balance history chart */}
-        {sparkData.length >= 2 && (
-          <div className="mt-4">
-            <div className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Balance History</div>
-            <ResponsiveContainer width="100%" height={100}>
-              <AreaChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-                <defs>
-                  <linearGradient id="walletGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={trendColor} stopOpacity={0.2} />
-                    <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5}
-                  fill="url(#walletGrad)" dot={false} />
-                <Tooltip
-                  contentStyle={{ background: '#141418', border: '1px solid #28283A', borderRadius: '6px', padding: '6px 10px', fontSize: '11px' }}
-                  formatter={(v) => [`${Number(v).toFixed(4)} ETH`, 'Balance']}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-          </TextureCardContent>
-        </TextureCard>
+      {/* Tabs */}
+      <div className="flex-shrink-0 flex gap-1 px-4 py-2 border-b border-border-subtle">
+        <TabBtn active={tab === 'overview'}     onClick={() => setTab('overview')}>Overview</TabBtn>
+        <TabBtn active={tab === 'performance'}  onClick={() => setTab('performance')}>2026 Chart</TabBtn>
+        <TabBtn active={tab === 'activity'}     onClick={() => setTab('activity')}>Activity</TabBtn>
       </div>
 
-      {/* Scrollable AI analysis */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-        <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-3">AI Analysis</div>
+      {/* Tab body */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <SignalPill signal={detail.signal || 'NEUTRAL'} />
-          {detail.last_scanned && (
-            <span className="text-[10px] text-text-muted font-mono">
-              Updated {new Date(detail.last_scanned).toLocaleDateString()}
-            </span>
-          )}
-        </div>
+        {/* ── OVERVIEW TAB ── */}
+        {tab === 'overview' && (
+          <div className="px-5 py-4 space-y-4">
 
-        <p className="text-[12px] text-text-secondary mt-2 leading-[1.6]">
-          {analysis.signal_reason || detail.signal_reason || 'Awaiting AI analysis. Run a scan to generate insights.'}
-        </p>
+            {/* Score card */}
+            <TextureCard>
+              <TextureCardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] uppercase tracking-[1px] text-text-muted">Performance Score</span>
+                  <GradeBadge grade={grade} />
+                </div>
+                <div className="flex gap-5 items-start">
+                  <ScoreRing score={score} size={68} />
+                  <div className="flex-1 flex flex-col gap-2.5 pt-1">
+                    {V4_BREAKDOWN.map(({ key, label, max }) => (
+                      <BreakdownBar
+                        key={key}
+                        label={label}
+                        value={bd[key] ?? 0}
+                        max={max}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </TextureCardContent>
+            </TextureCard>
 
-        {analysis.activity_summary && (
-          <p className="text-[12px] text-text-secondary leading-[1.6] mt-3">
-            {analysis.activity_summary}
-          </p>
-        )}
+            {/* Signal + AI analysis */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-2">AI Analysis</div>
+              <div className="flex items-center gap-2 mb-2">
+                <SignalPill signal={detail.signal || 'NEUTRAL'} />
+                <div className="flex-shrink-0 mt-0.5"><RiskBadge level={risk} /></div>
+                {detail.last_scanned && (
+                  <span className="text-[10px] text-text-muted font-mono ml-auto">
+                    {new Date(detail.last_scanned).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
 
-        {analysis.key_insight && (
-          <TextureCard className="mt-3">
-            <TextureCardContent className="p-4 border-l-2 border-l-green">
-            <div className="text-[10px] text-green uppercase tracking-[1px] mb-1.5">💡 Key insight</div>
-            <p className="text-[12px] text-text-secondary leading-[1.6]">
-              {analysis.key_insight}
-            </p>
-            </TextureCardContent>
-          </TextureCard>
-        )}
+              <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
+                {analysis.signal_reason || detail.signal_reason || 'Awaiting AI analysis — rescan this wallet to generate insights.'}
+              </p>
 
-        <div className="mt-3 flex items-start gap-2">
-          <div className="flex-shrink-0 mt-0.5">
-            <RiskBadge level={risk} />
+              {analysis.activity_summary && (
+                <p className="text-[12px] text-text-secondary leading-[1.75] mt-2 break-words">
+                  {analysis.activity_summary}
+                </p>
+              )}
+
+              {analysis.key_insight && (
+                <TextureCard className="mt-3">
+                  <TextureCardContent className="p-3 border-l-2 border-l-green">
+                    <div className="text-[10px] text-green uppercase tracking-[1px] mb-1">Key Insight</div>
+                    <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
+                      {analysis.key_insight}
+                    </p>
+                  </TextureCardContent>
+                </TextureCard>
+              )}
+
+              {analysis.risk_reason && (
+                <p className="text-[11px] text-text-muted leading-[1.65] mt-2 break-words">
+                  {analysis.risk_reason}
+                </p>
+              )}
+            </div>
+
+            {/* Add tag */}
+            <div>
+              <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-2">Your Labels</div>
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {userTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 bg-bg-elevated border border-border-default rounded-full px-2 py-0.5 text-[10px] text-text-secondary cursor-pointer hover:border-red/50 hover:text-red transition-colors"
+                    onClick={() => {
+                      const next = userTags.filter((t) => t !== tag);
+                      setUserTags(next);
+                      saveUserTags(detail.address, next);
+                    }}
+                  >
+                    {tag} ×
+                  </span>
+                ))}
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const t = newTag.trim().toLowerCase();
+                  if (t && !userTags.includes(t)) {
+                    const next = [...userTags, t];
+                    setUserTags(next);
+                    saveUserTags(detail.address, next);
+                  }
+                  setNewTag('');
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add label…"
+                  className="flex-1 bg-bg-elevated border border-border-default rounded-lg px-2.5 py-1.5 text-[11px] text-text-primary placeholder:text-text-muted outline-none focus:border-blue/50"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-bg-elevated border border-border-default rounded-lg text-[11px] text-text-secondary hover:border-border-subtle transition-colors"
+                >
+                  Add
+                </button>
+              </form>
+            </div>
+
           </div>
-          <span className="text-[11px] text-text-muted leading-[1.5]">
-            {analysis.risk_reason || 'Risk profile inferred from transaction patterns.'}
-          </span>
-        </div>
+        )}
 
-        {analysisTags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3 pb-2">
-            {analysisTags.map((tag) => (
-              <span key={tag} className="text-[10px] bg-bg-elevated border border-border-default rounded px-1.5 py-0.5 text-text-muted">
-                {tag}
-              </span>
-            ))}
+        {/* ── PERFORMANCE TAB ── */}
+        {tab === 'performance' && (
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[13px] font-semibold text-text-primary">2026 Balance History</div>
+              {ytdPct != null && (
+                <span className={`text-[13px] font-mono font-bold ${ytdPct >= 0 ? 'text-green' : 'text-red'}`}>
+                  {ytdPct >= 0 ? '▲' : '▼'} {Math.abs(ytdPct).toFixed(1)}% YTD
+                </span>
+              )}
+            </div>
+
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <Spinner size="md" />
+                <span className="ml-2 text-[12px] text-text-muted">Loading chart data…</span>
+              </div>
+            )}
+
+            {!loading && sparkData.length < 2 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="text-[28px] mb-2">📈</div>
+                <div className="text-[13px] font-medium text-text-secondary mb-1">No 2026 history yet</div>
+                <p className="text-[12px] text-text-muted max-w-[260px] leading-[1.6]">
+                  Rescan this wallet to compute its YTD balance history from on-chain transactions.
+                </p>
+                <button
+                  type="button"
+                  onClick={onRescan}
+                  className="mt-4 px-4 py-2 bg-bg-elevated border border-border-default rounded-xl text-[12px] text-text-secondary hover:border-border-subtle transition-colors"
+                >
+                  Rescan wallet
+                </button>
+              </div>
+            )}
+
+            {!loading && sparkData.length >= 2 && (
+              <div className="rounded-xl border border-border-subtle bg-bg-elevated p-3">
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={sparkData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="ytdGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={trendColor} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#28283A" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 9, fill: '#666' }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.floor(sparkData.length / 6)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: '#666' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${Number(v).toFixed(1)}`}
+                      width={38}
+                    />
+                    <Tooltip content={<CustomYtdTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      stroke={trendColor}
+                      strokeWidth={1.5}
+                      fill="url(#ytdGrad)"
+                      dot={false}
+                      activeDot={{ r: 3, fill: trendColor }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+
+                {/* Min / Max callouts */}
+                {(() => {
+                  const vals = sparkData.map((d) => d.balance);
+                  const minV = Math.min(...vals);
+                  const maxV = Math.max(...vals);
+                  return (
+                    <div className="flex gap-3 mt-3 pt-3 border-t border-border-subtle">
+                      <div className="flex-1 text-center">
+                        <div className="text-[10px] text-text-muted">Peak</div>
+                        <div className="text-[12px] font-mono font-medium text-green">{maxV.toFixed(2)} ETH</div>
+                      </div>
+                      <div className="w-px bg-border-subtle" />
+                      <div className="flex-1 text-center">
+                        <div className="text-[10px] text-text-muted">Low</div>
+                        <div className="text-[12px] font-mono font-medium text-red">{minV.toFixed(2)} ETH</div>
+                      </div>
+                      <div className="w-px bg-border-subtle" />
+                      <div className="flex-1 text-center">
+                        <div className="text-[10px] text-text-muted">Now</div>
+                        <div className="text-[12px] font-mono font-medium text-text-primary">{(sparkData[sparkData.length - 1]?.balance ?? 0).toFixed(2)} ETH</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ACTIVITY TAB ── */}
+        {tab === 'activity' && (
+          <div className="px-5 py-4">
+            <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-3">
+              Recent Transactions
+            </div>
+            {recentTxs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="text-[28px] mb-2">🔍</div>
+                <div className="text-[13px] font-medium text-text-secondary mb-1">No transactions loaded</div>
+                <p className="text-[12px] text-text-muted max-w-[240px] leading-[1.6]">
+                  Rescan this wallet to fetch its latest on-chain activity.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {recentTxs.slice(0, 20).map((tx) => (
+                  <a
+                    key={tx.hash}
+                    href={`https://etherscan.io/tx/${tx.hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-bg-elevated/40 px-3 py-2.5 hover:border-border-default hover:bg-bg-elevated transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${tx.direction === 'in' ? 'bg-green/15 text-green' : 'bg-red/15 text-red'}`}>
+                        {tx.direction === 'in' ? '↓' : '↑'}
+                      </div>
+                      <div className="min-w-0">
+                        <div className={`text-[12px] font-mono font-medium ${tx.direction === 'in' ? 'text-green' : 'text-red'}`}>
+                          {tx.direction === 'in' ? '+' : '-'}{Number(tx.value || 0).toFixed(4)} {tx.value_symbol || 'ETH'}
+                        </div>
+                        <div className="text-[10px] text-text-muted truncate">
+                          {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : '—'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <span className="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors">
+                        {tx.status || 'ok'}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex-shrink-0 px-5 py-4 bg-bg-surface border-t border-border-subtle">
-        <Button variant="primary" fullWidth className="mb-2" onClick={() => setTradeOpen(true)}>
+      <div className="flex-shrink-0 px-5 py-4 bg-bg-surface border-t border-border-subtle space-y-2">
+        <Button variant="primary" fullWidth onClick={() => setTradeOpen(true)}>
           ⚡ Trade
         </Button>
         <Button variant="ghost" fullWidth onClick={onRescan}>Rescan wallet</Button>
         <Button
           variant="danger"
           fullWidth
-          className="mt-2"
           disabled={removing}
           onClick={handleRemove}
         >
-          {removing ? <><Spinner size="sm" /> Removing...</> : 'Remove from watchlist'}
+          {removing ? <><Spinner size="sm" /> Removing…</> : 'Remove from watchlist'}
         </Button>
       </div>
 

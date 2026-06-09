@@ -1,3 +1,5 @@
+import { apiFetch } from './apiClient';
+
 // ── Market Data (CoinGecko free tier) ──────────
 export const api = {
   getEthPrice: () =>
@@ -56,4 +58,33 @@ export const api = {
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/large-trades`)
       .then((r) => r.json())
       .then((body) => body.data?.trades || []),
+
+  getCopyTradingTop: (opts = {}) => {
+    const {
+      limit = 50,
+      sort = 'copy_score',
+      qualifiedOnly = true,
+    } = opts;
+    const params = new URLSearchParams({
+      limit: String(limit),
+      sort,
+      qualified_only: String(qualifiedOnly),
+    });
+    return fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/top?${params}`)
+      .then((r) => r.json())
+      .then((body) => body.data || { wallets: [], count: 0 });
+  },
+
+  getCopyTrader: (address) =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/${address}`)
+      .then((r) => r.json())
+      .then((body) => (body.success ? body.data?.wallet : null)),
+
+  trackCopyTrader: (address) =>
+    apiFetch(`/api/copy-trading/${address}/track`, { method: 'POST', timeoutMs: 90000 }),
+
+  getLatestTransactions: (limit = 12) =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/transactions/latest?limit=${limit}`)
+      .then((r) => r.json())
+      .then((body) => body.data?.transactions || []),
 };

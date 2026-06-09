@@ -1,41 +1,75 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { apiFetch, getApiBase } from '../lib/apiClient';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const WATCHLIST_CACHE = 'sentinel-watchlist-v3';
+const CACHE_TTL_MS = 120 * 1000;
 
-async function parseResponse(res) {
-  const body = await res.json();
-  if (!body.success) {
-    const msg = body.error?.message || 'Request failed';
-    throw new Error(msg);
+function readWatchlistCache() {
+  try {
+    const raw = sessionStorage.getItem(WATCHLIST_CACHE);
+    if (!raw) return null;
+    const { ts, wallets } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL_MS) return null;
+    return wallets;
+  } catch {
+    return null;
   }
-  return body.data;
 }
 
-export function useWatchlist() {
-  const [wallets, setWallets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function writeWatchlistCache(wallets) {
+  try {
+    sessionStorage.setItem(WATCHLIST_CACHE, JSON.stringify({ ts: Date.now(), wallets }));
+  } catch { /* quota */ }
+}
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
+export function useWatchlist({ enabled = true } = {}) {
+  const [wallets, setWallets] = useState([]);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState(null);
+  const fetchedRef = useRef(false);
+
+  const refetch = useCallback(async (opts = {}) => {
+    if (!enabled) return;
+    const silent = opts.silent;
+    const cached = readWatchlistCache();
+
+    if (cached?.length && !silent) {
+      setWallets(cached);
+      setLoading(false);
+    } else if (!silent) {
+      setLoading(true);
+    }
     setError(null);
+
     try {
-      const res = await fetch(`${API_BASE}/api/watchlist?limit=500`);
-      const data = await parseResponse(res);
-      setWallets(data.wallets || []);
+      // Fast path: no YTD tx fetch (avoids Supabase timeout). YTD loads on wallet detail open.
+      const body = await apiFetch('/api/watchlist?limit=100&include_ytd=false', { timeoutMs: 20000 });
+      if (!body.success) {
+        throw new Error(body.error?.message || 'Failed to load watchlist');
+      }
+      const list = body.data?.wallets || [];
+      setWallets(list);
+      writeWatchlistCache(list);
+      fetchedRef.current = true;
     } catch (e) {
-      setError(e.message);
-      setWallets([]);
+      if (!cached?.length) {
+        setError(e.message);
+        setWallets([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     refetch();
-  }, [refetch]);
+  }, [enabled, refetch]);
 
-  return { wallets, loading, error, refetch };
+  return { wallets, loading, error, refetch, apiBase: getApiBase() };
 }
 
 export function useScanWallet() {
@@ -51,16 +85,17 @@ export function useScanWallet() {
     setActiveAddress(address);
     setStage('fetching_onchain');
     try {
-      const res = await fetch(`${API_BASE}/api/scan`, {
+      const body = await apiFetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address, label }),
+        timeoutMs: 120000,
       });
       setStage('analyzing');
-      const data = await parseResponse(res);
+      if (!body.success) throw new Error(body.error?.message || 'Scan failed');
       setStage('complete');
-      setResult(data);
-      return data;
+      setResult(body.data);
+      return body.data;
     } catch (e) {
       setStage('error');
       setError(e.message);
@@ -90,15 +125,13 @@ export function useIntelligence() {
       setLoading(true);
       setError(null);
       try {
-        const [summaryRes, signalsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/intelligence/summary`),
-          fetch(`${API_BASE}/api/intelligence/signals`),
+        const [summaryBody, signalsBody] = await Promise.all([
+          apiFetch('/api/intelligence/summary', { timeoutMs: 30000 }),
+          apiFetch('/api/intelligence/signals', { timeoutMs: 15000 }),
         ]);
-        const summaryData = await parseResponse(summaryRes);
-        const signalsData = await parseResponse(signalsRes);
         if (!cancelled) {
-          setSummary(summaryData.summary);
-          setSignals(signalsData.signals || []);
+          setSummary(summaryBody.data?.summary ?? summaryBody.summary);
+          setSignals(signalsBody.data?.signals || signalsBody.signals || []);
         }
       } catch (e) {
         if (!cancelled) setError(e.message);
