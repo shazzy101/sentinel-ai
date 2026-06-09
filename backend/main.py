@@ -572,7 +572,6 @@ async def get_watchlist(
                 "total_in_db": total_in_db,
                 "note": "No wallets in database — run backend/scripts/ingest_wallets.py to seed",
             })
-        _debug_log_watchlist(wallets, total_in_db, smart_only, fetch_limit)
         return success({
             "wallets": wallets,
             "count": len(wallets),
@@ -581,19 +580,6 @@ async def get_watchlist(
         })
     except Exception as e:
         return error("DB_ERROR", "Failed to fetch watchlist", status_code=500, details={"reason": str(e)})
-
-
-def _debug_log_watchlist(wallets: list, total_in_db: int, smart_only: bool, fetch_limit: int):
-    # #region agent log
-    try:
-        import json as _json
-        exchange_kw = ("binance", "coinbase", "kraken", "kucoin", "okx", "crypto.com", "gemini", "bitstamp", "bittrex", "huobi", "gate.io", "poloniex", "bitfinex", "bithumb", "coinone")
-        smart_count = sum(1 for w in wallets if (w.get("score") or 0) > 55 and not any(k in (w.get("label") or "").lower() for k in exchange_kw))
-        with open("/Users/shazaibamlani/Sentinel/.cursor/debug-9dc37e.log", "a") as _f:
-            _f.write(_json.dumps({"sessionId": "9dc37e", "hypothesisId": "H1-H5", "location": "main.py:get_watchlist", "message": "watchlist_response", "data": {"returned": len(wallets), "total_in_db": total_in_db, "smart_only_param": smart_only, "fetch_limit": fetch_limit, "smart_pass_count": smart_count, "top_scores": [(w.get("label"), w.get("score")) for w in wallets[:5]]}, "timestamp": int(__import__("time").time() * 1000)}) + "\n")
-    except Exception:
-        pass
-    # #endregion
 
 
 @app.delete("/api/watchlist/{address}")

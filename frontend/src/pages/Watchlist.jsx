@@ -176,13 +176,6 @@ export default function WatchlistPage() {
     })
     .slice(0, showTop100 ? 100 : undefined), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly, showTop100]);
 
-  // #region agent log
-  useEffect(() => {
-    const smartPass = wallets.filter((w) => !isExchangeWallet(w) && (w.score ?? 0) >= 40);
-    fetch('http://127.0.0.1:7399/ingest/432bc0e8-623d-4115-8a69-0cd7624710ad',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dc37e'},body:JSON.stringify({sessionId:'9dc37e',hypothesisId:'H1-H2',location:'Watchlist.jsx:filteredWallets',message:'frontend_filter_state',data:{apiWalletCount:wallets.length,filteredCount:filteredWallets.length,smartMoneyOnly,showTop100,searchQuery,signalFilter,sortBy,smartPassCount:smartPass.length,smartPassLabels:smartPass.map(w=>w.label)},timestamp:Date.now()})}).catch(()=>{});
-  }, [wallets, filteredWallets, smartMoneyOnly, showTop100, searchQuery, signalFilter, sortBy]);
-  // #endregion
-
   // Keep selected wallet in sync after refetch
   useEffect(() => {
     if (!selectedWallet?.address) return;
