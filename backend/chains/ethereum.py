@@ -63,7 +63,7 @@ async def get_eth_balance(address: str) -> float:
         raise EtherscanError("ETHERSCAN_HTTP_ERROR", str(e), {"address": address}) from e
 
 
-async def get_eth_transactions(address: str, limit: int = 10, days: Optional[int] = None) -> list[dict]:
+async def get_eth_transactions(address: str, limit: int = 50, days: Optional[int] = None) -> list[dict]:
     """
     Fetch recent ETH transactions. Returns normalized list.
     When days is set, paginates until history older than cutoff or no more results.
@@ -221,6 +221,82 @@ async def discover_whale_addresses(limit: int = 500) -> list[dict]:
         await asyncio.sleep(0.3)
 
     return discovered
+
+
+async def get_eth_internal_transactions(address: str, limit: int = 20) -> list[dict]:
+    """
+    Fetch internal transactions (DeFi contract calls).
+    More meaningful than regular ETH transfers for smart money analysis.
+    """
+    params = {
+        "chainid": "1",
+        "module": "account",
+        "action": "txlistinternal",
+        "address": address,
+        "startblock": 0,
+        "endblock": 99999999,
+        "page": 1,
+        "offset": limit,
+        "sort": "desc",
+        "apikey": _get_api_key(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(ETHERSCAN_BASE, params=params)
+            data = resp.json()
+            if data.get("status") == "1":
+                return data.get("result", [])
+    except Exception as e:
+        print(f"[ETH] Internal tx error: {e}")
+    return []
+
+
+async def get_eth_token_transfers(address: str, limit: int = 20) -> list[dict]:
+    """
+    Fetch ERC-20 token transfers.
+    Stablecoin + DeFi token flows reveal trading intent.
+    """
+    params = {
+        "chainid": "1",
+        "module": "account",
+        "action": "tokentx",
+        "address": address,
+        "page": 1,
+        "offset": limit,
+        "sort": "desc",
+        "apikey": _get_api_key(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(ETHERSCAN_BASE, params=params)
+            data = resp.json()
+            if data.get("status") == "1":
+                return [
+                    {
+                        "hash": tx.get("hash"),
+                        "token_name": tx.get("tokenName"),
+                        "token_symbol": tx.get("tokenSymbol"),
+                        "value": int(tx.get("value", 0)) / (
+                            10 ** int(tx.get("tokenDecimal", 18))
+                        ),
+                        "from_addr": tx.get("from"),
+                        "to_addr": tx.get("to"),
+                        "direction": "in" if (
+                            tx.get("to", "").lower() == address.lower()
+                        ) else "out",
+                        "timestamp": datetime.fromtimestamp(
+                            int(tx.get("timeStamp", 0))
+                        ).isoformat(),
+                        "timestamp_unix": int(tx.get("timeStamp", 0)),
+                        "chain": "ethereum",
+                        "type": "token_transfer",
+                        "status": "success",
+                    }
+                    for tx in data.get("result", [])
+                ]
+    except Exception as e:
+        print(f"[ETH] Token transfer error: {e}")
+    return []
 
 
 def _normalize_eth_tx(raw: dict, wallet_address: str) -> dict:

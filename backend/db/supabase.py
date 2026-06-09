@@ -10,6 +10,7 @@ Setup:
 import config  # noqa: F401 — load .env before reading Supabase credentials
 
 import os
+from datetime import datetime, timezone
 from functools import lru_cache
 
 try:
@@ -49,6 +50,58 @@ except Exception:
             return R()
 
     supabase_client = _MockClient()
+
+
+# ─────────────────────────────────────────
+# ANALYSIS CACHE HELPERS
+# ─────────────────────────────────────────
+
+async def get_cached_analysis(wallet_address: str) -> dict:
+    """Return cached analysis if less than 6 hours old, else None."""
+    try:
+        result = (
+            supabase_client.table("analyses")
+            .select("*")
+            .eq("wallet_address", wallet_address)
+            .order("generated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            return None
+        cached = result.data[0]
+        generated_at = datetime.fromisoformat(
+            cached["generated_at"].replace("Z", "+00:00")
+        )
+        age_hours = (
+            datetime.now(timezone.utc) - generated_at
+        ).total_seconds() / 3600
+        if age_hours < 6:
+            return cached
+        return None
+    except Exception:
+        return None
+
+
+async def save_analysis_cache(wallet_address: str, analysis: dict) -> None:
+    """Save analysis result to cache keyed by wallet_address."""
+    try:
+        data = {
+            "wallet_address": wallet_address,
+            "signal": analysis.get("signal"),
+            "signal_reason": analysis.get("signal_reason"),
+            "activity_summary": analysis.get("activity_summary"),
+            "key_insight": analysis.get("key_insight"),
+            "risk_level": analysis.get("risk_level"),
+            "risk_reason": analysis.get("risk_reason"),
+            "tags": analysis.get("tags", []),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        supabase_client.table("analyses").upsert(
+            data, on_conflict="wallet_address"
+        ).execute()
+    except Exception as e:
+        print(f"[Cache] Save failed: {e}")
 
 
 # ─────────────────────────────────────────

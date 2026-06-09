@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ai.analyst import analyze_wallet, get_market_summary, init_analyst
-from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, discover_whale_addresses
+from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
 from db.supabase import supabase_client
 from responses import error, success
 from performance import compute_ytd_growth
@@ -342,6 +342,7 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
             transactions=transactions[:50],
             balance=balance,
             chain=chain,
+            address=address,
         )
         supabase_client.table("analyses").insert({
             "wallet_id": wallet_id,
@@ -395,15 +396,22 @@ async def scan_wallet(request: WalletScanRequest):
     label = request.label or f"{chain[:3].upper()}:{address[:8]}..."
 
     try:
-        # Keep UI scans responsive: use a shorter lookback in interactive flows.
-        balance, transactions = await fetch_wallet_data(address, chain, tx_limit=180)
+        # Fetch balance, transactions, and token transfers concurrently
+        balance, transactions, token_transfers = await asyncio.gather(
+            get_eth_balance(address),
+            get_eth_transactions(address, limit=50),
+            get_eth_token_transfers(address, limit=20),
+        )
+        all_transactions = transactions + token_transfers
+
         analysis = await analyze_wallet(
             wallet_name=label,
-            transactions=transactions,
+            transactions=transactions[:10],  # Regular txs for AI (token transfers confuse prompt)
             balance=balance,
             chain=chain,
+            address=address,
         )
-        score_result = score_wallet(transactions, balance, chain, address=address, label=label)
+        score_result = score_wallet(all_transactions, balance, chain, address=address, label=label)
         wallet_payload = {
             "address": address,
             "label": label,
@@ -458,6 +466,38 @@ async def scan_wallet(request: WalletScanRequest):
 @app.get("/api/scan/{address}")
 async def scan_wallet_get(address: str, label: Optional[str] = None):
     return await scan_wallet(WalletScanRequest(address=address, label=label))
+
+
+@app.post("/api/scan/{address}/refresh")
+async def force_refresh_scan(address: str):
+    """Force a fresh Claude analysis for a wallet, bypassing the 6-hour cache."""
+    try:
+        chain = detect_chain(address)
+    except ValueError as e:
+        return error("INVALID_ADDRESS", str(e), status_code=400)
+
+    wallet_row = (
+        supabase_client.table("wallets")
+        .select("label, chain, tags")
+        .eq("address", address)
+        .execute()
+    )
+    label = wallet_row.data[0]["label"] if wallet_row.data else f"ETH:{address[:8]}..."
+    chain = wallet_row.data[0].get("chain", "ethereum") if wallet_row.data else chain
+
+    try:
+        balance, transactions = await fetch_wallet_data(address, chain, tx_limit=50)
+        analysis = await analyze_wallet(
+            wallet_name=label,
+            transactions=transactions,
+            balance=balance,
+            chain=chain,
+            address=address,
+            force_refresh=True,
+        )
+        return success({"analysis": analysis, "address": address, "force_refreshed": True})
+    except Exception as e:
+        return error("REFRESH_FAILED", str(e), status_code=500)
 
 
 # ─────────────────────────────────────────

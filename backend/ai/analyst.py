@@ -54,12 +54,30 @@ async def analyze_wallet(
     transactions: list[dict],
     balance: float,
     chain: str,
+    address: str = None,
+    force_refresh: bool = False,
 ) -> dict:
     """
     Run Claude analysis on a wallet's recent activity.
     Returns structured dict with signal, insights, risk.
+    Checks cache first (6-hour TTL) unless force_refresh=True.
     """
-    chain_symbol = "ETH"
+    # Check cache first (skip if force_refresh)
+    if address and not force_refresh:
+        from db.supabase import get_cached_analysis
+        cached = await get_cached_analysis(address)
+        if cached:
+            print(f"[Cache HIT] {wallet_name} — skipping Claude API call")
+            return {
+                "signal": cached.get("signal", "NEUTRAL"),
+                "signal_reason": cached.get("signal_reason", ""),
+                "activity_summary": cached.get("activity_summary", ""),
+                "key_insight": cached.get("key_insight", ""),
+                "risk_level": cached.get("risk_level", "MEDIUM"),
+                "risk_reason": cached.get("risk_reason", ""),
+                "tags": cached.get("tags", []),
+                "cached": True,
+            }
 
     tx_lines = []
     for tx in transactions[:5]:
@@ -74,34 +92,31 @@ async def analyze_wallet(
 
     tx_text = "\n".join(tx_lines) if tx_lines else "No parseable transactions."
 
-    prompt = f"""You are a senior on-chain analyst at a crypto hedge fund. You track whale wallets to find alpha for your traders.
+    prompt = f"""Analyze this Ethereum wallet for smart money signals.
 
-WALLET: {wallet_name}
-CHAIN: {chain.upper()}
-BALANCE: {balance:,.4f} {chain_symbol}
-RECENT ACTIVITY:
+Wallet: {wallet_name}
+Balance: {balance:.4f} ETH
+Recent transactions ({len(transactions)} total):
 {tx_text}
 
-Return a JSON object with exactly these fields:
+Return JSON only, no other text:
 {{
-  "activity_summary": "1-2 sentences describing what this wallet is doing",
-  "signal": "BULLISH" | "BEARISH" | "NEUTRAL",
-  "signal_reason": "One sentence explaining the signal",
-  "key_insight": "The most actionable thing a retail trader should know",
-  "risk_level": "LOW" | "MEDIUM" | "HIGH",
-  "risk_reason": "One sentence explaining the risk",
-  "tags": ["array", "of", "2-4", "descriptive", "tags"]
-}}
-
-Return ONLY valid JSON. No markdown, no explanation."""
+  "signal": "BULLISH"|"BEARISH"|"NEUTRAL",
+  "signal_reason": "one sentence max",
+  "activity_summary": "one sentence max",
+  "key_insight": "one actionable sentence for traders",
+  "risk_level": "LOW"|"MEDIUM"|"HIGH",
+  "risk_reason": "one sentence max",
+  "tags": ["2-3 tags max"]
+}}"""
 
     try:
-        text = await _call_claude(prompt, max_tokens=600)
-        return _parse_json_response(text)
+        text = await _call_claude(prompt, max_tokens=300)
+        result = _parse_json_response(text)
     except RuntimeError:
         raise
     except Exception as e:
-        return {
+        result = {
             "activity_summary": f"Analysis unavailable: {str(e)[:80]}",
             "signal": "NEUTRAL",
             "signal_reason": "Insufficient data",
@@ -111,12 +126,29 @@ Return ONLY valid JSON. No markdown, no explanation."""
             "tags": ["error"],
         }
 
+    # Save to cache before returning
+    if address and not force_refresh:
+        from db.supabase import save_analysis_cache
+        await save_analysis_cache(address, result)
+
+    return result
+
+
+_market_summary_cache: dict = {"data": None, "generated_at": None}
+
 
 async def get_market_summary(recent_transactions: list[dict]) -> dict:
     """
     Feed recent cross-wallet activity to Claude.
     Returns a market-wide intelligence summary.
+    Caches result for 2 hours to avoid redundant API calls.
     """
+    cache = _market_summary_cache
+    if cache["data"] and cache["generated_at"]:
+        age = (datetime.now(timezone.utc) - cache["generated_at"]).total_seconds()
+        if age < 7200:  # 2 hours
+            return cache["data"]
+
     if not recent_transactions:
         context = "No recent transaction data available."
     else:
@@ -145,11 +177,11 @@ Return ONLY valid JSON."""
 
     try:
         text = await _call_claude(prompt, max_tokens=500)
-        return _parse_json_response(text)
+        result = _parse_json_response(text)
     except RuntimeError:
         raise
     except Exception:
-        return {
+        result = {
             "headline": "Intelligence unavailable — check API keys.",
             "ethereum_outlook": "N/A",
             "flow_state": "NEUTRAL",
@@ -157,3 +189,7 @@ Return ONLY valid JSON."""
             "key_themes": [],
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    _market_summary_cache["data"] = result
+    _market_summary_cache["generated_at"] = datetime.now(timezone.utc)
+    return result
