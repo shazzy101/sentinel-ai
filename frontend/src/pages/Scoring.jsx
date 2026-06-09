@@ -165,17 +165,7 @@ export default function ScoringPage() {
 
   useEffect(() => { document.title = 'Scoring — Sentinel AI'; }, []);
 
-  if (loading) {
-    return (
-      <div className="h-full min-h-0 overflow-y-auto flex items-center justify-center">
-        <div className="flex items-center gap-3 text-text-muted text-[13px]">
-          <Spinner size="md" />
-          Loading scoring data...
-        </div>
-      </div>
-    );
-  }
-
+  // All derived values and hooks must be called unconditionally before any early return
   const sorted = [...wallets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const scored = sorted.filter((w) => (w.score ?? 0) > 0);
   const unscored = sorted.filter((w) => !(w.score ?? 0));
@@ -196,6 +186,17 @@ export default function ScoringPage() {
   for (const w of sorted) {
     const g = gradeFromScore(w.score ?? 0);
     byGrade[g]?.push(w);
+  }
+
+  if (loading) {
+    return (
+      <div className="h-full min-h-0 overflow-y-auto flex items-center justify-center">
+        <div className="flex items-center gap-3 text-text-muted text-[13px]">
+          <Spinner size="md" />
+          Loading scoring data...
+        </div>
+      </div>
+    );
   }
 
   return (

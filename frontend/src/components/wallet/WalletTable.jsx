@@ -98,7 +98,7 @@ export default function WalletTable({
   }
 
   return (
-    <GlassCard padding={false} className="h-full min-h-0 flex flex-col overflow-hidden">
+    <GlassCard padding={false} className="h-full min-h-0 overflow-hidden" innerClassName="flex flex-col h-full min-h-0">
       <div className="flex-shrink-0">
         <HeaderRow />
       </div>

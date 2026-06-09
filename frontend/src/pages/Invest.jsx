@@ -282,8 +282,7 @@ export default function InvestPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-        <h1 className="font-display text-[16px] font-bold text-text-primary">Invest</h1>
+      <div className="flex-shrink-0 flex items-center justify-end px-5 py-3 border-b border-border-subtle">
         {!wallet.isConnected ? (
           <MagneticButton type="button" onClick={wallet.connectWallet} disabled={wallet.connecting}
             className="text-[12px] px-3 py-1.5 border border-border-default rounded-lg text-text-secondary hover:bg-bg-elevated">

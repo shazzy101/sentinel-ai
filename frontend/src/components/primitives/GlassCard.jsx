@@ -10,6 +10,7 @@ import { motionTokens } from '@/design/motion';
 export default function GlassCard({
   children,
   className,
+  innerClassName,
   hover = true,
   spotlight = true,
   padding = true,
@@ -57,7 +58,7 @@ export default function GlassCard({
           }}
         />
       )}
-      <div className={cn('relative', padding && 'p-5')}>{children}</div>
+      <div className={cn('relative', padding && 'p-5', innerClassName)}>{children}</div>
     </Component>
   );
 }
