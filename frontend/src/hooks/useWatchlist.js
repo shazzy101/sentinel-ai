@@ -20,7 +20,7 @@ export function useWatchlist() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/watchlist`);
+      const res = await fetch(`${API_BASE}/api/watchlist?limit=500`);
       const data = await parseResponse(res);
       setWallets(data.wallets || []);
     } catch (e) {

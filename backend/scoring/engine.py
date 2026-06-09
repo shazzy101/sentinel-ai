@@ -1,8 +1,19 @@
 """
-Sentinel AI — Scoring Engine v3
-Real methodology for smart money wallets.
-Exchange wallets hard-capped at 30.
-Smart money scored on behavior, not balance size.
+Sentinel AI — Scoring Engine v4 "Find the Alpha"
+
+Philosophy: a high score means SMART TRADING BEHAVIOR, not raw size.
+An active mid-size trader out-ranks a dormant giant. Balance is a minor
+confidence factor (0-10), never the driver.
+
+Weights (total 100):
+  Recency      0-25   How recently active. Dormant whales sink hard.
+  Activity     0-25   Recent transaction frequency (in the fetched window).
+  DeFi engage  0-25   Contract calls + token-transfer diversity = real trading.
+  Success rate 0-15   % of transactions that succeeded.
+  Balance      0-10   Mild log-scaled confidence factor. Not penalizing.
+
+Known entities (exchanges, custodians, protocol contracts) are capped low —
+they have operational volume, not a trading signal.
 """
 
 from datetime import datetime, timezone
@@ -34,24 +45,42 @@ _EXCHANGE_ADDRESSES = {
     "0x1151314c646ce4e0efd76d1af4760ae66a9fe30f",   # Bitfinex 2
 }
 
+# Broad keyword set for named exchanges / custodians / protocols / infra.
+# Matches the seed-file "known-entity" tagging so they rank low consistently.
+_ENTITY_KEYWORDS = {
+    "binance", "coinbase", "kraken", "kucoin", "okx", "okex", "gemini", "bitfinex",
+    "gate", "bybit", "huobi", "htx", "bitmex", "bitstamp", "crypto.com", "ftx",
+    "upbit", "bithumb", "coinone", "poloniex", "hitbtc", "bitmart", "whitebit",
+    "bingx", "btcturk", "bitbank", "coincheck", "revolut", "bitflyer", "quadrigacx",
+    "luno", "korbit", "gopax", "probit", "latoken", "ascendex", "phemex", "deribit",
+    "nexo", "celsius", "blockfi", "bitvavo", "wazirx", "coindcx", "bitget", "lbank",
+    "mexc", "bitpanda", "robinhood",
+    "falconx", "bitgo", "cumberland", "wintermute", "jump", "b2c2", "genesis",
+    "circle", "paxos", "tether", "matrixport", "amber", "qcp", "galaxy", "fireblocks",
+    "copper", "anchorage", "ceffu", "sygnum", "withdrawdao",
+    "exchange", "hot wallet", "cold wallet", "mev bot", "deposit", "custody",
+    "wrapped", "bridge", "beacon", "staking", "vault", "router", "contract",
+    "treasury", "fund", "reserve", "multisig", "gnosis safe",
+}
 
-def _is_exchange(address: Optional[str], label: Optional[str]) -> bool:
-    """Returns True if wallet is a known exchange or custodian."""
+
+def _is_known_entity(address: Optional[str], label: Optional[str], hint: bool = False) -> bool:
+    """True if wallet is a known exchange/custodian/protocol — capped low."""
+    if hint:
+        return True
     if address and address.lower() in _EXCHANGE_ADDRESSES:
         return True
+    label_lower = (label or "").lower()
+    if ":" in (label or ""):  # "Linea: L1 Message Service" style protocol labels
+        return True
+    if any(kw in label_lower for kw in _ENTITY_KEYWORDS):
+        return True
+    # Defer to data.wallets if present (legacy detection)
     try:
         from data.wallets import is_exchange as label_check
         return label_check(label or "")
-    except ImportError:
-        # Fallback label check if data module not available
-        keywords = {
-            "binance", "coinbase", "kraken", "kucoin", "okx", "gemini",
-            "bitfinex", "gate.io", "bybit", "huobi", "bitmex", "bitstamp",
-            "crypto.com", "ftx", "upbit", "bithumb", "coinone",
-            "exchange", "hot wallet", "mev bot",
-        }
-        label_lower = (label or "").lower()
-        return any(kw in label_lower for kw in keywords)
+    except Exception:
+        return False
 
 
 def score_wallet(
@@ -60,81 +89,117 @@ def score_wallet(
     chain: str,
     address: str = None,
     label: str = None,
+    known_entity: bool = False,
 ) -> dict:
+    """Score a wallet 0-100 on trading-alpha behavior. See module docstring."""
 
-    is_exchange = _is_exchange(address, label)
-    if is_exchange:
-        return _exchange_result(label)
+    if _is_known_entity(address, label, hint=known_entity):
+        return _entity_result(label)
 
     if not transactions:
         return _empty_result()
 
+    now = datetime.now(timezone.utc)
     tx_count = len(transactions)
 
-    # ── ACTIVITY SCORE (0-35pts) ─────────────────────
-    # Rewards consistent activity. 10+ txs = full score.
-    if tx_count >= 10:
-        activity_score = 35
-    elif tx_count >= 5:
-        activity_score = round(20 + (tx_count - 5) * 3)
+    # ── RECENCY (0-25) ───────────────────────────────────────────────
+    # Dormant giants must sink below active traders. This is the heaviest
+    # behavioral lever after activity.
+    latest = _get_latest_timestamp(transactions)
+    days_since = (now - latest).days if latest else None
+    if days_since is None:
+        recency_score = 0
+    elif days_since <= 0:
+        recency_score = 25
+    elif days_since <= 1:
+        recency_score = 23
+    elif days_since <= 3:
+        recency_score = 20
+    elif days_since <= 7:
+        recency_score = 16
+    elif days_since <= 14:
+        recency_score = 12
+    elif days_since <= 30:
+        recency_score = 8
+    elif days_since <= 60:
+        recency_score = 4
+    elif days_since <= 90:
+        recency_score = 2
+    else:
+        recency_score = 0
+
+    # ── ACTIVITY (0-25) ──────────────────────────────────────────────
+    # Recent transaction frequency in the fetched window. Smooth scale so
+    # a steady trader (30-50 txns) reaches full marks without a giant needing
+    # thousands of operational transfers to win.
+    if tx_count >= 50:
+        activity_score = 25
+    elif tx_count >= 30:
+        activity_score = 22
+    elif tx_count >= 15:
+        activity_score = 18
+    elif tx_count >= 8:
+        activity_score = 13
+    elif tx_count >= 4:
+        activity_score = 8
     elif tx_count >= 1:
-        activity_score = round(5 + (tx_count - 1) * 3.75)
+        activity_score = 4
     else:
         activity_score = 0
 
-    # ── SUCCESS RATE (0-30pts) ───────────────────────
+    # ── DeFi ENGAGEMENT (0-25) ───────────────────────────────────────
+    # Real alpha interacts with DeFi: contract calls (methodId != 0x) and a
+    # diversity of token transfers. Passive holders / custodians score ~0 here,
+    # which is exactly how we separate traders from parked capital.
+    contract_calls = sum(
+        1 for t in transactions
+        if t.get("method_id") not in (None, "", "0x", "0x0")
+        or t.get("type") == "token_transfer"
+    )
+    token_symbols = {
+        t.get("token_symbol") for t in transactions
+        if t.get("type") == "token_transfer" and t.get("token_symbol")
+    }
+    token_diversity = len(token_symbols)
+
+    call_ratio = contract_calls / tx_count if tx_count else 0
+    engage_points = 0.0
+    engage_points += min(call_ratio * 18, 18)        # up to 18 for being DeFi-heavy
+    engage_points += min(token_diversity * 1.75, 7)  # up to 7 for trading many tokens
+    defi_score = round(min(engage_points, 25))
+
+    # ── SUCCESS RATE (0-15) ──────────────────────────────────────────
     successful = sum(
         1 for t in transactions
         if t.get("status") in ("success", "Success", "1", "finalized", "confirmed")
         or t.get("is_error") is False
         or t.get("isError") == "0"
     )
-    # If no status data available, assume success
     if successful == 0 and all(t.get("status") is None for t in transactions):
-        successful = tx_count
-
+        successful = tx_count  # no status data → assume success
     success_rate = successful / tx_count if tx_count else 0
-    success_score = round(success_rate * 30)
+    success_score = round(success_rate * 15)
 
-    # ── BALANCE SCORE (0-25pts) ──────────────────────
-    # Smart money sweet spot: 10-5000 ETH
-    if balance >= 50000:
-        balance_score = 5   # Too large — likely exchange
-    elif balance >= 5000:
-        balance_score = 20
+    # ── BALANCE (0-10) ───────────────────────────────────────────────
+    # Mild log-scaled confidence factor. Big is fine, not rewarded heavily,
+    # and never penalized. A whale gets at most 10 here — can't carry the score.
+    if balance >= 10000:
+        balance_score = 10
     elif balance >= 1000:
-        balance_score = 25  # Sweet spot
+        balance_score = 9
     elif balance >= 100:
-        balance_score = round(15 + (balance / 1000) * 10)
+        balance_score = 7
     elif balance >= 10:
-        balance_score = round(8 + (balance / 100) * 7)
+        balance_score = 5
     elif balance >= 1:
-        balance_score = round(3 + (balance / 10) * 5)
+        balance_score = 3
     elif balance >= 0.1:
-        balance_score = 2
+        balance_score = 1
     else:
         balance_score = 0
 
-    # ── RECENCY BONUS (0-10pts) ──────────────────────
-    recency_score = 0
-    latest = _get_latest_timestamp(transactions)
-    if latest:
-        days = (datetime.now(timezone.utc) - latest).days
-        if days == 0:
-            recency_score = 10
-        elif days <= 1:
-            recency_score = 9
-        elif days <= 3:
-            recency_score = 7
-        elif days <= 7:
-            recency_score = 5
-        elif days <= 14:
-            recency_score = 3
-        elif days <= 30:
-            recency_score = 1
-
     total = min(
-        activity_score + success_score + balance_score + recency_score,
+        activity_score + defi_score + recency_score + success_score + balance_score,
         100,
     )
     grade = _grade(total)
@@ -147,30 +212,35 @@ def score_wallet(
             "success_rate": success_score,
             "balance": balance_score,
             "recency": recency_score,
+            "defi": defi_score,
         },
-        "methodology": "v3",
+        "methodology": "v4_alpha",
         "win_rate": round(success_rate * 100, 1),
-        "last_active_days_ago": (
-            (datetime.now(timezone.utc) - latest).days if latest else None
-        ),
-        "summary": _summary(total, tx_count, success_rate, balance),
+        "defi_ratio": round(call_ratio * 100, 1),
+        "token_diversity": token_diversity,
+        "last_active_days_ago": days_since,
+        "summary": _summary(total, tx_count, success_rate, balance, days_since, defi_score),
         "is_exchange": False,
     }
 
 
-def _exchange_result(label: str) -> dict:
+def _entity_result(label: str) -> dict:
+    """Known exchange/custodian/protocol — operational volume, no trading signal."""
     return {
-        "score": 25,
+        "score": 20,
         "grade": "F",
         "breakdown": {
             "activity": 10,
-            "success_rate": 10,
-            "balance": 0,
-            "recency": 5,
+            "success_rate": 8,
+            "balance": 2,
+            "recency": 0,
+            "defi": 0,
         },
-        "methodology": "v3_exchange",
+        "methodology": "v4_entity",
         "win_rate": 0,
-        "summary": "Exchange/CEX hot wallet. Operational volume only, no trading signal.",
+        "defi_ratio": 0,
+        "token_diversity": 0,
+        "summary": "Known entity (exchange/custodian/protocol). Operational flow only — no alpha signal.",
         "is_exchange": True,
     }
 
@@ -184,27 +254,36 @@ def _empty_result() -> dict:
             "success_rate": 0,
             "balance": 0,
             "recency": 0,
+            "defi": 0,
         },
-        "methodology": "v3_no_data",
+        "methodology": "v4_no_data",
         "win_rate": 0,
+        "defi_ratio": 0,
+        "token_diversity": 0,
         "summary": "No transaction data available yet.",
         "is_exchange": False,
     }
 
 
 def _get_latest_timestamp(transactions: list) -> Optional[datetime]:
+    """Return the most recent transaction time across the list (not just [0])."""
+    latest: Optional[datetime] = None
     for tx in transactions:
-        ts_str = tx.get("timestamp")
+        dt = None
         ts_unix = tx.get("timestamp_unix")
+        ts_str = tx.get("timestamp")
         try:
-            if ts_str:
-                dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                return dt.replace(tzinfo=timezone.utc) if not dt.tzinfo else dt
-            elif ts_unix and int(ts_unix) > 0:
-                return datetime.fromtimestamp(int(ts_unix), tz=timezone.utc)
+            if ts_unix and int(ts_unix) > 0:
+                dt = datetime.fromtimestamp(int(ts_unix), tz=timezone.utc)
+            elif ts_str:
+                dt = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00"))
+                if not dt.tzinfo:
+                    dt = dt.replace(tzinfo=timezone.utc)
         except Exception:
             continue
-    return None
+        if dt and (latest is None or dt > latest):
+            latest = dt
+    return latest
 
 
 def _grade(score: int) -> str:
@@ -216,16 +295,23 @@ def _grade(score: int) -> str:
     return "F"
 
 
-def _summary(score: int, tx_count: int, win_rate: float, balance: float) -> str:
+def _summary(score: int, tx_count: int, win_rate: float, balance: float,
+             days_since: Optional[int], defi_score: int) -> str:
     win_pct = round(win_rate * 100)
     eth = f"{balance:,.2f} ETH"
+    active = (
+        "active today" if days_since is not None and days_since <= 1
+        else f"last active {days_since}d ago" if days_since is not None
+        else "activity unknown"
+    )
+    defi = "DeFi-active" if defi_score >= 12 else "low DeFi engagement"
     if score >= 80:
-        return (
-            f"High conviction wallet. {tx_count} recent transactions, "
-            f"{win_pct}% success rate, {eth} balance."
-        )
-    if score >= 60:
-        return f"Active smart money. {tx_count} transactions tracked, {win_pct}% success."
-    if score >= 40:
-        return f"Moderate activity. {tx_count} transactions, {eth} balance."
-    return f"Low activity or insufficient data. {tx_count} transactions recorded."
+        return (f"High-conviction alpha wallet — {active}, {tx_count} recent txns, "
+                f"{win_pct}% success, {defi}, {eth}.")
+    if score >= 65:
+        return f"Strong trader — {active}, {tx_count} txns tracked, {win_pct}% success, {defi}."
+    if score >= 50:
+        return f"Moderate activity — {active}, {tx_count} txns, {eth}."
+    if score >= 35:
+        return f"Light/dormant — {active}, {tx_count} txns recorded."
+    return f"Dormant or low-signal — {active}, {tx_count} txns, {eth}."

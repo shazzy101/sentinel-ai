@@ -66,7 +66,7 @@ export default function WatchlistPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
   const [sortBy, setSortBy] = useState('score');
-  const [smartMoneyOnly, setSmartMoneyOnly] = useState(true);
+  const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [showTop100, setShowTop100] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);

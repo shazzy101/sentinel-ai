@@ -23,17 +23,18 @@ function scoreTextClass(score) {
   return 'text-score-low';
 }
 
-// Scale raw points → 0-100 for bar rendering
+// Scale raw points → 0-100 for bar rendering (v4 alpha maxes)
 function scaleBreakdown(bd, score) {
   if (!bd) {
     const b = score;
-    return { activity: b, success_rate: b, balance: b, recency: b };
+    return { recency: b, activity: b, defi: b, success_rate: b, balance: b };
   }
   return {
-    activity:     Math.round(((bd.activity     ?? 0) / 35) * 100),
-    success_rate: Math.round(((bd.success_rate ?? 0) / 30) * 100),
-    balance:      Math.round(((bd.balance      ?? 0) / 25) * 100),
-    recency:      Math.round(((bd.recency      ?? 0) / 10) * 100),
+    recency:      Math.round(((bd.recency      ?? 0) / 25) * 100),
+    activity:     Math.round(((bd.activity     ?? 0) / 25) * 100),
+    defi:         Math.round(((bd.defi         ?? 0) / 25) * 100),
+    success_rate: Math.round(((bd.success_rate ?? 0) / 15) * 100),
+    balance:      Math.round(((bd.balance      ?? 0) / 10) * 100),
   };
 }
 
@@ -58,7 +59,7 @@ function ScoreRow({ wallet, rank, onSelect }) {
 
   return (
     <div
-      className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] items-center px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer"
+      className="grid grid-cols-[32px_minmax(0,1fr)_56px_240px_80px_100px] items-center px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors duration-100 cursor-pointer"
       onClick={() => onSelect?.(wallet)}
     >
       {/* Rank */}
@@ -75,13 +76,14 @@ function ScoreRow({ wallet, rank, onSelect }) {
       {/* Grade */}
       <div className="flex justify-center"><GradeBadge grade={grade} /></div>
 
-      {/* Breakdown bars — show raw points then visual bar */}
-      <div className="px-2 grid grid-cols-4 gap-1 items-end">
+      {/* Breakdown bars — show raw points then visual bar (v4: Rec/Act/DeFi/Suc/Bal) */}
+      <div className="px-2 grid grid-cols-5 gap-1 items-end">
         {[
+          { key: 'recency', val: bd.recency, raw: wallet.score_breakdown?.recency ?? 0 },
           { key: 'activity', val: bd.activity, raw: wallet.score_breakdown?.activity ?? 0 },
+          { key: 'defi', val: bd.defi, raw: wallet.score_breakdown?.defi ?? 0 },
           { key: 'success_rate', val: bd.success_rate, raw: wallet.score_breakdown?.success_rate ?? 0 },
           { key: 'balance', val: bd.balance, raw: wallet.score_breakdown?.balance ?? 0 },
-          { key: 'recency', val: bd.recency, raw: wallet.score_breakdown?.recency ?? 0 },
         ].map(({ key, val, raw }) => (
           <div key={key}>
             <div className="font-mono text-[12px] text-right text-text-secondary px-2 mb-0.5">{raw}</div>
@@ -140,12 +142,16 @@ function GradeSection({ grade, wallets, defaultOpen = false, onSelectWallet }) {
       {open && (
         <div className="bg-bg-card">
           {/* Sub-header */}
-          <div className="grid grid-cols-[32px_minmax(0,1fr)_56px_200px_80px_100px] px-5 py-2 text-[9px] uppercase tracking-[1.2px] text-text-muted border-b border-border-subtle">
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_56px_240px_80px_100px] px-5 py-2 text-[9px] uppercase tracking-[1.2px] text-text-muted border-b border-border-subtle">
             <div>#</div>
             <div>Wallet</div>
             <div className="text-center">Grade</div>
-            <div className="px-2 grid grid-cols-4 gap-1 text-center">
-              <div>Act</div><div>Suc</div><div>Bal</div><div>Rec</div>
+            <div className="px-2 grid grid-cols-5 gap-1 text-center">
+              <div title="Recency — how recently active">Rec</div>
+              <div title="Activity — recent transaction frequency">Act</div>
+              <div title="DeFi engagement — contract calls + token diversity">DeFi</div>
+              <div title="Success rate — % of transactions that succeeded">Suc</div>
+              <div title="Balance — mild confidence factor">Bal</div>
             </div>
             <div className="text-center">Score</div>
             <div className="text-center">Signal</div>
@@ -242,13 +248,14 @@ export default function ScoringPage() {
         {/* Methodology card */}
         <TextureCard className="mb-6">
           <TextureCardContent className="p-4">
-          <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-3">Score methodology — v3 strict</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-3">Score methodology — v4 “find the alpha”</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              { label: 'Activity', pts: '35pts', desc: '100+ txs for max score. Logarithmic scale.' },
-              { label: 'Success Rate', pts: '30pts', desc: 'Only above 50% baseline gets credit.' },
-              { label: 'Balance Weight', pts: '25pts', desc: '50–1000 ETH smart money range. Exchanges = 0.' },
-              { label: 'Recency Bonus', pts: '10pts', desc: 'Active in last 48h = full bonus.' },
+              { label: 'Recency', pts: '25pts', desc: 'How recently active. Dormant whales sink hard.' },
+              { label: 'Activity', pts: '25pts', desc: 'Recent transaction frequency. ~50 txns = max.' },
+              { label: 'DeFi Engagement', pts: '25pts', desc: 'Contract calls + token diversity = real trading.' },
+              { label: 'Success Rate', pts: '15pts', desc: '% of transactions that succeeded.' },
+              { label: 'Balance', pts: '10pts', desc: 'Mild confidence factor. Never the driver.' },
             ].map(({ label, pts, desc }) => (
               <div key={label}>
                 <div className="flex items-center gap-2 mb-1">

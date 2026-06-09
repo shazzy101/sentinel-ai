@@ -290,7 +290,14 @@ def fetch_latest_analyses(wallet_ids: list[str], chunk_size: int = 40) -> dict[s
 
 async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[str] | None = None):
     balance, transactions = await fetch_wallet_data(address, chain)
-    score_result = score_wallet(transactions, balance, chain, address=address, label=label)
+    # Token transfers feed the DeFi-engagement signal in the v4 scoring engine.
+    try:
+        token_transfers = await get_eth_token_transfers(address, limit=30)
+    except Exception:
+        token_transfers = []
+    score_result = score_wallet(
+        transactions + token_transfers, balance, chain, address=address, label=label
+    )
 
     wallet_record = {
         "address": address,
