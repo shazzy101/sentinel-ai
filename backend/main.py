@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
 from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
 from db.supabase import supabase_client
+from integrations import dune
 from responses import error, success
 from performance import compute_ytd_growth
 from scoring.engine import score_wallet
@@ -140,6 +141,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_top())
     asyncio.create_task(_cron_full())
     asyncio.create_task(_startup_balance_sync())
+    asyncio.create_task(_cron_dune_refresh())
     yield
 
 
@@ -1068,6 +1070,124 @@ async def get_eth_market_data():
         "ts": datetime.now(timezone.utc),
     }
     return data
+
+
+# ─────────────────────────────────────────
+# ROUTES — NETWORK DASHBOARD (Dune-powered)
+# ─────────────────────────────────────────
+
+# In-memory cache for Dune reads. Reads are cheap (latest-results endpoint),
+# but caching avoids repeat round-trips on every dashboard load.
+_network_cache: dict = {}
+_NETWORK_TTL_SECS = 600  # 10 min
+
+
+async def _cached_dune(key: str, query_id: int, limit: int):
+    entry = _network_cache.get(key)
+    if entry and (datetime.now(timezone.utc) - entry["ts"]).total_seconds() < _NETWORK_TTL_SECS:
+        return entry["rows"]
+    rows = await dune.get_latest_results(query_id, limit=limit)
+    if rows:  # only overwrite cache with real data; keep stale on empty
+        _network_cache[key] = {"rows": rows, "ts": datetime.now(timezone.utc)}
+        return rows
+    return entry["rows"] if entry else []
+
+
+@app.get("/api/network/pulse")
+async def network_pulse():
+    """24h Ethereum network vitals from Dune."""
+    rows = await _cached_dune("pulse", dune.QUERY_NETWORK_PULSE, limit=1)
+    if not rows:
+        return success({"pulse": None, "available": False})
+    r = rows[0]
+    return success({
+        "available": True,
+        "pulse": {
+            "txns_24h": r.get("txns_24h"),
+            "active_senders": r.get("active_senders"),
+            "median_gas_gwei": round(r.get("median_gas_gwei") or 0, 2),
+            "total_fees_usd": r.get("total_fees_usd"),
+            "total_fees_eth": round(r.get("total_fees_eth") or 0, 2),
+        },
+    })
+
+
+@app.get("/api/network/top-tokens")
+async def network_top_tokens():
+    """Top tokens by 24h DEX volume on Ethereum."""
+    rows = await _cached_dune("top_tokens", dune.QUERY_TOP_TOKENS, limit=20)
+    majors = {"WETH", "ETH", "WBTC", "weETH", "wstETH", "cbBTC", "tBTC", "LBTC"}
+    tokens = [{
+        "symbol": r.get("symbol"),
+        "address": r.get("token_address"),
+        "trades": r.get("trades"),
+        "buyers": r.get("distinct_buyers"),
+        "volume_usd": r.get("volume_usd"),
+        "is_major": r.get("symbol") in majors,
+    } for r in rows]
+    return success({"tokens": tokens, "available": bool(tokens)})
+
+
+@app.get("/api/network/large-trades")
+async def network_large_trades():
+    """
+    Largest whale DEX trades (24h), cross-referenced against Sentinel's tracked
+    wallets so users see big moves *in context* of wallets they follow.
+    """
+    rows = await _cached_dune("large_trades", dune.QUERY_WHALE_TRADES, limit=30)
+    if not rows:
+        return success({"trades": [], "available": False})
+
+    # Map trader addresses to our tracked wallets (label + score) in one query.
+    traders = list({(r.get("trader") or "").lower() for r in rows if r.get("trader")})
+    tracked: dict[str, dict] = {}
+    if traders:
+        try:
+            for i in range(0, len(traders), 50):
+                chunk = traders[i:i + 50]
+                res = (
+                    supabase_client.table("wallets")
+                    .select("address, label, score")
+                    .in_("address", chunk)
+                    .execute()
+                )
+                for w in res.data or []:
+                    tracked[(w.get("address") or "").lower()] = w
+        except Exception:
+            pass
+
+    trades = []
+    for r in rows:
+        addr = (r.get("trader") or "").lower()
+        match = tracked.get(addr)
+        trades.append({
+            "time": r.get("block_time"),
+            "tx_hash": r.get("tx_hash"),
+            "trader": r.get("trader"),
+            "sold": r.get("token_sold_symbol"),
+            "bought": r.get("token_bought_symbol"),
+            "pair": r.get("token_pair"),
+            "amount_usd": r.get("amount_usd"),
+            "project": r.get("project"),
+            "is_tracked": bool(match),
+            "trader_label": match.get("label") if match else None,
+            "trader_score": match.get("score") if match else None,
+        })
+    return success({"trades": trades, "available": True})
+
+
+async def _cron_dune_refresh():
+    """Refresh Dune executions every 6h (≈4 cycles/day × ~2.4 credits = tiny)."""
+    await asyncio.sleep(120)  # startup grace
+    while True:
+        if dune.is_configured():
+            for qid in dune.ALL_QUERY_IDS:
+                try:
+                    await dune.trigger_execution(qid)
+                    await asyncio.sleep(2)
+                except Exception:
+                    pass
+        await asyncio.sleep(6 * 3600)
 
 
 def _build_copy_suggestion(tx: dict, wallet: dict, signal: str | None) -> dict | None:
