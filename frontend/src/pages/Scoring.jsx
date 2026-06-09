@@ -6,6 +6,7 @@ import Spinner from '../components/ui/Spinner';
 import PremiumStatCard from '../components/ui/premium-stat-card';
 import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
 import WalletDetailPanel from '../components/wallet/WalletDetailPanel';
+import { useCountUp } from '../hooks/useCountUp';
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -186,6 +187,10 @@ export default function ScoringPage() {
   const topWallet = scored[0];
   const bullish = wallets.filter((w) => w.signal === 'BULLISH').length;
 
+  const animAvgScore = useCountUp(avgScore);
+  const animHighConviction = useCountUp(highConviction);
+  const animBullish = useCountUp(bullish);
+
   // Group by grade
   const byGrade = { S: [], A: [], B: [], C: [], D: [], F: [] };
   for (const w of sorted) {
@@ -202,19 +207,19 @@ export default function ScoringPage() {
         <div className="grid grid-cols-4 gap-3 mb-6">
           <StatCard
             label="Avg Score"
-            value={avgScore}
+            value={animAvgScore}
             sub={`across ${scored.length} scored wallets`}
             colorClass={scoreTextClass(avgScore)}
           />
           <StatCard
             label="High Conviction"
-            value={highConviction}
+            value={animHighConviction}
             sub="score ≥ 80"
             colorClass="text-score-high"
           />
           <StatCard
             label="Bullish Signal"
-            value={bullish}
+            value={animBullish}
             sub="active wallets"
             colorClass="text-green"
           />

@@ -1,12 +1,48 @@
 import { CHAIN_ID_MAINNET } from './tokens';
 
+export const ERROR_MESSAGES = {
+  NO_METAMASK: {
+    title: 'MetaMask Required',
+    message: 'Install MetaMask from metamask.io to execute trades.',
+    action: 'Install MetaMask →',
+    href: 'https://metamask.io',
+  },
+  WRONG_NETWORK: {
+    title: 'Wrong Network',
+    message: 'Please switch MetaMask to Ethereum Mainnet to trade.',
+    action: 'Switch Network',
+  },
+  INSUFFICIENT_FUNDS: {
+    title: 'Insufficient Funds',
+    message: "You don't have enough ETH to complete this trade.",
+  },
+  REJECTED: {
+    title: 'Transaction Cancelled',
+    message: 'You rejected the transaction in MetaMask.',
+  },
+};
+
 export async function connectWallet() {
   if (!window.ethereum) {
-    throw new Error('MetaMask not installed. Please install MetaMask to trade.');
+    const err = new Error('MetaMask not installed. Please install MetaMask to trade.');
+    err.code = 'NO_METAMASK';
+    throw err;
   }
-  const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-  await ensureMainnet();
-  return accounts[0];
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No accounts found in MetaMask');
+    }
+    await ensureMainnet();
+    return accounts[0];
+  } catch (err) {
+    if (err.code === 4001) {
+      const e = new Error('Connection rejected. Please approve MetaMask connection to continue.');
+      e.code = 'REJECTED';
+      throw e;
+    }
+    throw err;
+  }
 }
 
 export async function getChainId() {
@@ -40,10 +76,29 @@ export async function getWalletBalance(address) {
 }
 
 export async function sendTransaction(txData) {
-  return window.ethereum.request({
-    method: 'eth_sendTransaction',
-    params: [txData],
-  });
+  if (!window.ethereum) {
+    const err = new Error('MetaMask not installed');
+    err.code = 'NO_METAMASK';
+    throw err;
+  }
+  try {
+    return await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [txData],
+    });
+  } catch (err) {
+    if (err.code === 4001) {
+      const e = new Error('Transaction rejected. You cancelled the MetaMask transaction.');
+      e.code = 'REJECTED';
+      throw e;
+    }
+    if (err.code === -32603) {
+      const e = new Error('Transaction failed. You may have insufficient funds or gas.');
+      e.code = 'INSUFFICIENT_FUNDS';
+      throw e;
+    }
+    throw new Error(err.message || 'Transaction failed');
+  }
 }
 
 /** Poll until tx is mined or timeout (default 3 min) */

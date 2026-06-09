@@ -31,7 +31,7 @@ export function SignalPill({ signal }) {
   const dotClass = SIGNAL_DOT[normalized] || SIGNAL_DOT.NEUTRAL;
 
   return (
-    <span className={`text-[10px] font-bold uppercase tracking-[0.8px] px-2 py-[3px] rounded-[4px] inline-flex items-center gap-1 ${classes}`.trim()}>
+    <span className={`text-[10px] font-bold uppercase tracking-[0.8px] px-2 py-[3px] rounded-[4px] inline-flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 ${classes}`.trim()}>
       <span className={`w-1.5 h-1.5 rounded-full inline-block ${dotClass}`} />
       {normalized}
     </span>
