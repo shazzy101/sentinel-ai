@@ -89,3 +89,51 @@ export async function getExistingWallet() {
   const accounts = await window.ethereum.request({ method: 'eth_accounts' });
   return accounts[0] || null;
 }
+
+const ERC20_ABI = {
+  balanceOf: '0x70a08231', // balanceOf(address)
+  allowance: '0xdd62ed3e', // allowance(address,address)
+  approve: '0x095ea7b3', // approve(address,uint256)
+};
+
+function padAddress(addr) {
+  return addr.toLowerCase().replace('0x', '').padStart(64, '0');
+}
+
+function padUint256(value) {
+  const hex = BigInt(value).toString(16);
+  return hex.padStart(64, '0');
+}
+
+async function ethCall(to, data) {
+  return window.ethereum.request({
+    method: 'eth_call',
+    params: [{ to, data }, 'latest'],
+  });
+}
+
+/** Read ERC-20 balance (returns human-readable float). */
+export async function getTokenBalance(tokenAddress, ownerAddress, decimals = 18) {
+  const data = ERC20_ABI.balanceOf + padAddress(ownerAddress);
+  const result = await ethCall(tokenAddress, data);
+  return parseInt(result || '0x0', 16) / Math.pow(10, decimals);
+}
+
+/** Read ERC-20 allowance as raw uint256 string. */
+export async function getTokenAllowance(tokenAddress, ownerAddress, spenderAddress) {
+  const data = ERC20_ABI.allowance + padAddress(ownerAddress) + padAddress(spenderAddress);
+  const result = await ethCall(tokenAddress, data);
+  return BigInt(result || '0x0').toString();
+}
+
+/** Send ERC-20 approve tx. Returns tx hash. */
+export async function approveToken(tokenAddress, spenderAddress, amountRaw) {
+  const data = ERC20_ABI.approve + padAddress(spenderAddress) + padUint256(amountRaw);
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  return sendTransaction({
+    from: accounts[0],
+    to: tokenAddress,
+    data: `0x${data}`,
+    value: '0x0',
+  });
+}

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { sendTransaction, waitForTransaction } from '../lib/web3';
+import { executeSwap } from '../lib/swapExecution';
 import { saveTrade, updateTrade } from '../lib/tradeHistory';
 
 /**
- * Submit swap tx via MetaMask and track confirmation in real time.
+ * Submit swap tx via MetaMask with ERC-20 approval when needed.
  */
 export function useTransaction() {
-  const [status, setStatus] = useState('idle'); // idle | pending | confirming | success | error
+  const [status, setStatus] = useState('idle'); // idle | approving | pending | confirming | success | error
   const [txHash, setTxHash] = useState(null);
+  const [approveHash, setApproveHash] = useState(null);
   const [error, setError] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const tradeIdRef = useRef(null);
@@ -15,12 +16,13 @@ export function useTransaction() {
   const reset = useCallback(() => {
     setStatus('idle');
     setTxHash(null);
+    setApproveHash(null);
     setError(null);
     setReceipt(null);
     tradeIdRef.current = null;
   }, []);
 
-  const execute = useCallback(async ({ from, quote, tradeMeta }) => {
+  const execute = useCallback(async ({ from, quote, tradeMeta, fromToken, amount }) => {
     reset();
     setStatus('pending');
 
@@ -31,19 +33,23 @@ export function useTransaction() {
     tradeIdRef.current = record.id;
 
     try {
-      const hash = await sendTransaction({
+      setStatus('approving');
+      const { swapHash, approveHash: approvalTx, receipt: rcpt } = await executeSwap({
         from,
-        to: quote.tx?.to,
-        data: quote.tx?.data,
-        value: quote.tx?.value ?? '0x0',
-        gas: quote.tx?.gas,
+        quote,
+        fromToken,
+        amount,
       });
 
-      setTxHash(hash);
-      setStatus('confirming');
-      updateTrade(record.id, { txHash: hash, status: 'confirming' });
+      if (approvalTx) {
+        setApproveHash(approvalTx);
+        updateTrade(record.id, { approveHash: approvalTx });
+      }
 
-      const rcpt = await waitForTransaction(hash);
+      setTxHash(swapHash);
+      setStatus('confirming');
+      updateTrade(record.id, { txHash: swapHash, status: 'confirming' });
+
       setReceipt(rcpt);
       setStatus('success');
       updateTrade(record.id, {
@@ -52,7 +58,7 @@ export function useTransaction() {
         confirmedAt: new Date().toISOString(),
       });
 
-      return { hash, receipt: rcpt };
+      return { hash: swapHash, receipt: rcpt };
     } catch (err) {
       setError(err.message);
       setStatus('error');
@@ -63,7 +69,16 @@ export function useTransaction() {
     }
   }, [reset]);
 
-  return { status, txHash, error, receipt, execute, reset, isBusy: status === 'pending' || status === 'confirming' };
+  return {
+    status,
+    txHash,
+    approveHash,
+    error,
+    receipt,
+    execute,
+    reset,
+    isBusy: ['pending', 'approving', 'confirming'].includes(status),
+  };
 }
 
 /** Listen for trade history updates across tabs/components */

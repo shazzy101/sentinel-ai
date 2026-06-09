@@ -52,10 +52,18 @@ function WalletRow({
   const balanceClass = Number(wallet.balance) > 1000 ? 'text-text-primary font-semibold' : 'text-text-secondary';
   const isExchange = EXCHANGE_NAMES.some((n) => wallet.label?.includes(n));
 
-  const sparkData = useMemo(
-    () => buildBalanceSparkline(wallet.transactions, wallet.balance),
-    [wallet.transactions, wallet.balance]
-  );
+  const sparkData = useMemo(() => {
+    if (wallet.transactions?.length) {
+      return buildBalanceSparkline(wallet.transactions, wallet.balance);
+    }
+    if (wallet.ytd_growth_pct != null && wallet.balance != null) {
+      const start = wallet.ytd_start_balance ?? wallet.balance * 0.9;
+      return [{ balance: start }, { balance: wallet.balance }];
+    }
+    return [];
+  }, [wallet.transactions, wallet.balance, wallet.ytd_growth_pct, wallet.ytd_start_balance]);
+
+  const ytdPct = wallet.ytd_growth_pct;
 
   return (
     <motion.div
@@ -110,10 +118,11 @@ function WalletRow({
         <Sparkline data={sparkData} width={80} height={28} />
         {sparkData.length >= 2 && (
           <span className={`text-[9px] font-mono ${
-            (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0)
-              ? 'text-green' : 'text-red'
+            (ytdPct ?? 0) >= 0 ? 'text-green' : 'text-red'
           }`}>
-            {(sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0) ? '▲' : '▼'} YTD
+            {ytdPct != null
+              ? `${ytdPct >= 0 ? '+' : ''}${ytdPct.toFixed(1)}% YTD`
+              : (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0) ? '▲ YTD' : '▼ YTD'}
           </span>
         )}
       </div>

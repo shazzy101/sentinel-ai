@@ -18,6 +18,7 @@ const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypt
 const SORT_LABEL = {
   score: 'Score ↓',
   balance: 'Balance ↓',
+  ytd: 'YTD ↓',
   name: 'Name A–Z',
   lastActive: 'Last Active',
 };
@@ -54,7 +55,8 @@ export default function WatchlistPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
   const [sortBy, setSortBy] = useState('score');
-  const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
+  const [smartMoneyOnly, setSmartMoneyOnly] = useState(true);
+  const [showTop100, setShowTop100] = useState(true);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [tradeOpen, setTradeOpen] = useState(false);
@@ -63,6 +65,7 @@ export default function WatchlistPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const sortMenuRef = useRef(null);
   const [isRescanningAll, setIsRescanningAll] = useState(false);
+  const [isBatchIngesting, setIsBatchIngesting] = useState(false);
 
   // Open add-wallet modal from App-level topbar button
   useEffect(() => {
@@ -108,6 +111,22 @@ export default function WatchlistPage() {
     return () => window.removeEventListener('sentinel-alert-fired', onAlert);
   }, [addToast]);
 
+  const handleBatchIngest = useCallback(async () => {
+    if (isBatchIngesting) return;
+    setIsBatchIngesting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/batch-ingest?limit=500`, { method: 'POST' });
+      const json = await res.json();
+      const queued = json?.data?.queued ?? 0;
+      addToast(`Scanning ${queued} whale wallets via Etherscan…`, 'success');
+      setTimeout(() => refetch(), 15000);
+    } catch {
+      addToast('Batch ingest failed — check backend connection', 'error');
+    } finally {
+      setIsBatchIngesting(false);
+    }
+  }, [isBatchIngesting, refetch, addToast]);
+
   const handleRescanAll = useCallback(async () => {
     if (isRescanningAll) return;
     setIsRescanningAll(true);
@@ -133,7 +152,7 @@ export default function WatchlistPage() {
         || address.includes(searchQuery.toLowerCase());
       const matchesSignal = signalFilter === 'all' || w.signal === signalFilter.toUpperCase();
       const matchesSmartMoney = !smartMoneyOnly || (
-        !EXCHANGE_NAMES.some((n) => w.label?.includes(n)) && (w.score ?? 0) > 60
+        !EXCHANGE_NAMES.some((n) => w.label?.includes(n)) && (w.score ?? 0) > 55
       );
       return matchesSearch && matchesSignal && matchesSmartMoney;
     })
@@ -141,8 +160,10 @@ export default function WatchlistPage() {
       if (sortBy === 'score') return (b.score ?? 0) - (a.score ?? 0);
       if (sortBy === 'balance') return (b.balance ?? 0) - (a.balance ?? 0);
       if (sortBy === 'name') return (a.label || '').localeCompare(b.label || '');
+      if (sortBy === 'ytd') return (b.ytd_growth_pct ?? -999) - (a.ytd_growth_pct ?? -999);
       return new Date(b.last_scanned || 0).getTime() - new Date(a.last_scanned || 0).getTime();
-    }), [wallets, searchQuery, signalFilter, sortBy]);
+    })
+    .slice(0, showTop100 ? 100 : undefined), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly, showTop100]);
 
   // Keep selected wallet in sync after refetch
   useEffect(() => {
@@ -225,6 +246,19 @@ export default function WatchlistPage() {
           ))}
         </div>
 
+        {/* Top 100 toggle */}
+        <button
+          type="button"
+          onClick={() => setShowTop100((prev) => !prev)}
+          className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
+            showTop100
+              ? 'bg-blue/10 border-blue/30 text-blue'
+              : 'border-border-subtle text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          Top 100
+        </button>
+
         {/* Smart Money filter */}
         <button
           type="button"
@@ -271,6 +305,16 @@ export default function WatchlistPage() {
           <span className="text-[11px] text-text-muted whitespace-nowrap px-1">
             {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
           </span>
+
+          <button
+            type="button"
+            onClick={handleBatchIngest}
+            disabled={isBatchIngesting}
+            title="Discover and scan up to 500 top whale wallets via Etherscan"
+            className="flex items-center gap-1.5 text-[11px] text-green border border-green/30 rounded-lg px-2.5 py-1.5 hover:bg-green/10 transition-colors disabled:opacity-40"
+          >
+            {isBatchIngesting ? <Spinner size="sm" /> : 'Scan 500'}
+          </button>
 
           <button
             type="button"

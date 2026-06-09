@@ -15,13 +15,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ai.analyst import analyze_wallet, get_market_summary, init_analyst
-from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since
+from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, discover_whale_addresses
 from db.supabase import supabase_client
 from responses import error, success
+from performance import compute_ytd_growth
 from scoring.engine import score_wallet
 
 
-CRON_TOP_N = 40           # 6-hour pass: top 40 by score
+CRON_TOP_N = 100          # 6-hour pass: top 100 by score
 CRON_FULL_INTERVAL = 24   # 24-hour pass: entire list
 
 # In-memory cron state — exposed via /api/admin/cron-status
@@ -463,23 +464,91 @@ async def scan_wallet_get(address: str, label: Optional[str] = None):
 # ROUTES — WATCHLIST
 # ─────────────────────────────────────────
 
+def fetch_wallet_transactions(wallet_ids: list[str], limit_per_wallet: int = 120) -> dict[str, list]:
+    """Batch-fetch recent transactions grouped by wallet_id."""
+    grouped: dict[str, list] = {wid: [] for wid in wallet_ids}
+    if not wallet_ids:
+        return grouped
+
+    for i in range(0, len(wallet_ids), 40):
+        chunk = wallet_ids[i : i + 40]
+        result = (
+            supabase_client.table("transactions")
+            .select("wallet_id, hash, timestamp, value, value_symbol, direction")
+            .in_("wallet_id", chunk)
+            .order("timestamp", desc=True)
+            .limit(limit_per_wallet * len(chunk))
+            .execute()
+        )
+        for row in result.data or []:
+            wid = row.get("wallet_id")
+            if wid and len(grouped.get(wid, [])) < limit_per_wallet:
+                grouped.setdefault(wid, []).append(row)
+    return grouped
+
+
+def enrich_wallet_performance(wallet: dict, transactions: list[dict]) -> None:
+    """Attach YTD growth + sparkline txs to a wallet dict in-place."""
+    perf = compute_ytd_growth(transactions, float(wallet.get("balance") or 0))
+    wallet["ytd_growth_pct"] = perf["ytd_pct"]
+    wallet["ytd_start_balance"] = perf["ytd_start_balance"]
+    wallet["transactions"] = [
+        {
+            **tx,
+            "timestamp_unix": int(
+                datetime.fromisoformat(str(tx["timestamp"]).replace("Z", "+00:00")).timestamp()
+            ) if tx.get("timestamp") else 0,
+        }
+        for tx in sorted(
+            transactions,
+            key=lambda t: t.get("timestamp") or "",
+        )
+    ]
+
+
 @app.get("/api/watchlist")
-async def get_watchlist():
-    """Return all tracked whale wallets from Supabase, sorted by score."""
+async def get_watchlist(
+    limit: int = 100,
+    smart_only: bool = False,
+    include_ytd: bool = True,
+):
+    """Return tracked whale wallets sorted by score. Default: top 100 with YTD growth."""
     try:
+        fetch_limit = min(max(limit, 1), 500)
         result = (
             supabase_client.table("wallets")
             .select("*")
             .eq("chain", "ethereum")
             .order("score", desc=True)
+            .limit(fetch_limit if smart_only else min(fetch_limit * 3, 500))
             .execute()
         )
         wallets = result.data or []
+
+        if smart_only:
+            exchange_kw = ("binance", "coinbase", "kraken", "kucoin", "okx", "crypto.com", "gemini", "bitstamp", "bittrex", "hot wallet", "mev bot")
+            wallets = [
+                w for w in wallets
+                if (w.get("score") or 0) > 55
+                and not any(k in (w.get("label") or "").lower() for k in exchange_kw)
+            ][:fetch_limit]
+
+        total_scanned = (
+            supabase_client.table("wallets")
+            .select("id", count="exact")
+            .eq("chain", "ethereum")
+            .execute()
+        )
+        total_in_db = total_scanned.count if total_scanned.count is not None else len(wallets)
+
         if wallets:
             wallet_ids = [w["id"] for w in wallets if w.get("id")]
             latest_by_wallet = fetch_latest_analyses(wallet_ids)
+            tx_by_wallet = fetch_wallet_transactions(wallet_ids) if include_ytd else {}
+
             for wallet in wallets:
-                latest = latest_by_wallet.get(wallet.get("id"))
+                wid = wallet.get("id")
+                latest = latest_by_wallet.get(wid)
                 wallet["signal"] = latest.get("signal") if latest else None
                 wallet["signal_reason"] = latest.get("signal_reason") if latest else None
                 if latest:
@@ -493,13 +562,22 @@ async def get_watchlist():
                         "tags": latest.get("tags") or [],
                         "generated_at": latest.get("generated_at"),
                     }
+                if include_ytd and wid:
+                    enrich_wallet_performance(wallet, tx_by_wallet.get(wid, []))
+
         if not wallets:
             return success({
                 "wallets": [],
                 "count": 0,
+                "total_in_db": total_in_db,
                 "note": "No wallets in database — run backend/scripts/ingest_wallets.py to seed",
             })
-        return success({"wallets": wallets, "count": len(wallets)})
+        return success({
+            "wallets": wallets,
+            "count": len(wallets),
+            "total_in_db": total_in_db,
+            "showing_top": fetch_limit,
+        })
     except Exception as e:
         return error("DB_ERROR", "Failed to fetch watchlist", status_code=500, details={"reason": str(e)})
 
@@ -581,6 +659,18 @@ async def get_wallet_detail(address: str):
         )
         wallet["recent_transactions"] = tx_row.data or []
 
+        # Full tx history for YTD chart
+        all_tx = (
+            supabase_client.table("transactions")
+            .select("hash, timestamp, value, value_symbol, direction, status")
+            .eq("wallet_id", wallet_id)
+            .order("timestamp", desc=True)
+            .limit(120)
+            .execute()
+        )
+        txs = all_tx.data or []
+        enrich_wallet_performance(wallet, txs)
+
         return success({"wallet": wallet})
     except Exception as e:
         return error("DB_ERROR", "Failed to fetch wallet", status_code=500, details={"reason": str(e)})
@@ -618,6 +708,65 @@ async def add_to_watchlist(request: AddWalletRequest, background_tasks: Backgrou
 # ─────────────────────────────────────────
 # ROUTES — CRON / ADMIN
 # ─────────────────────────────────────────
+
+@app.post("/api/admin/batch-ingest")
+async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 500):
+    """
+    Queue Etherscan scans for up to 500 wallets from the seed list.
+    Merges eth_smart_wallets.json + whale_expansion.json.
+    """
+    import json
+    from pathlib import Path
+
+    seed_dir = Path(__file__).resolve().parent / "data"
+    addresses: list[dict] = []
+    seen: set[str] = set()
+
+    for filename in ("eth_smart_wallets.json", "whale_expansion.json"):
+        path = seed_dir / filename
+        if not path.exists():
+            continue
+        with path.open("r", encoding="utf-8") as f:
+            rows = json.load(f)
+        for row in rows:
+            addr = (row.get("address") or "").lower()
+            if addr and addr not in seen:
+                seen.add(addr)
+                addresses.append({
+                    "address": row["address"],
+                    "label": row.get("label", "Whale Wallet"),
+                    "chain": "ethereum",
+                    "tags": row.get("tags", ["ethereum", "smart-money"]),
+                })
+
+    to_scan = addresses[:min(limit, 500)]
+
+    # Discover additional whales from Etherscan token holder lists
+    if len(to_scan) < limit:
+        try:
+            discovered = await discover_whale_addresses(limit=limit - len(to_scan))
+            for w in discovered:
+                addr = w["address"].lower()
+                if addr not in seen:
+                    seen.add(addr)
+                    to_scan.append(w)
+        except Exception:
+            pass
+
+    for w in to_scan:
+        background_tasks.add_task(
+            persist_wallet_scan,
+            w["address"],
+            w["label"],
+            w["chain"],
+            w["tags"],
+        )
+    return success({
+        "queued": len(to_scan),
+        "total_seed": len(addresses),
+        "message": f"Scanning {len(to_scan)} wallets via Etherscan (up to 500)",
+    })
+
 
 @app.post("/api/admin/rescan-all")
 async def rescan_all_wallets(background_tasks: BackgroundTasks):
@@ -660,7 +809,7 @@ async def trigger_rescan(background_tasks: BackgroundTasks, n: int = CRON_TOP_N)
             .select("address, label, chain, tags")
             .eq("chain", "ethereum")
             .order("score", desc=True)
-            .limit(min(n, 50))
+            .limit(min(n, 100))
             .execute()
         )
         wallets = result.data or []

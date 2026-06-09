@@ -166,6 +166,63 @@ async def _fetch_tx_page(address: str, params: dict, raw: bool = False) -> list:
     return []
 
 
+async def get_token_top_holders(token_address: str, page: int = 1, offset: int = 100) -> list[dict]:
+    """Fetch top ERC-20 token holders from Etherscan."""
+    params = {
+        "chainid": "1",
+        "module": "token",
+        "action": "tokenholderlist",
+        "contractaddress": token_address,
+        "page": page,
+        "offset": min(offset, 100),
+        "apikey": _get_api_key(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(ETHERSCAN_BASE, params=params)
+            data = resp.json()
+            if data.get("status") == "1" and isinstance(data.get("result"), list):
+                return data["result"]
+            return []
+    except httpx.HTTPError:
+        return []
+
+
+async def discover_whale_addresses(limit: int = 500) -> list[dict]:
+    """
+    Discover high-value addresses from top holders of major tokens.
+    Used to expand the watchlist universe toward 500 wallets.
+    """
+    tokens = {
+        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "stETH": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+    }
+    seen: set[str] = set()
+    discovered: list[dict] = []
+
+    for label, addr in tokens.items():
+        holders = await get_token_top_holders(addr, page=1, offset=100)
+        for i, h in enumerate(holders):
+            address = (h.get("TokenHolderAddress") or h.get("address") or "").strip()
+            if not address or address.lower() in seen:
+                continue
+            seen.add(address.lower())
+            discovered.append({
+                "address": address,
+                "label": f"{label} Top Holder #{i + 1}",
+                "chain": "ethereum",
+                "tags": ["ethereum", "smart-money", "discovered"],
+            })
+            if len(discovered) >= limit:
+                return discovered
+        await asyncio.sleep(0.3)
+
+    return discovered
+
+
 def _normalize_eth_tx(raw: dict, wallet_address: str) -> dict:
     """Normalize raw Etherscan tx into Sentinel's standard format."""
     value_eth = round(int(raw.get("value", 0)) / 1e18, 6)

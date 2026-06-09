@@ -95,26 +95,40 @@ function BreakdownBar({ label, value, maxPts }) {
 export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove }) {
   const [copied, setCopied] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [detail, setDetail] = useState(wallet);
   const [userTags, setUserTags] = useState(() => getUserTags(wallet?.address));
   const [newTag, setNewTag] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
   const scrollRef = useRef(null);
 
-  const score = Number(wallet?.score || 0);
+  const score = Number(detail?.score || 0);
   const grade = gradeFromScore(score);
-  const risk = wallet?.analysis?.risk_level || (score >= 80 ? 'LOW' : score >= 60 ? 'MEDIUM' : 'HIGH');
-  const analysisTags = (wallet?.analysis?.tags?.length ? wallet.analysis.tags : wallet?.tags) || [];
-  const autoTags = getAutoTags(wallet || {}, score);
+  const risk = detail?.analysis?.risk_level || (score >= 80 ? 'LOW' : score >= 60 ? 'MEDIUM' : 'HIGH');
+  const analysisTags = (detail?.analysis?.tags?.length ? detail.analysis.tags : detail?.tags) || [];
+  const autoTags = getAutoTags(detail || {}, score);
   const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
-  const analysis = wallet?.analysis || {};
-  const breakdown = scaleBreakdown(wallet?.score_breakdown, score);
+  const analysis = detail?.analysis || {};
+  const breakdown = scaleBreakdown(detail?.score_breakdown, score);
 
   const sparkData = useMemo(
-    () => buildBalanceSparkline(wallet?.transactions, wallet?.balance),
-    [wallet?.transactions, wallet?.balance]
+    () => buildBalanceSparkline(detail?.transactions, detail?.balance),
+    [detail?.transactions, detail?.balance]
   );
   const trendColor = (sparkData[sparkData.length - 1]?.balance ?? 0) >= (sparkData[0]?.balance ?? 0)
     ? '#00D992' : '#FF4D4D';
+
+  useEffect(() => {
+    setDetail(wallet);
+    if (!wallet?.address) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/wallets/${wallet.address}`)
+      .then((r) => r.json())
+      .then((body) => {
+        if (!cancelled && body.success) setDetail(body.data?.wallet || wallet);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [wallet?.address]);
 
   useEffect(() => {
     setUserTags(getUserTags(wallet?.address));
@@ -124,7 +138,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [wallet?.address]);
 
-  if (!wallet) return null;
+  if (!detail) return null;
 
   const handleRemove = async () => {
     if (removing) return;
@@ -143,13 +157,18 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle relative">
         <div className="font-display text-[15px] font-bold text-text-primary pr-8 leading-tight">
-          {wallet.label || 'Unnamed wallet'}
+          {detail.label || 'Unnamed wallet'}
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <ChainBadge chain={wallet.chain} />
-          {wallet.balance != null && (
+          <ChainBadge chain={detail.chain} />
+          {detail.balance != null && (
             <span className="text-[11px] font-mono text-text-secondary">
-              {Number(wallet.balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
+              {Number(detail.balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
+            </span>
+          )}
+          {detail.ytd_growth_pct != null && (
+            <span className={`text-[11px] font-mono font-medium ${detail.ytd_growth_pct >= 0 ? 'text-green' : 'text-red'}`}>
+              {detail.ytd_growth_pct >= 0 ? '+' : ''}{detail.ytd_growth_pct.toFixed(1)}% YTD
             </span>
           )}
         </div>
@@ -162,14 +181,14 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
       <div className="flex-shrink-0 px-5 py-3 border-b border-border-subtle">
         <div className="flex items-start gap-2">
           <div className="font-mono text-[11px] text-text-secondary break-all flex-1 leading-relaxed">
-            {wallet.address}
+            {detail.address}
           </div>
           <Button
             variant="icon"
             aria-label="Copy address"
             onClick={async () => {
-              if (!wallet.address) return;
-              await navigator.clipboard.writeText(wallet.address);
+              if (!detail.address) return;
+              await navigator.clipboard.writeText(detail.address);
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
@@ -208,10 +227,10 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         <div className="flex gap-4">
           <ScoreRing score={score} size={64} />
           <div className="flex-1 flex flex-col gap-2.5">
-            <BreakdownBar label="Activity" value={wallet?.score_breakdown?.activity ?? breakdown.activity} maxPts={35} />
-            <BreakdownBar label="Success Rate" value={wallet?.score_breakdown?.success_rate ?? breakdown.success_rate} maxPts={30} />
-            <BreakdownBar label="Balance" value={wallet?.score_breakdown?.balance ?? breakdown.balance} maxPts={25} />
-            <BreakdownBar label="Recency" value={wallet?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
+            <BreakdownBar label="Activity" value={detail?.score_breakdown?.activity ?? breakdown.activity} maxPts={35} />
+            <BreakdownBar label="Success Rate" value={detail?.score_breakdown?.success_rate ?? breakdown.success_rate} maxPts={30} />
+            <BreakdownBar label="Balance" value={detail?.score_breakdown?.balance ?? breakdown.balance} maxPts={25} />
+            <BreakdownBar label="Recency" value={detail?.score_breakdown?.recency ?? breakdown.recency} maxPts={10} />
           </div>
         </div>
 
@@ -246,16 +265,16 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-3">AI Analysis</div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <SignalPill signal={wallet.signal || 'NEUTRAL'} />
-          {wallet.last_scanned && (
+          <SignalPill signal={detail.signal || 'NEUTRAL'} />
+          {detail.last_scanned && (
             <span className="text-[10px] text-text-muted font-mono">
-              Updated {new Date(wallet.last_scanned).toLocaleDateString()}
+              Updated {new Date(detail.last_scanned).toLocaleDateString()}
             </span>
           )}
         </div>
 
         <p className="text-[12px] text-text-secondary mt-2 leading-[1.6]">
-          {analysis.signal_reason || wallet.signal_reason || 'Awaiting AI analysis. Run a scan to generate insights.'}
+          {analysis.signal_reason || detail.signal_reason || 'Awaiting AI analysis. Run a scan to generate insights.'}
         </p>
 
         {analysis.activity_summary && (

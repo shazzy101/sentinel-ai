@@ -173,6 +173,7 @@ async def ingest_wallet(wallet: dict, dry_run: bool = False) -> dict:
             "tags": wallet.get("tags", []),
             "score": score,
             "score_breakdown": score_result.get("breakdown", {}),
+            "balance": balance,
             "last_scanned": datetime.now(timezone.utc).isoformat(),
         }
 

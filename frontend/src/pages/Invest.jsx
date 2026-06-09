@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowDownUp, Wallet, Shield, ExternalLink, Zap,
@@ -16,6 +17,7 @@ import {
   toTokenUnits, parseQuoteOutput, flattenProtocols, formatTokenAmount,
 } from '../lib/tokens';
 import { formatWalletAddress } from '../lib/web3';
+import { getSpendableBalance, validateSwapInputs } from '../lib/swapExecution';
 import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
 import { fadeUp, motionTokens } from '../design/motion';
 
@@ -117,6 +119,7 @@ function StatusBadge({ status }) {
 }
 
 export default function InvestPage() {
+  const [searchParams] = useSearchParams();
   const wallet = useWallet();
   const tx = useTransaction();
   const history = useTradeHistory();
@@ -131,8 +134,34 @@ export default function InvestPage() {
   const [ethPrice, setEthPrice] = useState(null);
   const [activeWhaleId, setActiveWhaleId] = useState(null);
   const [copiedWhale, setCopiedWhale] = useState(null);
+  const [tokenBalance, setTokenBalance] = useState(null);
+
+  useEffect(() => {
+    if (!wallet.address || step === 'configure' || step === 'quote') {
+      if (wallet.address && fromToken) {
+        getSpendableBalance(wallet.address, fromToken)
+          .then(setTokenBalance)
+          .catch(() => setTokenBalance(null));
+      }
+    }
+  }, [wallet.address, fromToken, step]);
+
+  const inputError = useMemo(() => validateSwapInputs({
+    amount,
+    fromToken,
+    balance: tokenBalance,
+    isConnected: wallet.isConnected,
+    isMainnet: wallet.isMainnet,
+  }), [amount, fromToken, tokenBalance, wallet.isConnected, wallet.isMainnet]);
 
   useEffect(() => { document.title = 'Invest — Sentinel AI'; }, []);
+
+  useEffect(() => {
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+    if (from && FROM_TOKENS.includes(from)) setFromToken(from);
+    if (to && TO_TOKENS.includes(to)) setToToken(to);
+  }, [searchParams]);
 
   useEffect(() => {
     api.getEthPrice().then((d) => setEthPrice(d.ethereum?.usd)).catch(() => {});
@@ -187,6 +216,8 @@ export default function InvestPage() {
       await tx.execute({
         from: wallet.address,
         quote,
+        fromToken,
+        amount,
         tradeMeta: {
           fromToken,
           toToken,
@@ -290,7 +321,7 @@ export default function InvestPage() {
                   <span className="relative h-2 w-2 rounded-full bg-green pulse-dot shrink-0" />
                   <span className="font-mono text-sm text-text-secondary">{formatWalletAddress(wallet.address)}</span>
                   <span className="ml-auto font-mono text-sm font-medium text-text-primary">
-                    {wallet.balance?.toFixed(4)} ETH
+                    {tokenBalance != null ? tokenBalance.toFixed(4) : wallet.balance?.toFixed(4)} {fromToken}
                   </span>
                   {!wallet.isMainnet && (
                     <span className="text-[10px] text-amber uppercase font-medium">Wrong network</span>
@@ -412,6 +443,9 @@ export default function InvestPage() {
                   {error && (
                     <div className="mb-4 rounded-xl border border-red/20 bg-red/10 p-3 text-xs text-red">{error}</div>
                   )}
+                  {inputError && step === 'configure' && amount && (
+                    <div className="mb-4 rounded-xl border border-amber/20 bg-amber/10 p-3 text-xs text-amber">{inputError}</div>
+                  )}
 
                   {/* Actions */}
                   {step === 'configure' && (
@@ -419,7 +453,7 @@ export default function InvestPage() {
                       variant="primary"
                       magnetic
                       fullWidth
-                      disabled={!amount || !wallet.isConnected || quoteLoading || !wallet.isMainnet}
+                      disabled={!amount || !wallet.isConnected || quoteLoading || !wallet.isMainnet || !!inputError}
                       onClick={handleGetQuote}
                     >
                       {quoteLoading ? <><Spinner size="sm" /> Fetching best rate…</> : 'Get best rate →'}
@@ -448,10 +482,12 @@ export default function InvestPage() {
                 <motion.div key="executing" {...fadeUp} className="py-12 flex flex-col items-center text-center">
                   <Loader2 className="h-10 w-10 text-green animate-spin mb-4" />
                   <div className="font-display text-lg font-bold text-text-primary">
-                    {tx.status === 'pending' ? 'Waiting for MetaMask…' : 'Confirming on-chain…'}
+                    {tx.status === 'approving' ? 'Approving token…' : tx.status === 'pending' ? 'Waiting for MetaMask…' : 'Confirming on-chain…'}
                   </div>
                   <p className="text-sm text-text-muted mt-2 max-w-sm">
-                    {tx.status === 'confirming'
+                    {tx.status === 'approving'
+                      ? 'Approve the token spend in MetaMask, then the swap will execute.'
+                      : tx.status === 'confirming'
                       ? 'Transaction submitted. Waiting for block confirmation.'
                       : 'Approve the transaction in your wallet to continue.'}
                   </p>

@@ -11,7 +11,7 @@ function HeaderRow() {
       <div>Chain</div>
       <div>Score</div>
       <div>Balance</div>
-      <div>Trend</div>
+      <div>YTD</div>
       <div>Signal</div>
       <div>Last Active</div>
       <div>Actions</div>

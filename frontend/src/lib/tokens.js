@@ -23,6 +23,14 @@ export const POPULAR_PAIRS = [
 
 export const CHAIN_ID_MAINNET = 1;
 
+export function isNativeToken(symbol) {
+  return symbol === 'ETH';
+}
+
+export function isErc20(symbol) {
+  return !isNativeToken(symbol) && Boolean(TOKEN_ADDRESSES[symbol]);
+}
+
 export function formatTokenAmount(rawAmount, tokenSymbol) {
   const decimals = TOKEN_DECIMALS[tokenSymbol] ?? 18;
   const value = Number(rawAmount) / Math.pow(10, decimals);
