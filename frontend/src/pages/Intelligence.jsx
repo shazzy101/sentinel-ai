@@ -215,7 +215,7 @@ export default function IntelligencePage() {
               )}
             </h2>
             <div className="text-[10px] text-text-muted mt-3 text-right">
-              Generated {new Date().toLocaleTimeString()}
+              Generated {summary?.generated_at ? new Date(summary.generated_at).toLocaleTimeString() : new Date().toLocaleTimeString()}
             </div>
           </TextureCardContent>
         </TextureCard>

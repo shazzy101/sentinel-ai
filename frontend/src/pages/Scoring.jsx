@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useWatchlist } from '../hooks/useWatchlist';
+import { useCallback, useEffect, useState } from 'react';
+import { useWatchlist, useScanWallet } from '../hooks/useWatchlist';
 import ScoreRing from '../components/ui/ScoreRing';
 import { GradeBadge, SignalPill } from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
@@ -161,9 +161,16 @@ function GradeSection({ grade, wallets, defaultOpen = false, onSelectWallet }) {
 
 export default function ScoringPage() {
   const { wallets, loading, refetch } = useWatchlist();
+  const { scan } = useScanWallet();
   const [selectedWallet, setSelectedWallet] = useState(null);
 
   useEffect(() => { document.title = 'Scoring — Sentinel AI'; }, []);
+
+  const handleScan = useCallback(async (wallet) => {
+    if (!wallet?.address) return;
+    await scan(wallet.address, wallet.label);
+    await refetch();
+  }, [scan, refetch]);
 
   // All derived values and hooks must be called unconditionally before any early return
   const sorted = [...wallets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -273,7 +280,7 @@ export default function ScoringPage() {
         <WalletDetailPanel
           wallet={selectedWallet}
           onClose={() => setSelectedWallet(null)}
-          onRescan={() => {}}
+          onRescan={() => handleScan(selectedWallet)}
           onRemove={() => { setSelectedWallet(null); refetch(); }}
         />
       )}

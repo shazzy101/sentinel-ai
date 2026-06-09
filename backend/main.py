@@ -213,8 +213,8 @@ async def runtime_error_handler(_request: Request, exc: RuntimeError):
 # ─────────────────────────────────────────
 
 def detect_chain(address: str) -> str:
-    if not address.startswith("0x"):
-        raise ValueError("Only Ethereum addresses (0x...) are supported.")
+    if not address.startswith("0x") or len(address) != 42:
+        raise ValueError("Invalid Ethereum address — must be 0x followed by 40 hex characters.")
     return "ethereum"
 
 

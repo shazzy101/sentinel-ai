@@ -137,11 +137,11 @@ export default function AskSentinelPage() {
       textareaRef.current.style.height = 'auto';
     }
 
-    const userMsg = { role: 'user', content: question };
-    setMessages((prev) => [...prev, userMsg]);
-    setLoading(true);
-
+    // Capture history from current messages BEFORE appending the new user message,
+    // so the backend receives prior turns only (not the current question twice).
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_BASE}/api/ask`, {

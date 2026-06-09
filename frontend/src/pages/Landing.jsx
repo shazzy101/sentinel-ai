@@ -625,7 +625,7 @@ export default function LandingPage() {
     fetch(`${base}/api/watchlist?limit=1`)
       .then((r) => r.json())
       .then((d) => {
-        const count = d?.data?.total ?? d?.count ?? d?.data?.wallets?.length;
+        const count = d?.data?.total_in_db ?? d?.data?.count ?? d?.data?.wallets?.length;
         if (count) setWalletCount(count);
       })
       .catch(() => {});
