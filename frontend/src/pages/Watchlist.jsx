@@ -13,7 +13,18 @@ import { BentoGrid, BentoItem } from '../components/primitives/BentoGrid';
 import StatWidget from '../components/primitives/StatWidget';
 import { TrendingUp, TrendingDown, Award, BarChart2 } from 'lucide-react';
 
-const EXCHANGE_NAMES = ['Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini', 'Bitstamp', 'Coinone', 'MEV Bot'];
+const EXCHANGE_NAMES = [
+  'Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini',
+  'Bitstamp', 'Coinone', 'MEV Bot', 'Poloniex', 'Bittrex', 'Huobi', 'Gate.io',
+  'Bitfinex', 'Bithumb', 'Bybit', 'BitMEX', 'Upbit', 'Korbit', 'FTX',
+];
+
+function isExchangeWallet(w) {
+  const label = (w.label || '').toLowerCase();
+  return EXCHANGE_NAMES.some((n) => label.includes(n.toLowerCase()))
+    || label.includes('deposit funder')
+    || label.includes('hot wallet');
+}
 
 const SORT_LABEL = {
   score: 'Score ↓',
@@ -55,7 +66,7 @@ export default function WatchlistPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
   const [sortBy, setSortBy] = useState('score');
-  const [smartMoneyOnly, setSmartMoneyOnly] = useState(true);
+  const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
   const [showTop100, setShowTop100] = useState(true);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -152,7 +163,7 @@ export default function WatchlistPage() {
         || address.includes(searchQuery.toLowerCase());
       const matchesSignal = signalFilter === 'all' || w.signal === signalFilter.toUpperCase();
       const matchesSmartMoney = !smartMoneyOnly || (
-        !EXCHANGE_NAMES.some((n) => w.label?.includes(n)) && (w.score ?? 0) > 55
+        !isExchangeWallet(w) && (w.score ?? 0) >= 40
       );
       return matchesSearch && matchesSignal && matchesSmartMoney;
     })
@@ -164,6 +175,13 @@ export default function WatchlistPage() {
       return new Date(b.last_scanned || 0).getTime() - new Date(a.last_scanned || 0).getTime();
     })
     .slice(0, showTop100 ? 100 : undefined), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly, showTop100]);
+
+  // #region agent log
+  useEffect(() => {
+    const smartPass = wallets.filter((w) => !isExchangeWallet(w) && (w.score ?? 0) >= 40);
+    fetch('http://127.0.0.1:7399/ingest/432bc0e8-623d-4115-8a69-0cd7624710ad',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9dc37e'},body:JSON.stringify({sessionId:'9dc37e',hypothesisId:'H1-H2',location:'Watchlist.jsx:filteredWallets',message:'frontend_filter_state',data:{apiWalletCount:wallets.length,filteredCount:filteredWallets.length,smartMoneyOnly,showTop100,searchQuery,signalFilter,sortBy,smartPassCount:smartPass.length,smartPassLabels:smartPass.map(w=>w.label)},timestamp:Date.now()})}).catch(()=>{});
+  }, [wallets, filteredWallets, smartMoneyOnly, showTop100, searchQuery, signalFilter, sortBy]);
+  // #endregion
 
   // Keep selected wallet in sync after refetch
   useEffect(() => {
@@ -304,6 +322,9 @@ export default function WatchlistPage() {
 
           <span className="text-[11px] text-text-muted whitespace-nowrap px-1">
             {filteredWallets.length}<span className="opacity-40"> / {wallets.length}</span>
+            {smartMoneyOnly && filteredWallets.length < 5 && (
+              <span className="text-amber ml-1" title="Turn off Smart Money Only to see all tracked wallets">· few match</span>
+            )}
           </span>
 
           <button

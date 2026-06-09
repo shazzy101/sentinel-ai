@@ -1,0 +1,742 @@
+[
+  {
+    "label": "Wintermute Trading",
+    "address": "0xae2Fc483527b8EF99EB5D9B44875F8baE7eBE667",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Vitalik.eth",
+    "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Ethereum Foundation",
+    "address": "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Jump Trading 1",
+    "address": "0x9b5ea8C6768E4143E9d772786E05019E7D0d8673",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Jump Trading 2",
+    "address": "0x2819c14422d2630a637153178b4793a5C2908551",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Paradigm Fund",
+    "address": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Polychain Capital",
+    "address": "0x6C3670190e8107104AaB43B0E5147d4Ab99F56a2",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Dragonfly Capital",
+    "address": "0x82808df4B584265eBdb857233a2D7555f43BF869",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Framework Ventures",
+    "address": "0x4B209828C32a44D31c3d2826AF6b17AFD598FDD8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Multicoin Capital",
+    "address": "0xEA674Fda677fcE624eF7eaC74eC775c2e7A3e8a3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Mechanism Capital",
+    "address": "0xEe6e6550B857126D3F5972E5eD2677eAb6144b2E",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "DeFiance Capital",
+    "address": "0x0EDeA44C1D5C8884C1D19A4E5Cb3d8B3b1611741",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Spartan Group",
+    "address": "0x8EB8a3b98659C290284Ae374132E0e1710015eee",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Three Arrows Capital",
+    "address": "0xC986A397aA036E4351b2A8754D9e1248794B6fC5",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Alameda Research",
+    "address": "0x910Cbd523D972eb0a6fCeAc9e595e0Ad5641B4E9",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Galaxy Digital",
+    "address": "0x849D523163319D66A6E8E24C2E6b865Aef346F07",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Lido Treasury",
+    "address": "0x3e40D06E6237D6975D8c7D4B7Ed74146E416A7dF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Uniswap Treasury",
+    "address": "0x1a684663a3E1cF9D9e31dF4aA0B540a4b59939FF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Aave Treasury",
+    "address": "0x25F2226B597E8F95133152359b7b3cE5C6D655a7",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Arbitrum Foundation",
+    "address": "0xDAFFAD0960B5CaE31F2DD5a1f160728F95a8D263",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "OpenSea Treasury",
+    "address": "0x8de9C5A932462Ba567966E039f961a8DCFC4bA92",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Justin Sun",
+    "address": "0x3DdfA8eC3052539b6C9549F12eaE352a7a2E0aEc",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "DWF Labs",
+    "address": "0x6Cc9397cEf475D6a2D8e4d230F5372b5d5a5a5a5",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "BitDAO Treasury",
+    "address": "0x1B4e98Da5689081C1Ef9b4aE4F4E4F4E4F4E4F4E",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Consensys",
+    "address": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Synthetix Treasury",
+    "address": "0x111111125421cA6dc452d289314280a0f8842A65",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "1inch Treasury",
+    "address": "0x1111111254EEB25477B68fb85Ed929f73A960582",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "EigenLayer Multisig",
+    "address": "0x8586463722654C2741084885e46Be893F0b266A2",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Flashbots",
+    "address": "0xDAFEA492D9aE00A4161F7cBE85627dC9855CFFBe",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 2",
+    "address": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 3",
+    "address": "0x68b3465833fb59DFF930eEa164973Ecf6cDF4eDe",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 4",
+    "address": "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 6",
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 7",
+    "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 8",
+    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 9",
+    "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Smart Money 10",
+    "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Coinbase Custody",
+    "address": "0xb5d85CBf7cB3EE0D56b3bB207D5Fc4B82f43F511",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Kraken Cold",
+    "address": "0x267be1c1d684f78cb4f6a176c4911b741e4ffdc0",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Gemini Cold",
+    "address": "0x53d284357ec70ce289d6d64134dfac8e511c8a3d",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Bitfinex Cold",
+    "address": "0x1151314c646ce4e0efd76d1af4760ae66a9fe30f",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Huobi Cold",
+    "address": "0xab83d182f3485cf889d2d1958ed685bd1149a592",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "OKX Cold",
+    "address": "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "KuCoin Cold",
+    "address": "0x689c56aef474df92d44a1b70850f808488f9769c",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Known DeFi Trader",
+    "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Paradigm Fund 2",
+    "address": "0x47ac0Fb4F2D84898e4D9E7b4DaB3CB245CaA29D5",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 1",
+    "address": "0xf977814e90da44bfa03b6295a0616a897441acec",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 2",
+    "address": "0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 3",
+    "address": "0xd551234ae421e3bcba99a0da6d736074f22192ff",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 4",
+    "address": "0x564286362092d8e7936f0549571a803b203aaced",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 5",
+    "address": "0x0681d8db095565fe8a346fa0277bffde9c0edbbf",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 6",
+    "address": "0xfe9e8709d3215310075d67e3ed32a380ccf451c8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 7",
+    "address": "0x4e9ce36e442e55ecd9025b9a6e0d88485d628a67",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 8",
+    "address": "0x503828976d22510aad0201ac7ec88293211d23da",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 9",
+    "address": "0xddfabcdc4d8ffc6d5beaf154f18b778f892a0740",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 10",
+    "address": "0x3cd751e6b0078be393132286c442345e5dc49699",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 11",
+    "address": "0x001866ae5b3de6caa5a51543fd9fb64f524f5478",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 12",
+    "address": "0xeb2629a2734e272bcc07bda959863f316f4bd4cf",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 13",
+    "address": "0xa7efae728d2936e78bda97dc267687568dd593f3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 14",
+    "address": "0xe853c56864a2ebe4576a807d26fdc4a0ada51919",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 15",
+    "address": "0xfa52274dd61e1643d2205169732f29114bc240b3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 16",
+    "address": "0x236f9f97e0e62388479bf9e5ba4889e46b0273c3",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 17",
+    "address": "0x1692e170361cefd1eb7240ec13d048fd9af6d667",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 18",
+    "address": "0x2b5634c42055806a59e9107ed44d43c426e58258",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 19",
+    "address": "0x6fc82a5fe25a5cdb58bc74600a40a69c065263f8",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Fund Whale 20",
+    "address": "0xd24400ae8bfebb18ca49be86258a3c749cf46853",
+    "chain": "ethereum",
+    "tags": [
+      "ethereum",
+      "world-whale",
+      "smart-money"
+    ]
+  },
+  {
+    "label": "Galaxy Digital",
+    "address": "0x9262F8F8b9b8d8d8d8d8d8d8d8d8d8d8d8d8d8d8",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "fund",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "Compound Treasury",
+    "address": "0x516216692F2e34EACb546eDb84d0B169B13e3FbB",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "dao",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "Optimism Foundation",
+    "address": "0x4200000000000000000000000000000000000042",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "dao",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "ENS DAO",
+    "address": "0x283Af0B28c62C096C928b23B596A6401B83e27a9",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "dao",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "Curve DAO",
+    "address": "0x90F00cEe1488583a0b0D647fac26Bd888C713466",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "dao",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "Balancer Treasury",
+    "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "dao",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "Sushi Treasury",
+    "address": "0x6Bd4f4B5231780E1e313287D1774D5dAF29aA6bF",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "defi",
+      "world-whale"
+    ]
+  },
+  {
+    "label": "EigenLayer Staker 1",
+    "address": "0x0D0fFf7983E6272282540a0901c0E0C4eC106a61",
+    "chain": "ethereum",
+    "tags": [
+      "smart-money",
+      "staking",
+      "world-whale"
+    ]
+  }
+]
