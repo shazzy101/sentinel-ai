@@ -14,7 +14,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from ai.analyst import analyze_wallet, get_market_summary, init_analyst
+from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
 from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
 from db.supabase import supabase_client
 from responses import error, success
@@ -32,6 +32,13 @@ _cron_state: dict = {
     "full_last_run": None,
     "full_next_run": None,
 }
+
+# Cooldown timestamps for expensive admin operations (prevents hammering Claude API)
+_admin_cooldowns: dict = {
+    "batch_ingest": None,
+    "rescan_all": None,
+}
+_ADMIN_COOLDOWN_SECS = 3600  # 1 hour between batch operations
 
 
 async def _scan_wallet_list(wallets: list[dict]) -> int:
@@ -336,24 +343,18 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
                 ).execute()
 
     # Keep latest AI analysis available for intelligence feeds.
+    # analyze_wallet checks the 6-hour DB cache (keyed by wallet_address) before
+    # calling Claude — so this is cheap on repeated scans.
     try:
-        analysis = await analyze_wallet(
+        await analyze_wallet(
             wallet_name=label,
             transactions=transactions[:50],
             balance=balance,
             chain=chain,
             address=address,
         )
-        supabase_client.table("analyses").insert({
-            "wallet_id": wallet_id,
-            "signal": analysis.get("signal", "NEUTRAL"),
-            "signal_reason": analysis.get("signal_reason"),
-            "activity_summary": analysis.get("activity_summary"),
-            "key_insight": analysis.get("key_insight"),
-            "risk_level": analysis.get("risk_level"),
-            "tags": analysis.get("tags", []),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
+        # Link wallet_id to the analysis row that analyze_wallet just upserted.
+        supabase_client.table("analyses").update({"wallet_id": wallet_id}).eq("wallet_address", address).execute()
     except Exception:
         # Do not fail scan persistence just because analysis persistence failed.
         pass
@@ -430,16 +431,12 @@ async def scan_wallet(request: WalletScanRequest):
         )
         wallet_id = (upserted.data or [{}])[0].get("id")
         if wallet_id:
-            supabase_client.table("analyses").insert({
-                "wallet_id": wallet_id,
-                "signal": analysis.get("signal", "NEUTRAL"),
-                "signal_reason": analysis.get("signal_reason"),
-                "activity_summary": analysis.get("activity_summary"),
-                "key_insight": analysis.get("key_insight"),
-                "risk_level": analysis.get("risk_level"),
-                "tags": analysis.get("tags", []),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            }).execute()
+            # analyze_wallet already upserted an analyses row keyed by wallet_address.
+            # Just link the wallet_id so intelligence queries can join by wallet_id.
+            try:
+                supabase_client.table("analyses").update({"wallet_id": wallet_id}).eq("wallet_address", address).execute()
+            except Exception:
+                pass
 
         return success({
             "wallet": {
@@ -758,6 +755,15 @@ async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 5
     import json
     from pathlib import Path
 
+    # Cooldown: max once per hour to avoid blowing Claude API budget
+    last = _admin_cooldowns["batch_ingest"]
+    if last is not None:
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        if elapsed < _ADMIN_COOLDOWN_SECS:
+            wait_min = int((_ADMIN_COOLDOWN_SECS - elapsed) / 60)
+            return error("RATE_LIMITED", f"Batch ingest already ran recently. Try again in ~{wait_min}m.", status_code=429)
+    _admin_cooldowns["batch_ingest"] = datetime.now(timezone.utc)
+
     seed_dir = Path(__file__).resolve().parent / "data"
     addresses: list[dict] = []
     seen: set[str] = set()
@@ -811,6 +817,13 @@ async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 5
 @app.post("/api/admin/rescan-all")
 async def rescan_all_wallets(background_tasks: BackgroundTasks):
     """Trigger a full rescan of ALL wallets in the background (applies new scoring engine)."""
+    last = _admin_cooldowns["rescan_all"]
+    if last is not None:
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        if elapsed < _ADMIN_COOLDOWN_SECS:
+            wait_min = int((_ADMIN_COOLDOWN_SECS - elapsed) / 60)
+            return error("RATE_LIMITED", f"Rescan already ran recently. Try again in ~{wait_min}m.", status_code=429)
+    _admin_cooldowns["rescan_all"] = datetime.now(timezone.utc)
     try:
         result = (
             supabase_client.table("wallets")
@@ -882,6 +895,20 @@ async def cron_status():
             "next_run": _cron_state["full_next_run"],
         },
         "server_time": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.get("/api/admin/usage")
+async def api_usage():
+    """Claude API call budget status for the current hour."""
+    from ai.analyst import MAX_CALLS_PER_HOUR
+    remaining = calls_remaining()
+    return success({
+        "claude_calls_remaining_this_hour": remaining,
+        "claude_calls_used_this_hour": MAX_CALLS_PER_HOUR - remaining,
+        "max_calls_per_hour": MAX_CALLS_PER_HOUR,
+        "batch_ingest_last_run": _admin_cooldowns["batch_ingest"].isoformat() if _admin_cooldowns["batch_ingest"] else None,
+        "rescan_all_last_run": _admin_cooldowns["rescan_all"].isoformat() if _admin_cooldowns["rescan_all"] else None,
     })
 
 
@@ -1016,7 +1043,7 @@ async def get_eth_market_data():
         get_eth_market_data._cache = {}
 
     cached = get_eth_market_data._cache.get(cache_key)
-    if cached and (datetime.now(timezone.utc) - cached["ts"]).seconds < 60:
+    if cached and (datetime.now(timezone.utc) - cached["ts"]).total_seconds() < 60:
         return cached["data"]
 
     async with httpx.AsyncClient(timeout=10) as client:

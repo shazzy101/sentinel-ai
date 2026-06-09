@@ -6,12 +6,40 @@ Anthropic client initialized once at app startup via init_analyst().
 import asyncio
 import json
 import os
+import time
+from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
 
 import anthropic
 
 _client: Optional[anthropic.Anthropic] = None
+
+# ── Rate limiter ──────────────────────────────────────────────────────────────
+# Tracks timestamps of every Claude call made in the last hour.
+# Wallet analysis uses the cheap Haiku model; market summary uses Sonnet.
+# Hard cap prevents runaway costs if cache misses or someone hammers scan.
+_call_timestamps: deque = deque()
+MAX_CALLS_PER_HOUR = int(os.getenv("CLAUDE_MAX_CALLS_PER_HOUR", "80"))
+
+def _rate_limit_ok() -> bool:
+    """Return True and record the call if under budget, False if over."""
+    now = time.monotonic()
+    cutoff = now - 3600
+    while _call_timestamps and _call_timestamps[0] < cutoff:
+        _call_timestamps.popleft()
+    if len(_call_timestamps) >= MAX_CALLS_PER_HOUR:
+        return False
+    _call_timestamps.append(now)
+    return True
+
+def calls_remaining() -> int:
+    now = time.monotonic()
+    cutoff = now - 3600
+    while _call_timestamps and _call_timestamps[0] < cutoff:
+        _call_timestamps.popleft()
+    return max(0, MAX_CALLS_PER_HOUR - len(_call_timestamps))
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def init_analyst() -> None:
@@ -29,12 +57,12 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-async def _call_claude(prompt: str, max_tokens: int = 600) -> str:
+async def _call_claude(prompt: str, max_tokens: int = 300, model: str = "claude-haiku-4-5-20251001") -> str:
     """Run sync Anthropic SDK call without blocking the event loop."""
     client = get_client()
     message = await asyncio.to_thread(
         client.messages.create,
-        model="claude-sonnet-4-6",
+        model=model,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -110,8 +138,21 @@ Return JSON only, no other text:
   "tags": ["2-3 tags max"]
 }}"""
 
+    if not _rate_limit_ok():
+        print(f"[Rate limit] Skipping Claude call for {wallet_name} — {MAX_CALLS_PER_HOUR}/hr budget exhausted")
+        return {
+            "signal": "NEUTRAL",
+            "signal_reason": "Analysis paused — hourly API budget reached. Will resume automatically.",
+            "activity_summary": "Rate limit active.",
+            "key_insight": "Check back in a few minutes.",
+            "risk_level": "MEDIUM",
+            "risk_reason": "Cannot assess while rate-limited.",
+            "tags": ["rate-limited"],
+            "rate_limited": True,
+        }
+
     try:
-        text = await _call_claude(prompt, max_tokens=300)
+        text = await _call_claude(prompt, max_tokens=250, model="claude-haiku-4-5-20251001")
         result = _parse_json_response(text)
     except RuntimeError:
         raise
@@ -175,8 +216,20 @@ Generate a market intelligence brief for our users. Return a JSON object:
 
 Return ONLY valid JSON."""
 
+    if not _rate_limit_ok():
+        if cache["data"]:
+            return cache["data"]  # serve stale rather than nothing
+        return {
+            "headline": "Intelligence paused — hourly API budget reached.",
+            "ethereum_outlook": "Check back shortly.",
+            "flow_state": "NEUTRAL",
+            "top_signal": "NEUTRAL",
+            "key_themes": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     try:
-        text = await _call_claude(prompt, max_tokens=500)
+        text = await _call_claude(prompt, max_tokens=400, model="claude-sonnet-4-6")
         result = _parse_json_response(text)
     except RuntimeError:
         raise
