@@ -40,4 +40,20 @@ export const api = {
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/invest/whale-trades`)
       .then((r) => r.json())
       .then((body) => (body.success ? body.data?.trades : body.trades) || []),
+
+  // ── Network dashboard (Dune-powered, cached on backend) ──
+  getNetworkPulse: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/pulse`)
+      .then((r) => r.json())
+      .then((body) => body.data || { available: false }),
+
+  getNetworkTopTokens: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/top-tokens`)
+      .then((r) => r.json())
+      .then((body) => body.data?.tokens || []),
+
+  getNetworkLargeTrades: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/large-trades`)
+      .then((r) => r.json())
+      .then((body) => body.data?.trades || []),
 };

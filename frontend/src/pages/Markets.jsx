@@ -3,6 +3,7 @@ import { useWatchlist } from '../hooks/useWatchlist';
 import { api } from '../lib/api';
 import Spinner from '../components/ui/Spinner';
 import NansenTradingTerminal from '../components/markets/NansenTradingTerminal';
+import NetworkDashboard from '../components/markets/NetworkDashboard';
 
 function fmt(n, dec = 2) {
   return Number(n ?? 0).toLocaleString('en-US', {
@@ -52,6 +53,9 @@ export default function MarketsPage() {
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="p-5 flex flex-col gap-5 max-w-[1600px] mx-auto">
+        {/* Network intelligence — Dune-powered on-chain dashboard */}
+        <NetworkDashboard />
+
         {/* Nansen-style trading terminal */}
         <NansenTradingTerminal
           ethData={ethData}
