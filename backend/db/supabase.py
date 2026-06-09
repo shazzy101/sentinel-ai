@@ -56,8 +56,10 @@ except Exception:
 # ANALYSIS CACHE HELPERS
 # ─────────────────────────────────────────
 
+CACHE_TTL_HOURS = 24  # analyses fresher than this are reused (no Claude call)
+
 async def get_cached_analysis(wallet_address: str) -> dict:
-    """Return cached analysis if less than 6 hours old, else None."""
+    """Return cached analysis if less than CACHE_TTL_HOURS old, else None."""
     try:
         result = (
             supabase_client.table("analyses")
@@ -76,7 +78,7 @@ async def get_cached_analysis(wallet_address: str) -> dict:
         age_hours = (
             datetime.now(timezone.utc) - generated_at
         ).total_seconds() / 3600
-        if age_hours < 6:
+        if age_hours < CACHE_TTL_HOURS:
             return cached
         return None
     except Exception:

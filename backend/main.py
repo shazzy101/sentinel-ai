@@ -42,13 +42,18 @@ _admin_cooldowns: dict = {
 _ADMIN_COOLDOWN_SECS = 3600  # 1 hour between batch operations
 
 
-async def _scan_wallet_list(wallets: list[dict]) -> int:
-    """Sequentially scan a list of wallet dicts. Returns count of successes."""
+async def _scan_wallet_list(wallets: list[dict], analyze: bool = False) -> int:
+    """
+    Sequentially refresh a list of wallets. Returns count of successes.
+    Defaults to analyze=False (data only, no Claude) since this is the
+    background-cron path — keeping API budget for on-demand + the top-N pass.
+    """
     ok = 0
     for w in wallets:
         try:
             await persist_wallet_scan(
-                w["address"], w.get("label", ""), w.get("chain", "ethereum"), w.get("tags") or []
+                w["address"], w.get("label", ""), w.get("chain", "ethereum"), w.get("tags") or [],
+                analyze=analyze,
             )
             ok += 1
         except Exception:
@@ -99,6 +104,39 @@ async def _cron_full():
         await asyncio.sleep(CRON_FULL_INTERVAL * 3600)
 
 
+AI_TOP_N = 15  # only the top wallets get fresh AI signals from the background
+
+async def _cron_ai_top():
+    """
+    Once every 24h: refresh Claude analysis for ONLY the top N wallets by score.
+    This is the *only* background source of Claude calls — ~15/day, not the
+    hundreds the data crons used to generate. Everything else gets AI on demand.
+    """
+    await asyncio.sleep(8 * 60)  # 8 min after startup, let data settle first
+    while True:
+        try:
+            result = (
+                supabase_client.table("wallets")
+                .select("address, label, chain")
+                .eq("chain", "ethereum")
+                .order("score", desc=True)
+                .limit(AI_TOP_N)
+                .execute()
+            )
+            for w in result.data or []:
+                try:
+                    await persist_wallet_scan(
+                        w["address"], w.get("label", ""), w.get("chain", "ethereum"), [],
+                        analyze=True,
+                    )
+                except Exception:
+                    pass
+                await asyncio.sleep(1)
+        except Exception:
+            pass
+        await asyncio.sleep(24 * 3600)
+
+
 async def sync_wallet_balances(limit: int = 94) -> dict:
     """Fetch live ETH balances for wallets not yet synced (balance IS NULL)."""
     result = (
@@ -140,6 +178,7 @@ async def lifespan(app: FastAPI):
     init_analyst()
     asyncio.create_task(_cron_top())
     asyncio.create_task(_cron_full())
+    asyncio.create_task(_cron_ai_top())
     asyncio.create_task(_startup_balance_sync())
     asyncio.create_task(_cron_dune_refresh())
     yield
@@ -290,7 +329,13 @@ def fetch_latest_analyses(wallet_ids: list[str], chunk_size: int = 40) -> dict[s
     return latest_by_wallet
 
 
-async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[str] | None = None):
+async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[str] | None = None, analyze: bool = True):
+    """
+    Refresh a wallet's on-chain data + score, and store it.
+    When analyze=False, skips the Claude call entirely — used by the data-refresh
+    crons so background passes never burn API budget. AI analysis is layered on
+    separately (on-demand scans + a small top-N daily pass).
+    """
     balance, transactions = await fetch_wallet_data(address, chain)
     # Token transfers feed the DeFi-engagement signal in the v4 scoring engine.
     try:
@@ -351,9 +396,12 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
                     tx_records[i : i + 100], on_conflict="hash", ignore_duplicates=True
                 ).execute()
 
-    # Keep latest AI analysis available for intelligence feeds.
-    # analyze_wallet checks the 6-hour DB cache (keyed by wallet_address) before
-    # calling Claude — so this is cheap on repeated scans.
+    # AI analysis is OPT-IN. Background data-refresh crons pass analyze=False so
+    # they never call Claude. analyze_wallet still checks the DB cache first, so
+    # even when enabled, repeat scans within the TTL are free.
+    if not analyze:
+        return
+
     try:
         await analyze_wallet(
             wallet_name=label,
@@ -815,6 +863,7 @@ async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 5
             w["label"],
             w["chain"],
             w["tags"],
+            False,  # analyze=False — bulk ingest never calls Claude
         )
     return success({
         "queued": len(to_scan),
@@ -849,8 +898,9 @@ async def rescan_all_wallets(background_tasks: BackgroundTasks):
                 w.get("label", ""),
                 w.get("chain", "ethereum"),
                 w.get("tags") or [],
+                False,  # analyze=False — bulk rescan never calls Claude
             )
-        return success({"queued": len(wallets), "message": f"Rescanning {len(wallets)} wallets with v3 scoring engine"})
+        return success({"queued": len(wallets), "message": f"Rescanning {len(wallets)} wallets (data only, no AI)"})
     except Exception as e:
         return error("RESCAN_FAILED", str(e), status_code=500)
 
@@ -882,6 +932,7 @@ async def trigger_rescan(background_tasks: BackgroundTasks, n: int = CRON_TOP_N)
                 w.get("label", ""),
                 w.get("chain", "ethereum"),
                 w.get("tags") or [],
+                False,  # analyze=False — data refresh only, no Claude
             )
         return success({"queued": len(wallets), "addresses": [w["address"] for w in wallets]})
     except Exception as e:
