@@ -47,17 +47,28 @@ _EXCHANGE_ADDRESSES = {
 
 # Broad keyword set for named exchanges / custodians / protocols / infra.
 # Matches the seed-file "known-entity" tagging so they rank low consistently.
+# Comprehensive global coverage — these are operational wallets, not alpha.
 _ENTITY_KEYWORDS = {
+    # major exchanges
     "binance", "coinbase", "kraken", "kucoin", "okx", "okex", "gemini", "bitfinex",
     "gate", "bybit", "huobi", "htx", "bitmex", "bitstamp", "crypto.com", "ftx",
     "upbit", "bithumb", "coinone", "poloniex", "hitbtc", "bitmart", "whitebit",
     "bingx", "btcturk", "bitbank", "coincheck", "revolut", "bitflyer", "quadrigacx",
     "luno", "korbit", "gopax", "probit", "latoken", "ascendex", "phemex", "deribit",
-    "nexo", "celsius", "blockfi", "bitvavo", "wazirx", "coindcx", "bitget", "lbank",
-    "mexc", "bitpanda", "robinhood",
-    "falconx", "bitgo", "cumberland", "wintermute", "jump", "b2c2", "genesis",
-    "circle", "paxos", "tether", "matrixport", "amber", "qcp", "galaxy", "fireblocks",
-    "copper", "anchorage", "ceffu", "sygnum", "withdrawdao",
+    "bitvavo", "wazirx", "coindcx", "bitget", "lbank", "mexc", "bitpanda", "robinhood",
+    # regional / additional exchanges (the ones that slipped through)
+    "coinhako", "bitso", "bitkub", "indodax", "mercado", "paribu", "zebpay", "valr",
+    "yellowcard", "coins.ph", "swyftx", "coinjar", "easycrypto", "kanga", "zonda",
+    "coinmate", "cex.io", "gmo", "liquid", "zaif", "foblgate", "gdac", "hanbitco",
+    "p2pb2b", "coinsbit", "digifinex", "xt.com", "bitrue", "coinw", "tokocrypto",
+    "independent reserve", "kanga", "bitazza", "max ", "bitopro", "ace ", "rain",
+    "cryptomkt", "buda", "ripio", "lemon", "naira", "quidax", "busha", "roqqu",
+    # custodians / market makers / OTC / funds
+    "falconx", "bitgo", "cumberland", "wintermute", "jump", "b2c2", "genesis", "gsr",
+    "dwf", "circle", "paxos", "tether", "matrixport", "amber", "qcp", "galaxy",
+    "fireblocks", "copper", "anchorage", "ceffu", "sygnum", "cobo", "hex trust",
+    "nexo", "celsius", "blockfi", "voyager", "dcg", "withdrawdao",
+    # generic infra / contract markers
     "exchange", "hot wallet", "cold wallet", "mev bot", "deposit", "custody",
     "wrapped", "bridge", "beacon", "staking", "vault", "router", "contract",
     "treasury", "fund", "reserve", "multisig", "gnosis safe",
