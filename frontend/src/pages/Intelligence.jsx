@@ -119,7 +119,7 @@ export default function IntelligencePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
     document.title = 'Intelligence — Sentinel AI';
   }, []);
 

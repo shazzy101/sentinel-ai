@@ -214,7 +214,7 @@ export default function Sidebar({ onOpenCommand }) {
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[12px] font-medium text-text-primary">Shazaib</div>
-            <div className="text-[10px] text-text-muted">Pro plan</div>
+            <div className="text-[10px] text-text-muted">Beta</div>
           </div>
         </div>
       </div>

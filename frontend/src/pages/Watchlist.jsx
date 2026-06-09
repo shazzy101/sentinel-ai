@@ -66,8 +66,9 @@ export default function WatchlistPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
   const [sortBy, setSortBy] = useState('score');
-  const [smartMoneyOnly, setSmartMoneyOnly] = useState(false);
-  const [showTop100, setShowTop100] = useState(true);
+  const [smartMoneyOnly, setSmartMoneyOnly] = useState(true);
+  const [showAll, setShowAll] = useState(false);
+  const [showTop100, setShowTop100] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [tradeOpen, setTradeOpen] = useState(false);
@@ -163,7 +164,7 @@ export default function WatchlistPage() {
         || address.includes(searchQuery.toLowerCase());
       const matchesSignal = signalFilter === 'all' || w.signal === signalFilter.toUpperCase();
       const matchesSmartMoney = !smartMoneyOnly || (
-        !isExchangeWallet(w) && (w.score ?? 0) >= 40
+        !isExchangeWallet(w) && (w.score ?? 0) >= 60
       );
       return matchesSearch && matchesSignal && matchesSmartMoney;
     })
@@ -173,8 +174,12 @@ export default function WatchlistPage() {
       if (sortBy === 'name') return (a.label || '').localeCompare(b.label || '');
       if (sortBy === 'ytd') return (b.ytd_growth_pct ?? -999) - (a.ytd_growth_pct ?? -999);
       return new Date(b.last_scanned || 0).getTime() - new Date(a.last_scanned || 0).getTime();
-    })
-    .slice(0, showTop100 ? 100 : undefined), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly, showTop100]);
+    }), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly]);
+
+  const displayWallets = useMemo(() => {
+    const limited = showTop100 ? filteredWallets.slice(0, 100) : filteredWallets;
+    return showAll ? limited : limited.slice(0, 50);
+  }, [filteredWallets, showAll, showTop100]);
 
   // Keep selected wallet in sync after refetch
   useEffect(() => {
@@ -273,14 +278,14 @@ export default function WatchlistPage() {
         {/* Smart Money filter */}
         <button
           type="button"
-          onClick={() => setSmartMoneyOnly((prev) => !prev)}
+          onClick={() => { setSmartMoneyOnly((prev) => !prev); setShowAll(false); }}
           className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors select-none ${
             smartMoneyOnly
               ? 'bg-green/10 border-green/30 text-green'
               : 'border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default'
           }`}
         >
-          Smart Money Only
+          {smartMoneyOnly ? `◈ Smart Money · ${filteredWallets.length}` : 'Show all wallets'}
         </button>
 
         {/* Right controls */}
@@ -415,7 +420,7 @@ export default function WatchlistPage() {
       <div className="flex-1 min-h-0 flex overflow-hidden">
         <div className="flex-1 min-h-0 min-w-0 p-5">
           <WalletTable
-            wallets={filteredWallets}
+            wallets={displayWallets}
             loading={loading}
             error={error}
             selectedWallet={selectedWallet}
@@ -425,6 +430,15 @@ export default function WatchlistPage() {
             onRetry={refetch}
             onOpenAddModal={() => setIsAddModalOpen(true)}
           />
+          {!showAll && filteredWallets.length > 50 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-border-subtle text-center hover:bg-bg-elevated transition-colors"
+            >
+              Show all {filteredWallets.length} wallets ↓
+            </button>
+          )}
         </div>
         <div
           className={`flex-shrink-0 h-full transition-all duration-200 ease-out ${

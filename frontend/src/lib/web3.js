@@ -90,6 +90,33 @@ export async function getExistingWallet() {
   return accounts[0] || null;
 }
 
+/** Convenience namespace for Invest / copy-trade flows */
+export const web3 = {
+  async connect() {
+    if (!window.ethereum) {
+      throw new Error('MetaMask not installed. Please install MetaMask to use the trade feature.');
+    }
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    return accounts[0];
+  },
+  async getBalance(address) {
+    const hex = await window.ethereum.request({
+      method: 'eth_getBalance',
+      params: [address, 'latest'],
+    });
+    return parseInt(hex, 16) / 1e18;
+  },
+  async sendTx(txData) {
+    return sendTransaction(txData);
+  },
+  formatAddr(addr) {
+    return formatWalletAddress(addr);
+  },
+  isInstalled() {
+    return typeof window.ethereum !== 'undefined';
+  },
+};
+
 const ERC20_ABI = {
   balanceOf: '0x70a08231', // balanceOf(address)
   allowance: '0xdd62ed3e', // allowance(address,address)

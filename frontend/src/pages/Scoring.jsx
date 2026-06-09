@@ -54,7 +54,6 @@ function ScoreRow({ wallet, rank, onSelect }) {
   const score = Number(wallet.score ?? 0);
   const grade = gradeFromScore(score);
   const bd = scaleBreakdown(wallet.score_breakdown, score);
-  const rawBd = wallet.score_breakdown || {};
 
   return (
     <div
@@ -78,15 +77,13 @@ function ScoreRow({ wallet, rank, onSelect }) {
       {/* Breakdown bars — show raw points then visual bar */}
       <div className="px-2 grid grid-cols-4 gap-1 items-end">
         {[
-          { key: 'activity',     val: bd.activity },
-          { key: 'success_rate', val: bd.success_rate },
-          { key: 'balance',      val: bd.balance },
-          { key: 'recency',      val: bd.recency },
-        ].map(({ key, val }) => (
+          { key: 'activity', val: bd.activity, raw: wallet.score_breakdown?.activity ?? 0 },
+          { key: 'success_rate', val: bd.success_rate, raw: wallet.score_breakdown?.success_rate ?? 0 },
+          { key: 'balance', val: bd.balance, raw: wallet.score_breakdown?.balance ?? 0 },
+          { key: 'recency', val: bd.recency, raw: wallet.score_breakdown?.recency ?? 0 },
+        ].map(({ key, val, raw }) => (
           <div key={key}>
-            <div className="text-[10px] font-mono text-text-secondary text-center mb-0.5">
-              {rawBd[key] !== undefined && rawBd[key] !== null ? rawBd[key] : '—'}
-            </div>
+            <div className="font-mono text-[12px] text-right text-text-secondary px-2 mb-0.5">{raw}</div>
             <MiniBar value={val} />
           </div>
         ))}

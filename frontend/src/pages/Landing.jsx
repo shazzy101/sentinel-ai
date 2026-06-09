@@ -123,10 +123,10 @@ function ProductMockup() {
         </div>
       ))}
 
-      <div className="px-4 py-2 bg-bg-overlay flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-        <span className="text-[10px] text-text-muted font-mono">
-          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}...` : 'live • 94 wallets tracked'}
+      <div className="px-4 py-2 bg-bg-overlay flex items-center gap-2 overflow-hidden">
+        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse flex-shrink-0" />
+        <span className="text-[10px] text-text-muted font-mono truncate max-w-[180px] text-green">
+          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}...` : 'live • wallets tracked'}
         </span>
       </div>
     </div>
@@ -377,10 +377,10 @@ function Navbar() {
   );
 }
 
-function HeroSection() {
+function HeroSection({ walletCount }) {
   const navigate = useNavigate();
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 pt-24 pb-16 md:px-8">
+    <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 pt-28 pb-16 md:px-8">
       <div className="hero-grid absolute inset-0 pointer-events-none opacity-60" />
       <div
         className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[480px] rounded-full pointer-events-none"
@@ -394,7 +394,7 @@ function HeroSection() {
       >
         <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/10 px-3.5 py-1.5 mb-8">
           <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot" />
-          <span className="text-xs font-medium tracking-wide text-green">94 wallets tracked live</span>
+          <span className="text-xs font-medium tracking-wide text-green">{walletCount} wallets tracked live</span>
         </div>
         <h1 className="font-display font-bold text-4xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-text-primary mb-6">
           Know what smart money
@@ -415,14 +415,19 @@ function HeroSection() {
           <button
             type="button"
             onClick={() => navigate('/intelligence')}
-            className="w-full sm:w-auto glass-border text-text-secondary text-base px-8 py-3.5 rounded-2xl hover:bg-white/[0.04] hover:text-text-primary transition-all duration-200"
+            className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
           >
             See Intelligence
           </button>
         </div>
+        <div className="flex flex-col items-center mt-6 animate-bounce">
+          <svg className="w-5 h-5 text-text-muted" viewBox="0 0 20 20" fill="none">
+            <path d="M10 4v12M6 12l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 pt-10 border-t border-white/[0.06] max-w-3xl mx-auto">
           {[
-            { val: 94, lbl: 'Wallets Tracked', suffix: '' },
+            { val: walletCount, lbl: 'Wallets Tracked', suffix: '' },
             { val: 6, lbl: 'Hour Scan Cycle', suffix: 'hr' },
             { val: 100, lbl: 'Ethereum Focus', suffix: '%' },
             { val: 0, lbl: 'Cost During Beta', prefix: '$' },
@@ -571,37 +576,37 @@ function ComparisonSection() {
   );
 }
 
+function TrustStrip() {
+  return (
+    <div className="py-8 border-y border-border-subtle text-center">
+      <p className="text-[12px] text-text-muted mb-4 uppercase tracking-widest">
+        Tracking wallets from
+      </p>
+      <div className="flex items-center justify-center gap-8 flex-wrap px-6">
+        {['Paradigm', 'a16z Crypto', 'Jump Trading', 'Wintermute', 'Dragonfly', 'Vitalik.eth'].map((name) => (
+          <span key={name} className="text-[13px] text-text-muted font-medium">{name}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Footer() {
   return (
-    <footer className="bg-bg-surface border-t border-border-subtle">
-      <div className="max-w-6xl mx-auto py-12 px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <HexLogo size={20} />
-              <span className="font-display font-bold text-[14px] text-text-primary tracking-[-0.5px]">SENTINEL AI</span>
-            </div>
-            <p className="text-[13px] text-text-muted mt-2">Ethereum whale intelligence.</p>
-            <p className="text-[12px] text-text-muted mt-1">Built by Shazaib Amlani</p>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-[1.5px] text-text-muted mb-3">Product</div>
-            {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest'], ['Scoring', '/scoring'], ['Alerts', '/alerts']].map(([label, to]) => (
-              <Link key={label} to={to} className="text-[13px] text-text-muted hover:text-text-secondary block mb-2 transition-colors">
-                {label}
-              </Link>
-            ))}
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-[1.5px] text-text-muted mb-3">Sentinel</div>
-            {['Free during beta', 'Ethereum only', '94 wallets tracked', 'Powered by Claude AI'].map((item) => (
-              <span key={item} className="text-[13px] text-text-muted block mb-2">{item}</span>
-            ))}
-          </div>
+    <footer className="border-t border-border-subtle py-10 px-8">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <HexLogo size={20} />
+          <span className="font-display font-bold text-[14px]">SENTINEL AI</span>
+          <span className="text-[12px] text-text-muted ml-4">© 2026 · Built by Shazaib Amlani</span>
         </div>
-        <div className="mt-8 pt-6 border-t border-border-subtle flex justify-between text-[11px] text-text-muted">
-          <span>© 2026 Sentinel AI</span>
-          <span>Not financial advice.</span>
+        <div className="flex flex-wrap items-center gap-6 text-[13px] text-text-muted">
+          <Link to="/watchlist" className="hover:text-text-secondary">Watchlist</Link>
+          <Link to="/intelligence" className="hover:text-text-secondary">Intelligence</Link>
+          <Link to="/markets" className="hover:text-text-secondary">Markets</Link>
+          <span className="text-[11px] text-text-muted border border-border-subtle rounded px-2 py-0.5">
+            Not financial advice
+          </span>
         </div>
       </div>
     </footer>
@@ -609,8 +614,21 @@ function Footer() {
 }
 
 export default function LandingPage() {
+  const [walletCount, setWalletCount] = useState(94);
+
   useEffect(() => {
     document.title = 'Sentinel AI — Ethereum Whale Intelligence';
+  }, []);
+
+  useEffect(() => {
+    const base = import.meta.env.VITE_API_URL || '';
+    fetch(`${base}/api/watchlist?limit=1`)
+      .then((r) => r.json())
+      .then((d) => {
+        const count = d?.data?.total ?? d?.count ?? d?.data?.wallets?.length;
+        if (count) setWalletCount(count);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -618,7 +636,8 @@ export default function LandingPage() {
       <AppBackground variant="landing" />
       <ScrollWhalePaths />
       <Navbar />
-      <HeroSection />
+      <HeroSection walletCount={walletCount} />
+      <TrustStrip />
       <InvestShowcase />
       <ProductPreviewSection />
       <FeaturesSection />

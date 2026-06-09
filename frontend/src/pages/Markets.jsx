@@ -14,7 +14,6 @@ function fmt(n, dec = 2) {
 export default function MarketsPage() {
   const { wallets } = useWatchlist();
   const [ethData, setEthData] = useState(null);
-  const [ethChart, setEthChart] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
@@ -25,11 +24,9 @@ export default function MarketsPage() {
     setLoading(true);
     Promise.all([
       api.getEthPrice(),
-      api.getEthChart(365),
       api.getTopEthTokens(),
-    ]).then(([price, chart, tks]) => {
+    ]).then(([price, tks]) => {
       setEthData(price.ethereum);
-      setEthChart(chart);
       setTokens(Array.isArray(tks) ? tks : []);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -58,10 +55,8 @@ export default function MarketsPage() {
         {/* Nansen-style trading terminal */}
         <NansenTradingTerminal
           ethData={ethData}
-          ethChart={ethChart}
           wallets={wallets}
           selectedToken={selectedToken}
-          onSelectToken={setSelectedToken}
         />
 
         {/* Ecosystem token screener */}
@@ -73,7 +68,7 @@ export default function MarketsPage() {
 
           <div
             className="grid px-5 py-2.5 bg-bg-overlay border-b border-border-subtle text-[10px] uppercase tracking-widest text-text-muted"
-            style={{ gridTemplateColumns: '36px 1fr 120px 100px 100px 120px' }}
+            style={{ gridTemplateColumns: '36px 1fr 120px 100px 100px 120px 80px' }}
           >
             <div>#</div>
             <div>Token</div>
@@ -81,6 +76,7 @@ export default function MarketsPage() {
             <div className="text-right">24h</div>
             <div className="text-right">7d</div>
             <div className="text-right">Mkt Cap</div>
+            <div />
           </div>
 
           {tokens.map((token, i) => {
@@ -92,11 +88,14 @@ export default function MarketsPage() {
               <button
                 key={token.id}
                 type="button"
-                onClick={() => setSelectedToken(isSelected ? null : token)}
-                className={`grid w-full px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors items-center text-left ${
+                onClick={() => {
+                  setSelectedToken(token);
+                  document.getElementById('markets-trade-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }}
+                className={`group grid w-full px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors items-center text-left cursor-pointer ${
                   isSelected ? 'bg-bg-elevated border-l-2 border-l-green' : ''
                 }`}
-                style={{ gridTemplateColumns: '36px 1fr 120px 100px 100px 120px' }}
+                style={{ gridTemplateColumns: '36px 1fr 120px 100px 100px 120px 80px' }}
               >
                 <span className="text-[11px] text-text-muted font-mono">{i + 1}</span>
                 <div className="flex items-center gap-3">
@@ -117,6 +116,9 @@ export default function MarketsPage() {
                 </span>
                 <span className="font-mono text-[12px] text-text-secondary text-right">
                   ${(token.market_cap / 1e9).toFixed(2)}B
+                </span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-green text-right">
+                  Trade →
                 </span>
               </button>
             );
@@ -143,6 +145,10 @@ export function EthPriceBadge() {
 
   return (
     <div className="flex items-center gap-2 bg-bg-surface border border-border-default rounded-lg px-3 py-1.5">
+      <div className="flex items-center gap-1.5 mr-1">
+        <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+        <span className="text-[10px] text-text-muted uppercase">Live</span>
+      </div>
       <img
         src="https://assets.coingecko.com/coins/images/279/small/ethereum.png"
         alt="ETH"

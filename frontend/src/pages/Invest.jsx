@@ -3,23 +3,91 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowDownUp, Wallet, Shield, ExternalLink, Zap,
-  CheckCircle2, Loader2, AlertTriangle, Fish,
+  CheckCircle2, Loader2, AlertTriangle,
 } from 'lucide-react';
-import GlassCard from '../components/primitives/GlassCard';
 import MagneticButton from '../components/primitives/MagneticButton';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
+import { SignalPill } from '../components/ui/Badge';
 import { useWallet } from '../hooks/useWallet';
+import { useWatchlist } from '../hooks/useWatchlist';
 import { useTransaction, useTradeHistory } from '../hooks/useTrade';
 import { api } from '../lib/api';
 import {
   TOKEN_ADDRESSES, FROM_TOKENS, TO_TOKENS, POPULAR_PAIRS,
-  toTokenUnits, parseQuoteOutput, flattenProtocols, formatTokenAmount,
+  toTokenUnits, parseQuoteOutput, flattenProtocols,
 } from '../lib/tokens';
 import { formatWalletAddress } from '../lib/web3';
 import { getSpendableBalance, validateSwapInputs } from '../lib/swapExecution';
-import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
 import { fadeUp, motionTokens } from '../design/motion';
+
+function formatTimeAgo(ts) {
+  if (!ts) return '—';
+  const ms = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${Math.max(m, 1)}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function LiveWhaleMovesFeed({ wallets, onCopyTrade, selectedAddress }) {
+  const feedWallets = useMemo(() =>
+    (wallets || [])
+      .filter((w) => w.signal != null)
+      .sort((a, b) => new Date(b.last_scanned || 0).getTime() - new Date(a.last_scanned || 0).getTime())
+      .slice(0, 10),
+  [wallets]);
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+      <div className="mb-4">
+        <h2 className="font-display text-[14px] font-medium text-text-primary">Live Whale Moves</h2>
+        <p className="text-[11px] text-text-muted mt-0.5">Real-time · Copy any trade</p>
+      </div>
+      {feedWallets.length === 0 ? (
+        <div className="text-[13px] text-text-muted py-12 text-center border border-border-subtle rounded-xl">
+          No whale signals yet. Run scans on Watchlist to populate moves.
+        </div>
+      ) : feedWallets.map((w) => {
+        const tx = w.transactions?.[0];
+        const ethAmt = tx?.value_eth ?? tx?.value ?? w.balance ?? 0;
+        return (
+          <div
+            key={w.address}
+            role="button"
+            tabIndex={0}
+            onClick={() => onCopyTrade(w)}
+            onKeyDown={(e) => e.key === 'Enter' && onCopyTrade(w)}
+            className={`bg-bg-surface border rounded-xl p-4 mb-3 cursor-pointer hover:border-border-strong transition-all ${
+              selectedAddress === w.address ? 'border-green/40 bg-green/5' : 'border-border-default'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[9px] uppercase tracking-widest text-green mb-1">Whale move detected</div>
+                <div className="font-display text-[15px] font-bold text-text-primary truncate">{w.label || 'Whale'}</div>
+                <div className="font-mono text-[12px] text-text-secondary mt-1">
+                  Sent {Number(ethAmt).toFixed(2)} ETH · {formatTimeAgo(tx?.timestamp || w.last_scanned)}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2 text-[11px] text-text-muted">
+                  Signal: <SignalPill signal={w.signal} />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onCopyTrade(w); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green text-bg-base rounded-lg text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all shrink-0"
+              >
+                Copy trade
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function TokenSelect({ value, onChange, options }) {
   const [open, setOpen] = useState(false);
@@ -54,86 +122,22 @@ function TokenSelect({ value, onChange, options }) {
   );
 }
 
-function TradeHistoryPanel({ history }) {
-  if (!history.length) {
-    return (
-      <GlassCard className="h-full">
-        <div className="text-[11px] uppercase tracking-widest text-text-muted mb-3">Recent Activity</div>
-        <p className="text-sm text-text-muted leading-relaxed">
-          Your swap history will appear here after your first trade. All transactions are signed in MetaMask — Sentinel never holds your funds.
-        </p>
-      </GlassCard>
-    );
-  }
-
-  return (
-    <GlassCard padding={false} className="h-full flex flex-col overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/[0.06]">
-        <div className="text-[11px] uppercase tracking-widest text-text-muted">Recent Activity</div>
-      </div>
-      <ul className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
-        {history.slice(0, 12).map((t) => (
-          <li key={t.id} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-text-primary">
-                {t.amount} {t.fromToken} → {t.toToken}
-              </span>
-              <StatusBadge status={t.status} />
-            </div>
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-text-muted font-mono">
-              {t.txHash ? (
-                <a
-                  href={`https://etherscan.io/tx/${t.txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue hover:underline flex items-center gap-1"
-                >
-                  {t.txHash.slice(0, 10)}… <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span>Pending signature</span>
-              )}
-              <span>·</span>
-              <span>{new Date(t.timestamp).toLocaleString()}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </GlassCard>
-  );
-}
-
-function StatusBadge({ status }) {
-  const map = {
-    pending: { label: 'Pending', cls: 'text-amber bg-amber/10 border-amber/20' },
-    confirming: { label: 'Confirming', cls: 'text-blue bg-blue/10 border-blue/20' },
-    confirmed: { label: 'Confirmed', cls: 'text-green bg-green/10 border-green/20' },
-    failed: { label: 'Failed', cls: 'text-red bg-red/10 border-red/20' },
-  };
-  const { label, cls } = map[status] || map.pending;
-  return (
-    <span className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border ${cls}`}>
-      {label}
-    </span>
-  );
-}
-
 export default function InvestPage() {
   const [searchParams] = useSearchParams();
   const wallet = useWallet();
   const tx = useTransaction();
   const history = useTradeHistory();
+  const { wallets } = useWatchlist();
 
   const [step, setStep] = useState('configure');
-  const [fromToken, setFromToken] = useState('ETH');
-  const [toToken, setToToken] = useState('USDC');
+  const [fromToken, setFromToken] = useState('USDC');
+  const [toToken, setToToken] = useState('ETH');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [error, setError] = useState(null);
   const [ethPrice, setEthPrice] = useState(null);
-  const [activeWhaleId, setActiveWhaleId] = useState(null);
-  const [copiedWhale, setCopiedWhale] = useState(null);
+  const [selectedWallet, setSelectedWallet] = useState(null);
   const [tokenBalance, setTokenBalance] = useState(null);
 
   useEffect(() => {
@@ -203,13 +207,29 @@ export default function InvestPage() {
       setQuote(data);
       setStep('quote');
     } catch (err) {
-      setError(err.message || 'Failed to fetch quote');
+      const price = ethPrice || 1665;
+      const est = fromToken === 'USDC'
+        ? parseFloat(amount) / price
+        : parseFloat(amount) * price;
+      const decimals = toToken === 'USDC' || toToken === 'USDT' ? 6 : 18;
+      setQuote({
+        toAmount: String(Math.floor(est * Math.pow(10, decimals))),
+        priceImpact: 0,
+        aggregator: 'Estimate',
+        _fallback: true,
+      });
+      setStep('quote');
+      setError('Live quote unavailable — showing estimate. Confirm before executing.');
     } finally {
       setQuoteLoading(false);
     }
   };
 
   const handleExecute = async () => {
+    if (quote?._fallback) {
+      setError('Get a live quote before executing.');
+      return;
+    }
     setStep('executing');
     setError(null);
     try {
@@ -246,63 +266,53 @@ export default function InvestPage() {
     setToToken(pair.to);
     setQuote(null);
     setStep('configure');
-    setActiveWhaleId(null);
+    setSelectedWallet(null);
   };
 
-  const handleCopyWhaleTrade = (trade) => {
-    setFromToken(trade.suggestedFrom);
-    setToToken(trade.suggestedTo);
-    setAmount(String(trade.suggestedAmount));
+  const handleCopyTrade = (w) => {
+    setSelectedWallet(w);
+    setFromToken('USDC');
+    setToToken('ETH');
+    setAmount('');
     setQuote(null);
     setStep('configure');
-    setActiveWhaleId(trade.id);
-    setCopiedWhale(trade.whaleLabel);
     setError(null);
-    // Scroll swap panel into view on mobile
     document.getElementById('swap-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
-      <div className="mx-auto max-w-6xl p-5 flex flex-col gap-5">
-
-        {/* Header strip */}
-        <motion.div {...fadeUp} transition={motionTokens.easeOut} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-green" strokeWidth={2} />
-              <span className="text-[11px] uppercase tracking-widest text-green font-medium">Non-custodial trading</span>
-            </div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-text-primary">
-              Invest & Swap
-            </h2>
-            <p className="text-sm text-text-secondary mt-1 max-w-xl">
-              Best-rate routing across Ethereum DEXs via DefiLlama. You sign every transaction in MetaMask — Sentinel never touches your keys or funds.
-            </p>
+    <div className="h-full min-h-0 flex flex-col">
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-border-subtle">
+        <h1 className="font-display text-[16px] font-bold text-text-primary">Invest</h1>
+        {!wallet.isConnected ? (
+          <MagneticButton type="button" onClick={wallet.connectWallet} disabled={wallet.connecting}
+            className="text-[12px] px-3 py-1.5 border border-border-default rounded-lg text-text-secondary hover:bg-bg-elevated">
+            {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
+          </MagneticButton>
+        ) : (
+          <div className="flex items-center gap-2 text-[11px] font-mono text-text-secondary">
+            <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+            {formatWalletAddress(wallet.address)}
           </div>
-          {ethPrice && (
-            <div className="glass-surface rounded-xl px-4 py-2.5 text-sm font-mono shrink-0">
-              ETH <span className="text-text-primary font-semibold">${ethPrice.toLocaleString()}</span>
+        )}
+      </div>
+
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        <div className="flex-1 min-w-0 p-5 overflow-hidden flex flex-col">
+          <LiveWhaleMovesFeed wallets={wallets} onCopyTrade={handleCopyTrade} selectedAddress={selectedWallet?.address} />
+        </div>
+
+        <div id="swap-panel" className="w-[380px] flex-shrink-0 border-l border-border-subtle bg-bg-surface overflow-y-auto">
+          <div className="p-4">
+            <div className="mb-4">
+              <div className="font-display font-bold text-[16px] text-text-primary">Swap</div>
+              <div className="text-[11px] text-text-muted">Powered by DefiLlama · Best rate</div>
             </div>
-          )}
-        </motion.div>
 
-        {/* Copy whale trades */}
-        <WhaleTradesPanel onCopyTrade={handleCopyWhaleTrade} activeTradeId={activeWhaleId} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 min-h-0">
-
-          {/* Swap panel */}
-          <GlassCard spotlight className="order-1" id="swap-panel">
-            {copiedWhale && step === 'configure' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mb-4 rounded-xl border border-green/25 bg-green/10 px-3 py-2.5 text-[11px] text-green flex items-center gap-2"
-              >
-                <Fish className="h-3.5 w-3.5 shrink-0" />
-                Copying <strong>{copiedWhale}</strong>&apos;s move — adjust amount, then get rate.
-              </motion.div>
+            {selectedWallet && step === 'configure' && (
+              <div className="mb-4 rounded-xl border border-green/25 bg-green/10 px-3 py-2.5 text-[11px] text-green">
+                Copying <strong>{selectedWallet.label}</strong>&apos;s ETH buy — adjust amount, then get rate.
+              </div>
             )}
             {/* Wallet strip */}
             <div className="mb-5">
@@ -469,7 +479,7 @@ export default function InvestPage() {
                     <div className="space-y-3">
                       <div className="rounded-xl border border-amber/20 bg-amber/5 p-3 text-[11px] text-amber leading-relaxed flex gap-2">
                         <Shield className="h-4 w-4 shrink-0 mt-0.5" strokeWidth={1.75} />
-                        This executes on Ethereum mainnet via your MetaMask wallet. Sentinel does not hold funds or access your keys. Crypto trading involves significant risk.
+                        This trade executes on Ethereum mainnet via your MetaMask wallet. Sentinel AI never holds your funds or accesses your private keys.
                       </div>
                       <Button variant="primary" fullWidth onClick={handleExecute}>Confirm in MetaMask →</Button>
                       <button type="button" onClick={() => setStep('quote')} className="w-full text-xs text-text-muted hover:text-text-secondary py-1">← Back</button>
@@ -507,7 +517,7 @@ export default function InvestPage() {
               {step === 'success' && (
                 <motion.div key="success" {...fadeUp} className="py-12 flex flex-col items-center text-center">
                   <CheckCircle2 className="h-12 w-12 text-green mb-4" strokeWidth={1.5} />
-                  <div className="font-display text-xl font-bold text-green">Trade confirmed</div>
+                  <div className="font-display text-xl font-bold text-green">Trade submitted</div>
                   <p className="text-sm text-text-muted mt-2">
                     {amount} {fromToken} → {outputAmount} {toToken}
                   </p>
@@ -525,21 +535,20 @@ export default function InvestPage() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </GlassCard>
 
-          {/* Activity sidebar */}
-          <div className="order-2 lg:min-h-[480px]">
-            <TradeHistoryPanel history={history} />
+            {history.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-border-subtle">
+                <div className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Recent trades</div>
+                <ul className="space-y-2">
+                  {history.slice(0, 4).map((t) => (
+                    <li key={t.id} className="text-[11px] font-mono text-text-muted">
+                      {t.amount} {t.fromToken} → {t.toToken}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Trust footer */}
-        <div className="flex flex-wrap items-center gap-4 text-[11px] text-text-muted pb-2">
-          <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5" /> Non-custodial</span>
-          <span>·</span>
-          <span>Powered by DefiLlama Swap API</span>
-          <span>·</span>
-          <span>Ethereum mainnet only</span>
         </div>
       </div>
     </div>

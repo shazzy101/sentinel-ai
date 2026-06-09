@@ -7,7 +7,7 @@
  * type: 'signal_bullish' | 'signal_bearish' | 'score_above' | 'score_below'
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import Button from '../components/ui/Button';
 import { SignalPill } from '../components/ui/Badge';
@@ -214,71 +214,79 @@ function relativeTime(ts) {
 
 function AlertHistory() {
   const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    } catch { return []; }
   });
 
-  const refresh = useCallback(() => {
-    try { setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')); } catch { setHistory([]); }
+  useEffect(() => {
+    const handler = (e) => {
+      const alert = {
+        id: Date.now(),
+        wallet: e.detail?.wallet?.label || e.detail?.historyEntry?.walletLabel || 'Unknown',
+        signal: e.detail?.wallet?.signal || e.detail?.historyEntry?.signal || 'NEUTRAL',
+        rule: e.detail?.rule ? ruleDescription(e.detail.rule) : e.detail?.historyEntry?.ruleDescription || 'Signal change',
+        firedAt: new Date().toISOString(),
+      };
+      setHistory((prev) => {
+        const updated = [alert, ...prev].slice(0, 100);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    };
+    window.addEventListener('sentinel-alert-fired', handler);
+    return () => window.removeEventListener('sentinel-alert-fired', handler);
   }, []);
 
-  useEffect(() => {
-    window.addEventListener('sentinel-alert-fired', refresh);
-    return () => window.removeEventListener('sentinel-alert-fired', refresh);
-  }, [refresh]);
-
   const clearHistory = () => {
-    localStorage.removeItem(HISTORY_KEY);
     setHistory([]);
-  };
-
-  const signalColor = (sig) => {
-    if (sig === 'BULLISH') return 'border-green bg-green-dim';
-    if (sig === 'BEARISH') return 'border-red bg-red-dim';
-    return 'border-amber bg-amber-dim';
+    localStorage.removeItem(HISTORY_KEY);
   };
 
   return (
-    <div className="mt-8">
+    <div className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[13px] font-medium text-text-primary">Alert History</div>
+        <h2 className="font-display text-[14px] font-medium">Alert History</h2>
         {history.length > 0 && (
-          <button
-            type="button"
-            onClick={clearHistory}
-            className="text-[11px] text-text-muted hover:text-text-secondary transition-colors"
-          >
-            Clear history
+          <button type="button" onClick={clearHistory}
+            className="text-[11px] text-text-muted hover:text-text-secondary">
+            Clear all
           </button>
         )}
       </div>
-      <TextureCard>
-        {history.length === 0 ? (
-          <TextureCardContent className="py-12 flex flex-col items-center text-center">
-            <svg width="32" height="32" viewBox="0 0 16 16" fill="none" className="stroke-text-muted mb-3">
-              <path d="M8 2.3C6.1 2.3 4.8 3.7 4.8 5.7V7.1C4.8 8.1 4.4 9 3.8 9.7L3.1 10.5H12.9L12.2 9.7C11.6 9 11.2 8.1 11.2 7.1V5.7C11.2 3.7 9.9 2.3 8 2.3Z" strokeWidth="1.2" />
-              <path d="M6.5 12.1C6.7 12.9 7.3 13.3 8 13.3C8.7 13.3 9.3 12.9 9.5 12.1" strokeWidth="1.2" />
-            </svg>
-            <div className="text-[13px] text-text-muted">No alerts fired yet</div>
-            <div className="text-[12px] text-text-muted mt-1 opacity-70">Alerts will appear here when your rules match</div>
-          </TextureCardContent>
-        ) : (
-          <div className="divide-y divide-border-subtle">
-            {history.map((entry) => (
-              <div key={entry.id} className={`flex items-start gap-3 px-4 py-3 border-l-2 ${signalColor(entry.signal)}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-text-primary truncate">{entry.walletLabel}</span>
-                    <SignalPill signal={entry.signal || 'NEUTRAL'} />
-                  </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
-                    {entry.ruleDescription} · {relativeTime(entry.timestamp)}
-                  </div>
+      {history.length === 0 ? (
+        <div className="flex flex-col items-center py-16 gap-3 border border-border-subtle rounded-xl">
+          <svg className="w-8 h-8 text-text-muted" viewBox="0 0 24 24" fill="none">
+            <path d="M15 17H20L18.6 15.6A2 2 0 0 1 18 14.2V11A6 6 0 0 0 7 11V14.2A2 2 0 0 1 6.4 15.6L5 17H10M15 17V18A3 3 0 0 1 9 18V17M15 17H9"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <p className="text-[14px] text-text-secondary">No alerts fired yet</p>
+          <p className="text-[12px] text-text-muted text-center max-w-xs">
+            When a wallet matches your rules, alerts appear here instantly
+          </p>
+        </div>
+      ) : (
+        <div className="border border-border-subtle rounded-xl overflow-hidden">
+          {history.map((item) => (
+            <div key={item.id}
+              className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-elevated transition-colors">
+              <div className={`w-[3px] self-stretch rounded-full flex-shrink-0 ${
+                item.signal === 'BULLISH' ? 'bg-green' : item.signal === 'BEARISH' ? 'bg-red' : 'bg-amber'
+              }`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-medium text-text-primary truncate">{item.wallet}</span>
+                  <SignalPill signal={item.signal} />
                 </div>
+                <p className="text-[11px] text-text-muted mt-0.5">{item.rule}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </TextureCard>
+              <span className="text-[11px] text-text-muted font-mono flex-shrink-0">
+                {relativeTime(item.firedAt || item.timestamp)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -346,55 +354,40 @@ export default function AlertsPage() {
           </TextureCard>
         ) : (
           <div className="flex flex-col gap-3">
-            {rules.map((rule) => (
-              <TextureCard
+            {rules.map((rule) => {
+              const condition = rule.type === 'signal_bullish' ? 'BULLISH'
+                : rule.type === 'signal_bearish' ? 'BEARISH' : 'NEUTRAL';
+              return (
+              <div
                 key={rule.id}
-                className={rule.active ? '' : 'opacity-50'}
+                className="bg-bg-surface border border-border-default rounded-xl p-4 flex items-center gap-4 hover:border-border-strong transition-colors"
               >
-                <TextureCardContent className="px-4 py-3.5 flex items-center gap-3">
-                {/* Active dot */}
-                <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                  rule.active ? 'bg-green relative pulse-dot' : 'bg-border-strong'
-                }`} />
-
-                {/* Rule info */}
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${rule.active ? 'bg-green' : 'bg-text-muted'}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-text-primary truncate">{rule.walletLabel}</span>
+                    <span className="text-[13px] font-medium text-text-primary">{rule.walletLabel}</span>
                     {(rule.type === 'signal_bullish' || rule.type === 'signal_bearish') && (
-                      <SignalPill signal={rule.type === 'signal_bullish' ? 'BULLISH' : 'BEARISH'} />
-                    )}
-                    {(rule.type === 'score_above' || rule.type === 'score_below') && (
-                      <span className="text-[10px] font-mono bg-bg-elevated border border-border-default rounded px-1.5 py-0.5 text-text-secondary">
-                        {rule.type === 'score_above' ? '≥' : '<'} {rule.threshold}
-                      </span>
+                      <SignalPill signal={condition} />
                     )}
                   </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
+                  <p className="text-[12px] text-text-muted mt-0.5">
                     Notify when {ruleDescription(rule)}
-                  </div>
+                  </p>
                 </div>
-
-                {/* Controls */}
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleToggle(rule.id)}
-                    className="text-[11px] px-2.5 py-1 rounded-md border border-border-default text-text-muted hover:text-text-secondary hover:border-border-strong transition-colors h-7"
-                  >
+                  <button type="button" onClick={() => handleToggle(rule.id)}
+                    className="text-[11px] px-2.5 py-1.5 border border-border-default rounded-lg text-text-secondary hover:bg-bg-elevated transition-colors">
                     {rule.active ? 'Pause' : 'Resume'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(rule.id)}
-                    className="text-[11px] px-2.5 py-1 rounded-md border border-border-default text-text-muted hover:bg-red-dim hover:text-red hover:border-red-border transition-colors h-7"
-                  >
-                    ✕
+                  <button type="button" onClick={() => handleDelete(rule.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:bg-red-dim hover:text-red transition-colors border border-transparent hover:border-red-border">
+                    <svg width="12" height="12" viewBox="0 0 12 12">
+                      <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
                   </button>
                 </div>
-                </TextureCardContent>
-              </TextureCard>
-            ))}
+              </div>
+            );})}
           </div>
         )}
 

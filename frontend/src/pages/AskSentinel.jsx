@@ -122,7 +122,7 @@ export default function AskSentinelPage() {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    document.title = 'Ask Sentinel — Sentinel AI';
+    document.title = 'Ask AI — Sentinel AI';
   }, []);
 
   useEffect(() => {
