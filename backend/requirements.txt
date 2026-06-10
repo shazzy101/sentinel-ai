@@ -6,3 +6,4 @@ python-dotenv==1.0.0
 supabase==2.7.0
 pydantic==2.8.0
 sqlalchemy==2.0.36
+feedparser==6.0.12

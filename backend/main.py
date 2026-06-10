@@ -183,6 +183,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_ai_top())
     asyncio.create_task(_startup_balance_sync())
     asyncio.create_task(_cron_dune_refresh())
+    asyncio.create_task(_cron_news())
     yield
 
 
@@ -1454,6 +1455,114 @@ async def waitlist_count():
         return success({"count": res.count if res.count is not None else len(res.data or [])})
     except Exception as e:
         return error("WAITLIST_UNAVAILABLE", "Waitlist table not available.", status_code=503, details={"reason": str(e)[:160]})
+
+
+# ─────────────────────────────────────────
+# ROUTES — NEWS INTELLIGENCE
+# ─────────────────────────────────────────
+
+@app.get("/api/news")
+async def list_news(
+    category: Optional[str] = None,
+    source: Optional[str] = None,
+    sort: str = "recent",  # recent | importance
+    limit: int = 40,
+):
+    """Scored news feed. Heuristic scores only — no Claude here."""
+    try:
+        order_col = "importance_score" if sort == "importance" else "published_at"
+        q = (
+            supabase_client.table("news")
+            .select("*")
+            .order(order_col, desc=True)
+            .limit(min(max(limit, 1), 100))
+        )
+        if category and category not in ("All News", "All"):
+            if category == "Ethereum":
+                q = q.gte("ethereum_relevance", 30)
+            else:
+                q = q.eq("category", category)
+        if source:
+            q = q.eq("source", source)
+        res = q.execute()
+        return success({"articles": res.data or []})
+    except Exception as e:
+        return error("NEWS_UNAVAILABLE", "News feed not available yet.", status_code=503, details={"reason": str(e)[:160]})
+
+
+@app.get("/api/news/pulse")
+async def news_pulse():
+    """Market Pulse: sentiment split, fear/greed-style meter, ETH sentiment, top narrative."""
+    try:
+        res = (
+            supabase_client.table("news")
+            .select("sentiment, bull_score, importance_score, ethereum_relevance, category, title, affected_tokens, source")
+            .order("published_at", desc=True)
+            .limit(120)
+            .execute()
+        )
+        arts = res.data or []
+        if not arts:
+            return success({"available": False})
+
+        bullish = sum(1 for a in arts if "Bull" in (a.get("sentiment") or ""))
+        bearish = sum(1 for a in arts if "Bear" in (a.get("sentiment") or ""))
+        neutral = len(arts) - bullish - bearish
+
+        # Importance-weighted sentiment meter (0-100, fear→greed)
+        wsum = sum((a.get("importance_score") or 1) for a in arts) or 1
+        meter = round(sum((a.get("bull_score") or 50) * (a.get("importance_score") or 1) for a in arts) / wsum)
+
+        eth_arts = [a for a in arts if (a.get("ethereum_relevance") or 0) >= 30]
+        eth_sentiment = round(sum(a.get("bull_score") or 50 for a in eth_arts) / len(eth_arts)) if eth_arts else None
+
+        # Top narrative = most-mentioned token among higher-importance stories
+        from collections import Counter
+        tok = Counter()
+        for a in arts:
+            if (a.get("importance_score") or 0) >= 40:
+                for t in (a.get("affected_tokens") or []):
+                    tok[t] += 1
+        top_token = tok.most_common(1)[0][0] if tok else None
+        top_headline = max(arts, key=lambda a: a.get("importance_score") or 0).get("title")
+
+        return success({
+            "available": True,
+            "total": len(arts),
+            "bullish": bullish,
+            "bearish": bearish,
+            "neutral": neutral,
+            "sentiment_meter": meter,  # 0=extreme fear, 100=extreme greed
+            "eth_sentiment": eth_sentiment,
+            "top_token": top_token,
+            "top_headline": top_headline,
+            "eth_relevant_count": len(eth_arts),
+        })
+    except Exception as e:
+        return error("NEWS_UNAVAILABLE", "News pulse not available yet.", status_code=503, details={"reason": str(e)[:160]})
+
+
+@app.post("/api/admin/ingest-news")
+async def ingest_news():
+    """Fetch + score the latest news from all RSS sources (no Claude)."""
+    try:
+        from news.ingestor import ingest_all
+        stats = await ingest_all(supabase_client)
+        return success(stats)
+    except Exception as e:
+        return error("INGEST_FAILED", str(e), status_code=500)
+
+
+async def _cron_news():
+    """Refresh the news feed every 30 minutes (heuristic only, zero Claude)."""
+    await asyncio.sleep(45)  # startup grace
+    while True:
+        try:
+            from news.ingestor import ingest_all
+            await ingest_all(supabase_client)
+        except Exception:
+            pass
+        await asyncio.sleep(30 * 60)
 
 
 async def _cron_dune_refresh():
