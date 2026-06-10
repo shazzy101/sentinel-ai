@@ -247,10 +247,11 @@ export default function Sidebar({ onOpenCommand }) {
           </div>
         )}
 
-        {/* User + MetaMask */}
+        {/* MetaMask — for executing trades only, separate from app login */}
         <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
           {wallet.isConnected ? (
             <div className="rounded-xl border border-green/20 bg-green/5 px-3 py-2">
+              <div className="text-[9px] uppercase tracking-widest text-text-muted mb-1">Trade wallet (MetaMask)</div>
               <div className="flex items-center gap-2">
                 <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot shrink-0" />
                 <span className="font-mono text-[11px] text-text-secondary truncate">{formatWalletAddress(wallet.address)}</span>
@@ -292,14 +293,14 @@ export default function Sidebar({ onOpenCommand }) {
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue uppercase">
-              {auth?.user?.email?.[0]?.toUpperCase() ?? (wallet.isConnected ? wallet.address.slice(2, 4) : 'G')}
+              {auth?.user?.email?.[0]?.toUpperCase() ?? 'G'}
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[12px] font-medium text-text-primary">
-                {auth?.user?.email ?? (wallet.isConnected ? formatWalletAddress(wallet.address) : 'Guest')}
+                {auth?.user?.email ?? 'Guest'}
               </div>
               <div className="text-[10px] text-text-muted">
-                {auth?.isPro ? 'Pro' : auth?.isTrialing ? `Trial · ${auth.trialDaysLeft}d` : auth?.user ? 'Free' : 'Not signed in'}
+                {auth?.user ? (auth?.isPro ? 'Pro account' : auth?.isTrialing ? `Trial · ${auth.trialDaysLeft}d` : 'Free account') : 'Not signed in'}
               </div>
             </div>
           </div>

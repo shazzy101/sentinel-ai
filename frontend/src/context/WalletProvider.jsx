@@ -117,6 +117,18 @@ export function WalletProvider({ children }) {
 
   const clearError = useCallback(() => setError(null), []);
 
+  const clearLocalWallet = useCallback(() => {
+    setAddress(null);
+    setBalance(null);
+    setError(null);
+  }, []);
+
+  useEffect(() => {
+    const onAuthSignedOut = () => clearLocalWallet();
+    window.addEventListener('hadaleum-auth-signed-out', onAuthSignedOut);
+    return () => window.removeEventListener('hadaleum-auth-signed-out', onAuthSignedOut);
+  }, [clearLocalWallet]);
+
   const value = useMemo(() => ({
     address,
     balance,
@@ -129,8 +141,9 @@ export function WalletProvider({ children }) {
     connectWallet,
     switchToMainnet,
     clearError,
+    clearLocalWallet,
     refreshBalance: () => refreshBalance(address),
-  }), [address, balance, chainId, connecting, error, connectWallet, switchToMainnet, clearError, refreshBalance]);
+  }), [address, balance, chainId, connecting, error, connectWallet, switchToMainnet, clearError, clearLocalWallet, refreshBalance]);
 
   return (
     <WalletContext.Provider value={value}>

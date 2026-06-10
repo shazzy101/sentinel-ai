@@ -39,11 +39,22 @@ export default function UpgradePage() {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      const { data, error: fnError } = await supabase.functions.invoke('create-checkout-session', {
         body: { billing },
       })
-      if (error) throw error
+      if (fnError) {
+        let msg = fnError.message
+        if (fnError.context?.json) {
+          try {
+            const body = await fnError.context.json()
+            if (body?.error) msg = body.error
+          } catch { /* ignore */ }
+        }
+        throw new Error(msg)
+      }
+      if (data?.error) throw new Error(data.error)
       if (data?.url) window.location.href = data.url
+      else throw new Error('No checkout URL returned')
     } catch (err) {
       setError(err.message)
     } finally {

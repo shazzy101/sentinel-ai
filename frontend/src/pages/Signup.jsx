@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { supabase } from '@/lib/supabase'
+import { authCallbackUrl } from '@/lib/authRedirect'
 import { HexLogo } from '@/components/ui/SentinelLogo'
 
 export default function SignupPage() {
@@ -24,7 +25,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/watchlist`,
+          emailRedirectTo: authCallbackUrl('/watchlist'),
         },
       })
       if (error) throw error
@@ -49,7 +50,7 @@ export default function SignupPage() {
     if (!supabase) return
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/watchlist` },
+      options: { redirectTo: authCallbackUrl('/watchlist') },
     })
   }
 

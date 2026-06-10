@@ -97,10 +97,10 @@ export default function SettingsPage() {
                 {planLabel}
               </span>
             </Row>
-            <Row icon={Shield} label="Wallet" sub={
+            <Row icon={Shield} label="Trade wallet (MetaMask)" sub={
               wallet.isConnected
-                ? `Connected · ${wallet.isMainnet ? 'Mainnet' : 'Wrong network'}`
-                : wallet.isInstalled ? 'Not connected — non-custodial' : 'MetaMask not detected'
+                ? `For executing swaps only · ${wallet.isMainnet ? 'Mainnet' : 'Wrong network'}`
+                : wallet.isInstalled ? 'Optional — connect to copy trades' : 'MetaMask not detected'
             }>
               {wallet.isConnected ? (
                 <span className="font-mono text-[11px] text-text-secondary">{formatWalletAddress(wallet.address)}</span>

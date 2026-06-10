@@ -48,6 +48,7 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     if (!supabase) return
+    window.dispatchEvent(new Event('hadaleum-auth-signed-out'))
     await supabase.auth.signOut()
   }
 
