@@ -921,7 +921,7 @@ async def get_watchlist(
         fetch_limit = min(max(limit, 1), 500)
         result = (
             supabase_client.table("wallets")
-            .select("id, address, label, chain, tags, score, score_breakdown, signal, signal_reason, balance, last_scanned, created_at")
+            .select("id, address, label, chain, tags, score, score_breakdown, balance, last_scanned, created_at")
             .eq("chain", "ethereum")
             .order("score", desc=True)
             .limit(fetch_limit if smart_only else min(fetch_limit * 3, 500))
@@ -2459,7 +2459,7 @@ async def track_copy_trader(request: Request, address: str, background_tasks: Ba
 
         existing = (
             supabase_client.table("wallets")
-            .select("id, address, label, tags, signal, chain, score, balance, last_scanned")
+            .select("id, address, label, tags, chain, score, balance, last_scanned")
             .eq("address", addr)
             .execute()
         )
@@ -2553,7 +2553,7 @@ async def latest_transactions(limit: int = 15):
         if wallet_ids:
             w_rows = (
                 supabase_client.table("wallets")
-                .select("id, address, label, score, signal")
+                .select("id, address, label, score")
                 .in_("id", wallet_ids)
                 .execute()
             )

@@ -28,7 +28,7 @@ def select_ask_model(message: str, history: list[dict]) -> tuple[str, int]:
 async def fetch_ask_wallets(supabase_client) -> list[dict]:
     result = (
         supabase_client.table("wallets")
-        .select("address, label, score, signal, balance")
+        .select("address, label, score, balance")
         .order("score", desc=True)
         .limit(20)
         .execute()
