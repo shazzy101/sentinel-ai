@@ -29,10 +29,10 @@ serve(async (req) => {
     const { billing } = await req.json()
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2023-10-16' })
 
-    // Price IDs — set these in Stripe dashboard and store in env vars
-    const priceId = billing === 'annual'
-      ? Deno.env.get('STRIPE_PRICE_ANNUAL')!
-      : Deno.env.get('STRIPE_PRICE_MONTHLY')!
+    // Price IDs — env vars override the hardcoded production defaults
+    const PRICE_MONTHLY = Deno.env.get('STRIPE_PRICE_MONTHLY') || 'price_1Tgh7TJ99lPC7hJArhlkMRUt'
+    const PRICE_ANNUAL  = Deno.env.get('STRIPE_PRICE_ANNUAL')  || 'price_1Tgh7TJ99lPC7hJAKI7D5KIg'
+    const priceId = billing === 'annual' ? PRICE_ANNUAL : PRICE_MONTHLY
 
     // Get or create Stripe customer
     const { data: profile } = await supabase
@@ -55,8 +55,8 @@ serve(async (req) => {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${Deno.env.get('APP_URL')}/watchlist?upgraded=1`,
-      cancel_url: `${Deno.env.get('APP_URL')}/upgrade`,
+      success_url: `${Deno.env.get('APP_URL') || 'https://hadaleum.com'}/watchlist?upgraded=1`,
+      cancel_url: `${Deno.env.get('APP_URL') || 'https://hadaleum.com'}/upgrade`,
       allow_promotion_codes: true,
     })
 

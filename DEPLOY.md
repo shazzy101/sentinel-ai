@@ -84,15 +84,34 @@ Supabase Dashboard → Project Settings → API → `anon` `public` key → copy
 
 ## Stripe Setup (one-time)
 
-1. Create product in [Stripe Dashboard](https://dashboard.stripe.com/products)
-   - Name: `Hadaleum Pro`
-   - Monthly price: $19/month → copy `price_xxx` ID
-   - Annual price: $190/year → copy `price_xxx` ID
-2. Set those price IDs as Supabase secrets (see above)
-3. Set up webhook: Dashboard → Webhooks → Add endpoint
+Products and prices are **already created** on the live Stripe account (`acct_1TggstJ99lPC7hJA`):
+
+| Item | ID |
+|---|---|
+| Product | `prod_Ug3DQVaNpdsoRs` |
+| Monthly price ($19/mo) | `price_1Tgh7TJ99lPC7hJArhlkMRUt` |
+| Annual price ($190/yr) | `price_1Tgh7TJ99lPC7hJAKI7D5KIg` |
+
+These IDs are hardcoded in `create-checkout-session/index.ts` as defaults.
+
+### Remaining manual steps:
+
+1. **Enable card payments** — [Stripe → Payment Methods](https://dashboard.stripe.com/settings/payment_methods) → turn on "Card"
+
+2. **Add webhook endpoint** — [Stripe → Webhooks → Add endpoint](https://dashboard.stripe.com/webhooks/create)
    - URL: `https://wuszhfqznudawpsjkgwv.supabase.co/functions/v1/stripe-webhook`
    - Events: `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`
-   - Copy the signing secret → set as `STRIPE_WEBHOOK_SECRET`
+   - Copy the **signing secret** (`whsec_...`) → set as Supabase secret:
+     ```bash
+     supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+     ```
+
+3. **Get your secret key** — [Stripe → API Keys](https://dashboard.stripe.com/apikeys) → copy `sk_live_...`
+   - Set as Supabase secret: `supabase secrets set STRIPE_SECRET_KEY=sk_live_...`
+   - Set as Railway env var for CORS reference
+
+4. **Get your publishable key** — copy `pk_live_...` from same page
+   - Add to Cloudflare Pages env vars: `VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...`
 
 ---
 
