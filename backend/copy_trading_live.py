@@ -107,8 +107,9 @@ async def _fetch_token_transfers(address: str, days: int = HISTORY_DAYS) -> list
 
 async def compute_live_metrics(address: str) -> dict | None:
     """
-    Compute the 5 copy-trading metrics for a single wallet from real on-chain
-    trade history. Returns None when there isn't enough data to reconstruct trades.
+    Compute supplemental on-chain metrics (max drawdown, avg duration) for a
+    single wallet. Returns None when trade reconstruction is insufficient.
+    Never replaces dataset win rate / profit factor / track record.
     """
     if not address:
         return None
@@ -127,15 +128,12 @@ async def compute_live_metrics(address: str) -> dict | None:
     if transfers:
         trades, first_ts, last_ts = r.reconstruct_trades(address, transfers)
         raw = r.compute_metrics(trades, first_ts, last_ts)
-        if raw:
+        # Require enough reconstructed trades — avoid returning zeros that
+        # would clobber good Dune dataset values on the frontend.
+        if raw and raw.get("trade_count", 0) >= getattr(r, "MIN_TRADES", 10):
             metrics = {
-                "win_rate_pct": raw["win_rate"],
-                "profit_factor": raw["profit_factor"],
                 "max_drawdown_pct": raw["max_drawdown_pct"],
                 "avg_trade_duration_hrs": raw["avg_trade_duration_hrs"],
-                "track_record_days": raw["track_record_days"],
-                "trade_count": raw["trade_count"],
-                "net_pnl_usd": raw["net_pnl_usd"],
             }
 
     _result_cache[key] = (time.time(), metrics)

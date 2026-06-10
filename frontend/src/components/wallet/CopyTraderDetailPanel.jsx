@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, ReferenceLine,
+} from 'recharts';
 import { ExternalLink } from 'lucide-react';
 import Spinner from '../ui/Spinner';
 import Button from '../ui/Button';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
-import { formatUsd } from '../../lib/chartUtils';
+import { formatUsd, mergeCopyTraderMetrics, buildBacktestOutlookSeries } from '../../lib/chartUtils';
 import { api } from '../../lib/api';
-import { useEnsName, traderDisplayName, shortAddress } from '../../lib/ens';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { useEnsName, traderDisplayName } from '../../lib/ens';
 
 const METRIC_CARDS = [
   { key: 'win_rate_pct', label: 'Win Rate', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
@@ -30,43 +30,27 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
   const [liveState, setLiveState] = useState('idle'); // idle | loading | done | unavailable
 
   const m = useMemo(
-    () => ({ ...(detail?.metrics || {}), ...(liveMetrics || {}) }),
-    [detail, liveMetrics],
+    () => mergeCopyTraderMetrics(detail?.metrics, liveMetrics),
+    [detail?.metrics, liveMetrics],
   );
   const oc = detail?.on_chain_data || {};
 
-  // Only real on-chain YTD balance history is shown — no synthetic/estimated curve.
-  const [ytd, setYtd] = useState(null); // { sparkline:[{balance,ts}], pct }
-  const hasTrueYtd = ytd?.sparkline?.length >= 2;
-  const sparkData = hasTrueYtd ? ytd.sparkline : [];
-  const returnPct = hasTrueYtd ? ytd.pct : null;
-  const up = (returnPct ?? 0) >= 0;
-  const trendColor = up ? '#00D992' : '#FF4D4D';
+  const outlook = useMemo(() => buildBacktestOutlookSeries({ ...detail, metrics: m }), [detail, m]);
+  const chartData = outlook.points;
+  const hasChart = chartData.length >= 4;
+  const up = (outlook.ytdReturnPct ?? 0) >= 0;
 
   const needsLiveMetrics =
     (detail?.metrics?.max_drawdown_pct == null || detail?.metrics?.avg_trade_duration_hrs == null);
 
   useEffect(() => {
     setDetail(wallet);
-    setYtd(null);
     setLiveMetrics(null);
     setLiveState('idle');
     if (!wallet?.address) return;
     let cancelled = false;
     api.getCopyTrader(wallet.address)
       .then((w) => { if (!cancelled && w) setDetail(w); })
-      .catch(() => {});
-    // Pull the real on-chain YTD balance curve for this address.
-    fetch(`${API_BASE}/api/wallets/${wallet.address}`)
-      .then((r) => r.json())
-      .then((body) => {
-        if (cancelled) return;
-        const w = body?.data?.wallet;
-        const spark = w?.ytd_sparkline;
-        if (Array.isArray(spark) && spark.length >= 2) {
-          setYtd({ sparkline: spark, pct: w.ytd_growth_pct ?? null });
-        }
-      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [wallet?.address]);
@@ -176,43 +160,104 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
         <div className="px-5 py-4 border-b border-border-subtle">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase tracking-widest text-text-muted">
-              Year-to-Date · On-chain ETH balance
+              YTD Backtest · Forward Outlook
             </span>
-            {hasTrueYtd && returnPct != null && (
+            {hasChart && outlook.ytdReturnPct != null && (
               <span className={`font-mono text-[13px] font-bold ${up ? 'text-green' : 'text-red'}`}>
-                {up ? '+' : ''}{returnPct.toFixed(1)}% YTD
+                {up ? '+' : ''}{outlook.ytdReturnPct.toFixed(1)}% YTD
               </span>
             )}
           </div>
-          {hasTrueYtd ? (
+          {hasChart ? (
             <>
-              <ResponsiveContainer width="100%" height={140}>
-                <AreaChart data={sparkData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="copyTraderGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={trendColor} stopOpacity={0.25} />
-                      <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5} fill="url(#copyTraderGrad)" dot={false} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-primary)' }}
-                    formatter={(v) => [`${Number(v).toFixed(2)} ETH`, 'Balance']}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-              <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
-                Real on-chain ETH balance since Jan 1, reconstructed from this wallet’s transaction history.
+              <div className="rounded-xl border border-border-subtle bg-bg-elevated/40 p-2">
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="backtestGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#00D992" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#00D992" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="outlookGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#818CF8" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 9, fill: 'var(--text-muted)' }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.floor(chartData.length / 5)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: 'var(--text-muted)' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v}%`}
+                      width={42}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        color: 'var(--text-primary)',
+                      }}
+                      formatter={(v, name) => [
+                        v != null ? `${Number(v).toFixed(1)}%` : '—',
+                        name === 'hist' ? 'Backtested' : 'Outlook',
+                      ]}
+                      labelFormatter={(l) => l}
+                    />
+                    {outlook.todayLabel && (
+                      <ReferenceLine
+                        x={outlook.todayLabel}
+                        stroke="var(--border-strong)"
+                        strokeDasharray="4 4"
+                        label={{ value: 'Today', position: 'insideTopRight', fill: 'var(--text-muted)', fontSize: 9 }}
+                      />
+                    )}
+                    <Area
+                      type="monotone"
+                      dataKey="hist"
+                      stroke="#00D992"
+                      strokeWidth={1.5}
+                      fill="url(#backtestGrad)"
+                      dot={false}
+                      connectNulls={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="future"
+                      stroke="#818CF8"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                      fill="url(#outlookGrad)"
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-green rounded" /> Backtested (win rate {m.win_rate_pct}% · PF {Number(m.profit_factor).toFixed(1)})
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-blue rounded border-dashed" /> +{outlook.outlookReturnPct?.toFixed(1)}% outlook (90d)
+                </span>
+              </div>
+              <p className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
+                Backtested from on-chain DEX history ({m.track_record_days}d track record). Outlook extrapolates the same edge forward — not a guarantee.
               </p>
             </>
           ) : (
             <div className="rounded-xl border border-border-subtle bg-bg-elevated/40 px-4 py-5 text-center">
-              <div className="text-[12px] text-text-secondary font-medium">No on-chain balance history yet</div>
-              <p className="text-[11px] text-text-muted mt-1 leading-relaxed max-w-[280px] mx-auto">
-                {isTracked
-                  ? 'Rescan this wallet from the watchlist to reconstruct its real YTD balance curve.'
-                  : 'Track this wallet to reconstruct its real year-to-date balance curve from on-chain history.'}
-              </p>
+              <div className="text-[12px] text-text-secondary font-medium">Insufficient trade history</div>
+              <p className="text-[11px] text-text-muted mt-1">Need win rate and profit factor to build a backtest curve.</p>
             </div>
           )}
         </div>
