@@ -3,7 +3,6 @@ import { useWatchlist } from '../hooks/useWatchlist';
 import { api } from '../lib/api';
 import Spinner from '../components/ui/Spinner';
 import NansenTradingTerminal from '../components/markets/NansenTradingTerminal';
-import NetworkDashboard from '../components/markets/NetworkDashboard';
 import CopyTradingIntelligence from '../components/markets/CopyTradingIntelligence';
 import EthYtdChart from '../components/charts/EthYtdChart';
 
@@ -54,22 +53,28 @@ export default function MarketsPage() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto">
-      <div className="p-5 flex flex-col gap-5 max-w-[1600px] mx-auto">
-        {/* Network intelligence — Dune-powered on-chain dashboard */}
-        <NetworkDashboard />
-
-        {/* Copy-trading judgment layer — top wallets, latest txs, chain trades */}
+      <div className="p-5 flex flex-col gap-6 max-w-[1200px] mx-auto">
+        {/* Primary: copy trading feed + top traders */}
         <CopyTradingIntelligence />
 
-        {/* ETH year-to-date price chart */}
+        {/* ETH chart — secondary context */}
         <EthYtdChart />
 
-        {/* Nansen-style trading terminal */}
-        <NansenTradingTerminal
-          ethData={ethData}
-          wallets={wallets}
-          selectedToken={selectedToken}
-        />
+        {/* Trading terminal — collapsed by default feel via smaller gap */}
+        <details className="group">
+          <summary className="cursor-pointer list-none flex items-center justify-between rounded-xl border border-border-default bg-bg-surface px-4 py-3 hover:bg-bg-elevated/40 transition-colors">
+            <span className="font-display text-[14px] font-medium text-text-primary">Advanced · Chart &amp; Swap</span>
+            <span className="text-[11px] text-text-muted group-open:hidden">Expand</span>
+            <span className="text-[11px] text-text-muted hidden group-open:inline">Collapse</span>
+          </summary>
+          <div className="mt-3">
+            <NansenTradingTerminal
+              ethData={ethData}
+              wallets={wallets}
+              selectedToken={selectedToken}
+            />
+          </div>
+        </details>
 
         {/* Ecosystem token screener */}
         <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden">

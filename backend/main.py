@@ -1942,6 +1942,85 @@ async def copy_trading_top(
     })
 
 
+# Tokens worth surfacing for copy-trade signals (majors + liquid DeFi)
+_COPY_QUALITY_SYMBOLS = {
+    "ETH", "WETH", "WBTC", "USDC", "USDT", "DAI", "UNI", "LINK", "AAVE", "ARB", "OP",
+    "PEPE", "SHIB", "LDO", "MKR", "CRV", "SNX", "COMP", "ENS", "RNDR", "FET", "INJ",
+    "WSTETH", "STETH", "WEETH", "CBETH", "RETH", "BONK", "FLOKI", "MATIC", "POL",
+    "GMX", "PENDLE", "EIGEN", "ETHFI", "ONDO", "WLD", "BLUR", "APE", "SAND", "MANA",
+    "TIA", "SEI", "SUI", "SOL", "DOGE", "HYPE",
+}
+
+
+@app.get("/api/copy-trading/recent-moves")
+async def copy_trading_recent_moves(limit: int = 15):
+    """
+    Recent large DEX swaps from ranked copy traders into liquid tokens.
+    Filters out random meme noise so Markets shows actionable copy signals.
+    """
+    limit = max(1, min(limit, 30))
+    all_wallets = _load_copy_trading_wallets()
+    pool = _sort_copy_traders(
+        _filter_copy_traders(
+            all_wallets,
+            min_win_rate=60,
+            min_profit_factor=2,
+            min_track_days=90,
+            qualified_only=True,
+        ),
+        "copy_score",
+    )[:500]
+    trader_map = {(w.get("address") or "").lower(): _enrich_copy_trader(w) for w in pool}
+
+    rows = await _cached_dune("large_trades", dune.QUERY_WHALE_TRADES, limit=80)
+    moves: list[dict] = []
+    seen: set[str] = set()
+
+    for r in rows:
+        addr = (r.get("trader") or "").lower()
+        trader = trader_map.get(addr)
+        if not trader:
+            continue
+
+        bought = (r.get("token_bought_symbol") or "").upper()
+        sold = (r.get("token_sold_symbol") or "").upper()
+        if bought not in _COPY_QUALITY_SYMBOLS and sold not in _COPY_QUALITY_SYMBOLS:
+            continue
+
+        tx_hash = r.get("tx_hash") or ""
+        if not tx_hash or tx_hash in seen:
+            continue
+        seen.add(tx_hash)
+
+        metrics = trader.get("metrics") or {}
+        stable = {"USDC", "USDT", "DAI"}
+        if bought in stable:
+            action = "take_profit"
+        elif sold in stable or sold in ("WETH", "ETH"):
+            action = "buy"
+        else:
+            action = "rotate"
+
+        moves.append({
+            "time": r.get("block_time"),
+            "tx_hash": tx_hash,
+            "trader_address": r.get("trader"),
+            "trader_label": trader.get("label"),
+            "copy_score": trader.get("copy_trading_score"),
+            "win_rate_pct": metrics.get("win_rate_pct"),
+            "profit_factor": metrics.get("profit_factor"),
+            "sold": sold,
+            "bought": bought,
+            "amount_usd": r.get("amount_usd"),
+            "project": r.get("project"),
+            "action": action,
+        })
+        if len(moves) >= limit:
+            break
+
+    return success({"moves": moves, "count": len(moves), "available": bool(moves)})
+
+
 @app.get("/api/copy-trading/{address}")
 async def copy_trading_detail(address: str):
     """Full copy-trader profile by address."""

@@ -49,6 +49,7 @@ export function isGenericLabel(label) {
   const l = (label || '').trim().toLowerCase();
   if (!l) return true;
   if (l === 'unnamed wallet' || l === 'whale') return true;
+  if (/^whale\s/i.test(l)) return true;
   return GENERIC_LABEL.test(l) || GENERIC_LABEL_2.test(l);
 }
 

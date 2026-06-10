@@ -103,6 +103,11 @@ export const api = {
   untrackWallet: (address) =>
     apiFetch(`/api/watchlist/${address}`, { method: 'DELETE', timeoutMs: 15000 }),
 
+  getCopyRecentMoves: (limit = 12) =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/recent-moves?limit=${limit}`)
+      .then((r) => r.json())
+      .then((body) => body.data?.moves || []),
+
   getLatestTransactions: (limit = 12) =>
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/transactions/latest?limit=${limit}`)
       .then((r) => r.json())

@@ -5,8 +5,6 @@ import GlassCard from '../primitives/GlassCard';
 import MagneticButton from '../primitives/MagneticButton';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
-import Sparkline from '../ui/Sparkline';
-import { SignalPill } from '../ui/Badge';
 import TradingViewChart from '../charts/TradingViewChart';
 import { useWallet } from '../../hooks/useWallet';
 import { api } from '../../lib/api';
@@ -14,16 +12,10 @@ import {
   TOKEN_ADDRESSES, TO_TOKENS,
   toTokenUnits, parseQuoteOutput,
 } from '../../lib/tokens';
-import { resolveSparklineData } from '../../lib/chartUtils';
 import { getSpendableBalance, validateSwapInputs } from '../../lib/swapExecution';
 import { useTransaction } from '../../hooks/useTrade';
 
 const EXCHANGE_KW = ['binance', 'coinbase', 'kraken', 'kucoin', 'okx', 'crypto.com', 'gemini', 'bitstamp', 'bittrex', 'huobi', 'gate.io', 'bitfinex', 'bithumb', 'coinone', 'deposit funder', 'hot wallet'];
-
-function isExchange(w) {
-  const label = (w.label || '').toLowerCase();
-  return EXCHANGE_KW.some((k) => label.includes(k));
-}
 
 function fmt(n, dec = 2) {
   return Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -267,63 +259,6 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
   );
 }
 
-function TopTradersTable({ wallets }) {
-  const [showAll, setShowAll] = useState(false);
-
-  const topTraders = useMemo(() =>
-    (wallets || [])
-      .filter((w) => !isExchange(w) && (w.score ?? 0) >= 60)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
-  [wallets]);
-
-  const displayed = showAll ? topTraders : topTraders.slice(0, 10);
-
-  return (
-    <GlassCard padding={false} className="overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
-        <span className="text-[12px] font-semibold text-text-primary">Top Traders</span>
-        <span className="text-[10px] text-text-muted">YTD sparkline · Hadaleum score</span>
-      </div>
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-[1fr_100px_100px_90px_80px] gap-2 px-4 py-2 text-[9px] uppercase tracking-widest text-text-muted border-b border-white/[0.04] min-w-[520px]">
-          <span>Trader</span><span className="text-right">YTD</span><span className="text-right">Balance</span><span className="text-right">Score</span><span className="text-right">Signal</span>
-        </div>
-        {displayed.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[12px] text-text-muted">No smart money wallets with score ≥ 60 yet. Run Scan 500 on Watchlist.</div>
-        ) : displayed.map((w) => {
-          const sparkData = resolveSparklineData(w);
-          return (
-            <div key={w.address} className="grid grid-cols-[1fr_100px_100px_90px_80px] gap-2 px-4 py-2.5 border-b border-white/[0.03] hover:bg-white/[0.02] items-center min-w-[520px]">
-              <div className="min-w-0">
-                <div className="text-[12px] font-medium text-text-primary truncate">{w.label || 'Whale'}</div>
-                <div className="text-[10px] font-mono text-text-muted">{w.address?.slice(0, 10)}…</div>
-              </div>
-              <div className="flex justify-end">
-                {sparkData.length >= 2 ? (
-                  <Sparkline data={sparkData} width={80} height={24} />
-                ) : (
-                  <span className="text-text-muted text-[11px]">Scan needed</span>
-                )}
-              </div>
-              <span className="text-right font-mono text-[11px] text-text-secondary">
-                {Number(w.balance ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} ETH
-              </span>
-              <span className="text-right font-mono text-[12px] font-bold text-text-primary">{Math.round(w.score ?? 0)}</span>
-              <span className="text-right">{w.signal ? <SignalPill signal={w.signal} /> : '—'}</span>
-            </div>
-          );
-        })}
-      </div>
-      {!showAll && topTraders.length > 10 && (
-        <button type="button" onClick={() => setShowAll(true)}
-          className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-white/[0.06] text-center hover:bg-white/[0.02] transition-colors">
-          Load all {topTraders.length} traders with score ≥ 60 ↓
-        </button>
-      )}
-    </GlassCard>
-  );
-}
-
 export default function NansenTradingTerminal({ ethData, wallets, selectedToken, onSelectToken }) {
   const [chartInterval, setChartInterval] = useState('5');
   const activeSymbol = (selectedToken?.symbol || 'ETH').toUpperCase();
@@ -396,8 +331,6 @@ export default function NansenTradingTerminal({ ethData, wallets, selectedToken,
 
         <TradeExecutionPanel ethData={ethData} selectedToken={selectedToken} wallets={wallets} />
       </div>
-
-      <TopTradersTable wallets={wallets} />
     </div>
   );
 }
