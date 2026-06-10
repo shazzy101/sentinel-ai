@@ -56,7 +56,7 @@ DATA_DIR  = BASE_DIR / "data"
 ENV_FILE  = BASE_DIR / ".env"
 
 load_dotenv(ENV_FILE)
-DUNE_API_KEY = os.getenv("DUNE_API_KEY", "VXmFwpC6TEmaYVcRKpqCprxblrCadK6l")
+DUNE_API_KEY = os.getenv("DUNE_API_KEY")
 
 DUNE_BASE    = "https://api.dune.com/api/v1"
 HEADERS      = {"x-dune-api-key": DUNE_API_KEY, "Content-Type": "application/json"}

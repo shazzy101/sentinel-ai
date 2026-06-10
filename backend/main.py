@@ -9,18 +9,28 @@ from pathlib import Path
 from typing import Optional
 import asyncio
 import json
+import logging
 import os
+import re
 
 import config  # noqa: F401 — load .env before chain/API imports
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
-from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
-from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
-from integrations import dune
-from responses import error, success
+from auth_context import resolve_user
+from observability import bind_request_context, log_error, log_info, new_request_id, setup_logging
+from quota import (
+    check_ask_quota,
+    check_scan_quota,
+    consume_ask_quota,
+    consume_scan_quota,
+    get_quota_status,
+    record_token_usage,
+)
+from rate_limits import rate_limit_key, rate_limit_message
+from responses import error, quota_error, success
 from performance import (
     build_copy_trader_sparkline,
     compute_ytd_growth,
@@ -29,6 +39,7 @@ from performance import (
 )
 from copy_traders_store import (
     copy_traders_meta,
+    find_copy_trader_by_address,
     invalidate_copy_traders_cache,
     is_exchange_trader,
     load_copy_traders,
@@ -36,14 +47,28 @@ from copy_traders_store import (
 )
 from copy_trader_moves import fetch_recent_copy_moves
 from scoring.engine import score_wallet
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+except ImportError:  # local dev without full requirements
+    sentry_sdk = None  # type: ignore[assignment,misc]
+    FastApiIntegration = None  # type: ignore[assignment,misc]
+
+setup_logging()
+
+from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
+from ai.ask_service import build_ask_system_prompt, fetch_ask_wallets, select_ask_model
+from ai.streaming import stream_claude_text
+from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
+from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
+from integrations import dune
 
 _SENTRY_DSN = os.getenv("SENTRY_DSN")
-if _SENTRY_DSN:
+if _SENTRY_DSN and sentry_sdk is not None:
     sentry_sdk.init(
         dsn=_SENTRY_DSN,
         integrations=[FastApiIntegration()],
@@ -70,6 +95,7 @@ _admin_cooldowns: dict = {
     "sync_copy_traders": None,
 }
 _ADMIN_COOLDOWN_SECS = 3600  # 1 hour between batch operations
+_track_scans_pending: set[str] = set()
 
 
 async def _scan_wallet_list(wallets: list[dict], analyze: bool = False) -> int:
@@ -231,9 +257,32 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=rate_limit_key)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def sentinel_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return error(
+        "RATE_LIMITED",
+        rate_limit_message(request.url.path),
+        status_code=429,
+        details={"retry_after_seconds": 60, "limit": str(getattr(exc, "detail", ""))},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Always return JSON (with CORS) so the browser never masks errors as 'Failed to fetch'."""
+    if isinstance(exc, HTTPException):
+        raise exc
+    log_error("unhandled_exception", path=request.url.path, error=str(exc))
+    return error(
+        "INTERNAL_ERROR",
+        "Something went wrong on our side. Please try again in a moment.",
+        status_code=500,
+        details={"reason": str(exc)[:200]},
+    )
 
 # Production origins always included regardless of CORS_ORIGINS env var
 _CORS_ALWAYS = [
@@ -262,6 +311,55 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_log = logging.getLogger(__name__)
+_ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+
+
+async def require_admin(request: Request) -> None:
+    """Gate destructive / expensive admin routes behind ADMIN_API_KEY."""
+    if not _ADMIN_API_KEY:
+        raise HTTPException(status_code=503, detail="Admin API not configured")
+    provided = request.headers.get("X-Admin-Key")
+    if not provided or provided != _ADMIN_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+@app.middleware("http")
+async def observability_middleware(request: Request, call_next):
+    import time
+
+    rid = request.headers.get("X-Request-ID") or new_request_id()
+    user = await resolve_user(request.headers.get("Authorization"))
+    bind_request_context(
+        request_id=rid,
+        user_id=user.user_id if user else None,
+        user_plan=user.plan if user else "anonymous",
+    )
+    request.state.user_id = user.user_id if user else None
+    request.state.auth_user = user
+
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        log_info(
+            "http_request",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            duration_ms=round((time.perf_counter() - start) * 1000, 1),
+        )
+        response.headers["X-Request-ID"] = rid
+        return response
+    except Exception as exc:
+        log_error(
+            "http_request_failed",
+            method=request.method,
+            path=request.url.path,
+            error=str(exc),
+            duration_ms=round((time.perf_counter() - start) * 1000, 1),
+        )
+        raise
 
 
 # ─────────────────────────────────────────
@@ -510,6 +608,16 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
         pass
 
 
+async def _background_track_scan(address: str, label: str, chain: str, tags: list[str]) -> None:
+    addr = address.lower()
+    try:
+        await persist_wallet_scan(address, label, chain, tags=tags, analyze=True)
+    except Exception as exc:
+        _log.warning("Background track scan failed for %s: %s", address, exc)
+    finally:
+        _track_scans_pending.discard(addr)
+
+
 # ─────────────────────────────────────────
 # ROUTES — HEALTH
 # ─────────────────────────────────────────
@@ -554,9 +662,15 @@ async def get_stats():
 # ROUTES — WALLET SCANNING
 # ─────────────────────────────────────────
 
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 @app.post("/api/scan")
 async def scan_wallet(request: Request, body: WalletScanRequest):
+    user = getattr(request.state, "auth_user", None)
+    ip = get_remote_address(request)
+    scan_quota = check_scan_quota(user, ip)
+    if not scan_quota.allowed:
+        return quota_error(scan_quota)
+
     address = body.address.strip()
     try:
         chain = body.chain or detect_chain(address)
@@ -564,6 +678,7 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
         return error("INVALID_ADDRESS", str(e), status_code=400)
 
     label = body.label or f"{chain[:3].upper()}:{address[:8]}..."
+    consume_scan_quota(user, ip)
 
     try:
         # Fetch balance, transactions, and token transfers concurrently
@@ -886,22 +1001,31 @@ async def get_watchlist(
 
 
 @app.delete("/api/watchlist/{address}")
-async def remove_from_watchlist(address: str):
-    """Remove a wallet and its associated data from the watchlist."""
+@limiter.limit("30/minute")
+async def remove_from_watchlist(request: Request, address: str):
+    """Remove a user-tracked wallet from the watchlist (not core seeded whales)."""
     try:
-        # Look up wallet id first
         wallet_row = (
             supabase_client.table("wallets")
-            .select("id")
-            .eq("address", address)
+            .select("id, tags")
+            .eq("address", address.strip().lower())
             .execute()
         )
         if not wallet_row.data:
             return error("NOT_FOUND", "Wallet not found in watchlist", status_code=404)
 
+        tags = wallet_row.data[0].get("tags") or []
+        is_user_tracked = "user-tracked" in tags
+        is_copy_only = "copy-trading" in tags and "smart-money" not in tags
+        if not is_user_tracked and not is_copy_only:
+            return error(
+                "FORBIDDEN",
+                "Core whale wallets cannot be removed via this endpoint",
+                status_code=403,
+            )
+
         wallet_id = wallet_row.data[0]["id"]
 
-        # Cascade-delete analyses and transactions, then the wallet
         supabase_client.table("analyses").delete().eq("wallet_id", wallet_id).execute()
         supabase_client.table("transactions").delete().eq("wallet_id", wallet_id).execute()
         supabase_client.table("wallets").delete().eq("id", wallet_id).execute()
@@ -1019,7 +1143,7 @@ async def add_to_watchlist(request: AddWalletRequest, background_tasks: Backgrou
             "address": request.address.strip(),
             "label": request.label,
             "chain": request.chain,
-            "tags": request.tags or [],
+            "tags": list(dict.fromkeys((request.tags or []) + ["user-tracked"])),
             "score": 0,
         }
         result = supabase_client.table("wallets").insert(data).execute()
@@ -1042,7 +1166,7 @@ async def add_to_watchlist(request: AddWalletRequest, background_tasks: Backgrou
 # ROUTES — CRON / ADMIN
 # ─────────────────────────────────────────
 
-@app.post("/api/admin/batch-ingest")
+@app.post("/api/admin/batch-ingest", dependencies=[Depends(require_admin)])
 async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 500):
     """
     Queue Etherscan scans for up to 500 wallets from the seed list.
@@ -1111,7 +1235,7 @@ async def batch_ingest_wallets(background_tasks: BackgroundTasks, limit: int = 5
     })
 
 
-@app.post("/api/admin/rescan-all")
+@app.post("/api/admin/rescan-all", dependencies=[Depends(require_admin)])
 async def rescan_all_wallets(background_tasks: BackgroundTasks):
     """Trigger a full rescan of ALL wallets in the background (applies new scoring engine)."""
     last = _admin_cooldowns["rescan_all"]
@@ -1144,14 +1268,14 @@ async def rescan_all_wallets(background_tasks: BackgroundTasks):
         return error("RESCAN_FAILED", str(e), status_code=500)
 
 
-@app.post("/api/admin/backfill-balances")
+@app.post("/api/admin/backfill-balances", dependencies=[Depends(require_admin)])
 async def backfill_balances(background_tasks: BackgroundTasks, limit: int = 94):
     """Fetch live ETH balances for wallets missing balance data (no AI scan)."""
     background_tasks.add_task(sync_wallet_balances, min(limit, 100))
     return success({"status": "queued", "limit": min(limit, 100)})
 
 
-@app.post("/api/admin/sync-copy-traders")
+@app.post("/api/admin/sync-copy-traders", dependencies=[Depends(require_admin)])
 async def admin_sync_copy_traders():
     """
     Upsert copy_trading_top_wallets.json into Supabase copy_traders table
@@ -1184,7 +1308,7 @@ async def admin_sync_copy_traders():
         return error("SYNC_FAILED", str(e), status_code=500)
 
 
-@app.post("/api/admin/rescan-top")
+@app.post("/api/admin/rescan-top", dependencies=[Depends(require_admin)])
 async def trigger_rescan(background_tasks: BackgroundTasks, n: int = CRON_TOP_N):
     """Manually trigger a background rescan of the top-N wallets."""
     try:
@@ -1211,7 +1335,7 @@ async def trigger_rescan(background_tasks: BackgroundTasks, n: int = CRON_TOP_N)
         return error("RESCAN_FAILED", str(e), status_code=500)
 
 
-@app.get("/api/admin/cron-status")
+@app.get("/api/admin/cron-status", dependencies=[Depends(require_admin)])
 async def cron_status():
     """Return current cron schedule state so the frontend can display a countdown."""
     return success({
@@ -1230,7 +1354,7 @@ async def cron_status():
     })
 
 
-@app.get("/api/admin/usage")
+@app.get("/api/admin/usage", dependencies=[Depends(require_admin)])
 async def api_usage():
     """Claude API call budget status for the current hour."""
     from ai.analyst import MAX_CALLS_PER_HOUR
@@ -1401,70 +1525,130 @@ async def get_signals():
 # ROUTES — ASK SENTINEL AI CHAT
 # ─────────────────────────────────────────
 
-@limiter.limit("30/minute")
+@limiter.limit("15/minute")
+@app.get("/api/quota")
+async def get_user_quota(request: Request):
+    """Return remaining AI quotas for the current user (or IP if anonymous)."""
+    user = getattr(request.state, "auth_user", None)
+    ip = get_remote_address(request)
+    status = get_quota_status(user, ip)
+    return success({
+        "plan": status.plan,
+        "global_calls_remaining": status.global_calls_remaining,
+        "ask_remaining": status.user_ask_remaining,
+        "tokens_remaining": status.user_tokens_remaining,
+        "scan_remaining": status.user_scan_remaining,
+    })
+
+
+@limiter.limit("15/minute")
 @app.post("/api/ask")
 async def ask_sentinel(request: Request, body: AskRequest):
     """
-    Claude answers questions about wallet data.
-    Pulls live wallet + signal data as context.
-    Never hallucinates — only answers from real data.
+    Claude answers questions about wallet data (non-streaming fallback).
+    Prefer POST /api/ask/stream for token streaming in the UI.
     """
+    user = getattr(request.state, "auth_user", None)
+    ip = get_remote_address(request)
+    quota = check_ask_quota(user, ip)
+    if not quota.allowed:
+        return quota_error(quota)
+
+    if not body.message.strip():
+        return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
+
     try:
-        from ai.analyst import _rate_limit_ok, get_client
+        from ai.analyst import get_client
 
-        if not _rate_limit_ok():
-            return {
-                "success": False,
-                "response": "Sentinel AI is at its hourly analysis budget. Try again in a few minutes, or check Intelligence for cached insights.",
-                "rate_limited": True,
-                "used_wallets": 0,
-            }
-
-        wallets_result = (
-            supabase_client.table("wallets")
-            .select("address, label, score, signal, balance")
-            .order("score", desc=True)
-            .limit(20)
-            .execute()
-        )
-        wallets = wallets_result.data if wallets_result.data else []
-
-        wallet_context = "\n".join([
-            f"- {w['label']}: score={w.get('score', 0)}, "
-            f"signal={w.get('signal', 'unknown')}, "
-            f"balance={float(w.get('balance') or 0):.2f} ETH"
-            for w in wallets[:20]
-        ])
-
-        system_prompt = f"""You are Sentinel AI's intelligence assistant. You answer questions about Ethereum whale wallet activity using ONLY the real data provided below. Never make up data. Be concise and direct. Use numbers when available.
-
-CURRENT WALLET DATA (top 20 by score):
-{wallet_context}
-
-Answer in 2-4 sentences max unless the user asks for a detailed breakdown. If asked for a list, use bullet points. Always cite specific wallet names and scores from the data above."""
+        wallets = await fetch_ask_wallets(supabase_client)
+        system_prompt = build_ask_system_prompt(wallets)
+        model, max_tokens = select_ask_model(body.message, body.history)
+        messages = body.history + [{"role": "user", "content": body.message}]
 
         client = get_client()
-        messages = body.history + [{"role": "user", "content": body.message}]
-        # Short questions use Haiku; longer follow-ups use Sonnet (cheaper default).
-        use_haiku = len(body.message) < 120 and len(body.history) <= 2
-
         response = await asyncio.to_thread(
             client.messages.create,
-            model="claude-haiku-4-5-20251001" if use_haiku else "claude-sonnet-4-6",
-            max_tokens=350 if use_haiku else 500,
+            model=model,
+            max_tokens=max_tokens,
             system=system_prompt,
             messages=messages,
         )
 
-        return {
-            "success": True,
+        usage = response.usage
+        tokens = (getattr(usage, "input_tokens", 0) or 0) + (getattr(usage, "output_tokens", 0) or 0)
+        consume_ask_quota(user, ip)
+        record_token_usage(user, ip, tokens)
+
+        return success({
             "response": response.content[0].text,
             "used_wallets": len(wallets),
-        }
+            "tokens_used": tokens,
+            "quota": get_quota_status(user, ip).__dict__,
+        })
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        return error("AI_UNAVAILABLE", str(e), status_code=503)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log_error("ask_failed", error=str(e))
+        return error(
+            "ASK_FAILED",
+            "Hadaleum AI couldn't complete that question. Try a shorter prompt or check back shortly.",
+            status_code=500,
+            details={"reason": str(e)[:200]},
+        )
+
+
+@limiter.limit("15/minute")
+@app.post("/api/ask/stream")
+async def ask_sentinel_stream(request: Request, body: AskRequest):
+    """Stream Claude response as Server-Sent Events (token deltas)."""
+    user = getattr(request.state, "auth_user", None)
+    ip = get_remote_address(request)
+    quota = check_ask_quota(user, ip)
+    if not quota.allowed:
+        return quota_error(quota)
+
+    if not body.message.strip():
+        return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
+
+    wallets = await fetch_ask_wallets(supabase_client)
+    system_prompt = build_ask_system_prompt(wallets)
+    model, max_tokens = select_ask_model(body.message, body.history)
+    messages = body.history + [{"role": "user", "content": body.message}]
+
+    async def event_generator():
+        rid = new_request_id()
+        yield f"data: {json.dumps({'type': 'start', 'request_id': rid, 'used_wallets': len(wallets)})}\n\n"
+        full_text: list[str] = []
+        tokens_used = 0
+        try:
+            async for kind, payload in stream_claude_text(
+                system=system_prompt,
+                messages=messages,
+                model=model,
+                max_tokens=max_tokens,
+            ):
+                if kind == "delta":
+                    full_text.append(payload)
+                    yield f"data: {json.dumps({'type': 'delta', 'text': payload})}\n\n"
+                elif kind == "done":
+                    tokens_used = (payload.get("input_tokens") or 0) + (payload.get("output_tokens") or 0)
+                elif kind == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'message': payload})}\n\n"
+                    return
+
+            consume_ask_quota(user, ip)
+            record_token_usage(user, ip, tokens_used)
+            remaining = get_quota_status(user, ip)
+            yield f"data: {json.dumps({'type': 'done', 'tokens_used': tokens_used, 'text': ''.join(full_text), 'quota': {'ask_remaining': remaining.user_ask_remaining, 'tokens_remaining': remaining.user_tokens_remaining, 'plan': remaining.plan}})}\n\n"
+        except Exception as exc:
+            log_error("ask_stream_failed", error=str(exc))
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Stream interrupted — try again.'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/api/market/eth")
@@ -1653,7 +1837,7 @@ async def join_waitlist(request: WaitlistRequest, background_tasks: BackgroundTa
         )
 
 
-@app.get("/api/admin/waitlist-count")
+@app.get("/api/admin/waitlist-count", dependencies=[Depends(require_admin)])
 async def waitlist_count():
     """Founder view: how many Pro early-access signups so far."""
     try:
@@ -1825,7 +2009,7 @@ async def get_news_article(article_id: str):
         return error("NEWS_UNAVAILABLE", "Article not available.", status_code=503, details={"reason": str(e)[:160]})
 
 
-@app.post("/api/admin/ingest-news")
+@app.post("/api/admin/ingest-news", dependencies=[Depends(require_admin)])
 async def ingest_news():
     """Fetch + score the latest news from all RSS sources (no Claude)."""
     try:
@@ -1992,13 +2176,7 @@ def _invalidate_copy_trading_cache() -> None:
 
 
 def _find_copy_trader(address: str) -> dict | None:
-    addr = (address or "").strip().lower()
-    if not addr:
-        return None
-    for w in _load_copy_trading_wallets():
-        if (w.get("address") or "").lower() == addr:
-            return w
-    return None
+    return find_copy_trader_by_address(address)
 
 
 def _copy_trader_label(trader: dict) -> str:
@@ -2260,71 +2438,99 @@ async def copy_trading_live_metrics(address: str):
 
 
 @app.post("/api/copy-trading/{address}/track")
-async def track_copy_trader(address: str):
+@limiter.limit("20/minute")
+async def track_copy_trader(request: Request, address: str, background_tasks: BackgroundTasks):
     """
-    Add a ranked copy trader to the user's watchlist.
-    Preserves Dune copy-trading tags and runs a full whale scan + AI analysis.
+    Add a ranked copy trader to the watchlist.
+    Returns immediately after persisting a stub row; full scan + AI run in background.
     """
-    trader = _find_copy_trader(address)
-    if not trader:
-        return error("NOT_FOUND", "Copy trader not found in ranked dataset", status_code=404)
-
-    addr = (trader.get("address") or address).strip().lower()
-    label = _copy_trader_label(trader)
-    tags = list(dict.fromkeys((trader.get("tags") or []) + ["copy-trading", "dex-trader"]))
-
-    existing = supabase_client.table("wallets").select("id, address, label, tags, signal, chain").eq("address", addr).execute()
-    if existing.data:
-        row = existing.data[0]
-        merged_tags = list(dict.fromkeys((row.get("tags") or []) + tags))
-        if merged_tags != (row.get("tags") or []):
-            supabase_client.table("wallets").update({"tags": merged_tags}).eq("address", addr).execute()
-            row = {**row, "tags": merged_tags}
-        enriched = _enrich_copy_trader({**trader, **row})
-        return success({
-            "wallet": enriched,
-            "trader": _enrich_copy_trader(trader),
-            "already_tracked": True,
-        })
-
     try:
+        addr = (address or "").strip().lower()
+        if not re.match(r"^0x[a-f0-9]{40}$", addr):
+            return error("BAD_ADDRESS", "Invalid Ethereum address", status_code=400)
+
+        trader = _find_copy_trader(addr)
+        if not trader:
+            return error("NOT_FOUND", "Copy trader not found in ranked dataset", status_code=404)
+
+        label = _copy_trader_label(trader)
+        tags = list(dict.fromkeys((trader.get("tags") or []) + ["copy-trading", "dex-trader", "user-tracked"]))
         chain = "ethereum"
-        # Full scan: persists on-chain transactions AND runs + links Claude AI
-        # analysis. This populates the Activity tab, the YTD chart, and the AI
-        # analysis so a freshly-tracked wallet is never stuck "Awaiting AI analysis".
-        await persist_wallet_scan(addr, label, chain, tags=tags, analyze=True)
 
-        row = (
-            supabase_client.table("wallets").select("*").eq("address", addr).execute().data
-            or [{}]
-        )[0]
-        analysis = None
+        existing = (
+            supabase_client.table("wallets")
+            .select("id, address, label, tags, signal, chain, score, balance, last_scanned")
+            .eq("address", addr)
+            .execute()
+        )
+        if existing.data:
+            row = existing.data[0]
+            merged_tags = list(dict.fromkeys((row.get("tags") or []) + tags))
+            if merged_tags != (row.get("tags") or []):
+                supabase_client.table("wallets").update({"tags": merged_tags}).eq("address", addr).execute()
+                row = {**row, "tags": merged_tags}
+            if not row.get("last_scanned") and addr not in _track_scans_pending:
+                _track_scans_pending.add(addr)
+                background_tasks.add_task(_background_track_scan, addr, label, chain, tags)
+            try:
+                enriched = _enrich_copy_trader({**trader, **row, "scan_status": "scanning" if not row.get("last_scanned") else "ready"})
+            except Exception:
+                enriched = {**trader, **row, "label": label, "scan_status": "scanning" if not row.get("last_scanned") else "ready"}
+            return success({
+                "wallet": enriched,
+                "trader": _enrich_copy_trader(trader) if trader else trader,
+                "already_tracked": True,
+                "scan_status": "scanning" if not row.get("last_scanned") else "ready",
+            })
+
+        score_hint = int(float(trader.get("copy_trading_score") or trader.get("score") or 0))
+        stub = {
+            "address": addr,
+            "label": label,
+            "chain": chain,
+            "tags": tags,
+            "score": score_hint,
+            "balance": 0,
+        }
         try:
-            a = (
-                supabase_client.table("analyses")
-                .select("*")
-                .eq("wallet_address", addr)
-                .order("generated_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if a.data:
-                analysis = a.data[0]
-        except Exception:
-            pass
+            inserted = supabase_client.table("wallets").insert(stub).execute()
+            row = inserted.data[0]
+        except Exception as e:
+            retry = supabase_client.table("wallets").select("*").eq("address", addr).execute()
+            if retry.data:
+                row = retry.data[0]
+            else:
+                log_error("track_insert_failed", address=addr, error=str(e))
+                return error(
+                    "TRACK_FAILED",
+                    "Could not save wallet to watchlist. Check database connection and try again.",
+                    status_code=500,
+                    details={"reason": str(e)[:200]},
+                )
 
-        wallet_out = {**row}
-        if analysis:
-            wallet_out["analysis"] = analysis
-            wallet_out["signal"] = analysis.get("signal", row.get("signal", "NEUTRAL"))
-        enriched = _enrich_copy_trader({**trader, **wallet_out})
+        if addr not in _track_scans_pending:
+            _track_scans_pending.add(addr)
+            background_tasks.add_task(_background_track_scan, addr, label, chain, tags)
+        try:
+            enriched = _enrich_copy_trader({**trader, **row, "scan_status": "scanning"})
+            trader_out = _enrich_copy_trader(trader)
+        except Exception:
+            enriched = {**trader, **row, "label": label, "scan_status": "scanning"}
+            trader_out = {**trader, "label": label}
         return success({
             "wallet": enriched,
-            "trader": _enrich_copy_trader(trader),
+            "trader": trader_out,
             "already_tracked": False,
+            "scan_status": "scanning",
         })
-    except Exception as e:
-        return error("TRACK_FAILED", str(e), status_code=500)
+    except Exception as exc:
+        log_error("track_unhandled", address=address, error=str(exc))
+        return error(
+            "TRACK_FAILED",
+            "Could not add trader to watchlist. Please try again.",
+            status_code=500,
+            details={"reason": str(exc)[:200]},
+        )
 
 
 @app.get("/api/transactions/latest")

@@ -31,6 +31,17 @@ ANTHROPIC_API_KEY=<from_backend/.env>
 ETHERSCAN_API_KEY=<from_backend/.env>
 DUNE_API_KEY=<from_backend/.env>
 CORS_ORIGINS=https://sentinel-ai.pages.dev,https://hadaleum.com,https://www.hadaleum.com
+ADMIN_API_KEY=<random_32_char_secret>
+CLAUDE_MAX_CALLS_PER_HOUR=80          # global shared AI budget
+FREE_ASK_CALLS_PER_HOUR=10            # per free user
+PRO_ASK_CALLS_PER_HOUR=60             # per pro / trial user
+ANON_ASK_CALLS_PER_HOUR=5             # unauthenticated IP fallback
+FREE_TOKENS_PER_HOUR=25000
+PRO_TOKENS_PER_HOUR=150000
+LOG_LEVEL=INFO
+LOG_FORMAT=json                       # json in production, text locally
+ENVIRONMENT=production
+SENTRY_DSN=<optional>
 ```
 
 ### Cloudflare Pages (Frontend)
@@ -47,7 +58,19 @@ VITE_STRIPE_PUBLISHABLE_KEY=<pk_live_... from Stripe dashboard>
 ## Supabase Setup (one-time)
 
 ### 1. Run the migration SQL
-Go to [Supabase Dashboard → SQL Editor](https://supabase.com/dashboard/project/wuszhfqznudawpsjkgwv/sql) and paste `supabase/migrations/20260610_hadaleum_schema.sql`.
+Go to [Supabase Dashboard → SQL Editor](https://supabase.com/dashboard/project/wuszhfqznudawpsjkgwv/sql) and run, in order:
+
+1. `supabase/migrations/20260610_hadaleum_schema.sql`
+2. `supabase/migrations/20260610_profiles_insert_policy.sql`
+3. `supabase/migrations/20260610_profiles_billing_protect.sql`
+4. `supabase/migrations/20260611_copy_traders.sql`
+5. Other migrations in `supabase/migrations/` as needed
+
+### Supabase Auth redirect URLs
+Dashboard → Authentication → URL Configuration:
+
+- **Site URL:** `https://hadaleum.com`
+- **Redirect URLs:** `https://hadaleum.com/auth/callback`, `https://hadaleum.com/reset-password`, `http://localhost:5173/auth/callback`, `http://localhost:5173/reset-password`
 
 ### 2. Deploy Edge Functions
 ```bash
@@ -64,9 +87,10 @@ supabase functions deploy stripe-webhook
 ```bash
 supabase secrets set STRIPE_SECRET_KEY=sk_live_...
 supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
-supabase secrets set STRIPE_PRO_MONTHLY_PRICE_ID=price_...
-supabase secrets set STRIPE_PRO_ANNUAL_PRICE_ID=price_...
-supabase secrets set SITE_URL=https://hadaleum.com
+supabase secrets set STRIPE_PRICE_MONTHLY=price_...
+supabase secrets set STRIPE_PRICE_ANNUAL=price_...
+supabase secrets set APP_URL=https://hadaleum.com
+supabase secrets set INTERNAL_API_SECRET=<random_32_char_secret>
 ```
 
 ### 4. Get your Anon Key

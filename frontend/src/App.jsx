@@ -14,6 +14,7 @@ import SignupPage from './pages/Signup';
 
 // Lazily loaded (code split per route)
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallback'));
 const UpgradePage = lazy(() => import('./pages/Upgrade'));
 const AboutPage = lazy(() => import('./pages/About'));
@@ -132,6 +133,7 @@ function AnimatedRoutes() {
         <Route path="/signup" element={<MotionPage><SignupPage /></MotionPage>} />
         <Route path="/auth/callback" element={<MotionPage><Suspense fallback={<PageLoader />}><AuthCallbackPage /></Suspense></MotionPage>} />
         <Route path="/forgot-password" element={<MotionPage><Suspense fallback={<PageLoader />}><ForgotPasswordPage /></Suspense></MotionPage>} />
+        <Route path="/reset-password" element={<MotionPage><Suspense fallback={<PageLoader />}><ResetPasswordPage /></Suspense></MotionPage>} />
         <Route path="/upgrade" element={<MotionPage><Suspense fallback={<PageLoader />}><UpgradePage /></Suspense></MotionPage>} />
         <Route path="/about" element={<MotionPage><Suspense fallback={<PageLoader />}><AboutPage /></Suspense></MotionPage>} />
         <Route path="/privacy" element={<MotionPage><Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense></MotionPage>} />

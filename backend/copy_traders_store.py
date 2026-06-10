@@ -136,6 +136,31 @@ def _load_from_supabase() -> list[dict] | None:
         return None
 
 
+def find_copy_trader_by_address(address: str) -> dict | None:
+    """Resolve a copy trader by address — cache, then direct Supabase lookup."""
+    addr = (address or "").strip().lower()
+    if not addr:
+        return None
+    for w in load_copy_traders():
+        if (w.get("address") or "").lower() == addr:
+            return w
+    try:
+        from db.supabase import supabase_client
+
+        res = (
+            supabase_client.table("copy_traders")
+            .select("*")
+            .eq("address", addr)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            return normalize_copy_trader(res.data[0])
+    except Exception:
+        pass
+    return None
+
+
 def load_copy_traders(*, force_refresh: bool = False, json_path: Path | None = None) -> list[dict]:
     """Load ranked copy traders — memory cache → Supabase → JSON file."""
     if not force_refresh and _cache["data"] is not None:

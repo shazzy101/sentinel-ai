@@ -7,39 +7,27 @@ import asyncio
 import json
 import os
 import time
-from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
 
 import anthropic
 
+from observability import log_info, log_warning
+from quota import consume_global_budget, global_calls_remaining, peek_global_budget
+
 _client: Optional[anthropic.Anthropic] = None
 
-# ── Rate limiter ──────────────────────────────────────────────────────────────
-# Tracks timestamps of every Claude call made in the last hour.
-# Wallet analysis uses the cheap Haiku model; market summary uses Sonnet.
-# Hard cap prevents runaway costs if cache misses or someone hammers scan.
-_call_timestamps: deque = deque()
+# Backward-compatible alias used by admin usage route
 MAX_CALLS_PER_HOUR = int(os.getenv("CLAUDE_MAX_CALLS_PER_HOUR", "80"))
 
+
 def _rate_limit_ok() -> bool:
-    """Return True and record the call if under budget, False if over."""
-    now = time.monotonic()
-    cutoff = now - 3600
-    while _call_timestamps and _call_timestamps[0] < cutoff:
-        _call_timestamps.popleft()
-    if len(_call_timestamps) >= MAX_CALLS_PER_HOUR:
-        return False
-    _call_timestamps.append(now)
-    return True
+    """Consume one global Claude call slot if available."""
+    return consume_global_budget()
+
 
 def calls_remaining() -> int:
-    now = time.monotonic()
-    cutoff = now - 3600
-    while _call_timestamps and _call_timestamps[0] < cutoff:
-        _call_timestamps.popleft()
-    return max(0, MAX_CALLS_PER_HOUR - len(_call_timestamps))
-# ─────────────────────────────────────────────────────────────────────────────
+    return global_calls_remaining()
 
 
 def init_analyst() -> None:
@@ -95,7 +83,7 @@ async def analyze_wallet(
         from db.supabase import get_cached_analysis
         cached = await get_cached_analysis(address)
         if cached:
-            print(f"[Cache HIT] {wallet_name} — skipping Claude API call")
+            log_info("analysis_cache_hit", wallet=wallet_name)
             return {
                 "signal": cached.get("signal", "NEUTRAL"),
                 "signal_reason": cached.get("signal_reason", ""),
@@ -138,8 +126,8 @@ Return JSON only, no other text:
   "tags": ["2-3 tags max"]
 }}"""
 
-    if not _rate_limit_ok():
-        print(f"[Rate limit] Skipping Claude call for {wallet_name} — {MAX_CALLS_PER_HOUR}/hr budget exhausted")
+    if not peek_global_budget():
+        log_warning("global_claude_budget_exhausted", wallet=wallet_name)
         return {
             "signal": "NEUTRAL",
             "signal_reason": "Analysis paused — hourly API budget reached. Will resume automatically.",
@@ -151,9 +139,23 @@ Return JSON only, no other text:
             "rate_limited": True,
         }
 
+    if not consume_global_budget():
+        log_warning("global_claude_budget_race", wallet=wallet_name)
+        return {
+            "signal": "NEUTRAL",
+            "signal_reason": "Analysis paused — hourly API budget reached.",
+            "activity_summary": "Rate limit active.",
+            "key_insight": "Check back in a few minutes.",
+            "risk_level": "MEDIUM",
+            "risk_reason": "Cannot assess while rate-limited.",
+            "tags": ["rate-limited"],
+            "rate_limited": True,
+        }
+
     try:
         text = await _call_claude(prompt, max_tokens=250, model="claude-haiku-4-5-20251001")
         result = _parse_json_response(text)
+        log_info("analysis_complete", wallet=wallet_name, model="haiku")
     except RuntimeError:
         raise
     except Exception as e:
@@ -248,9 +250,21 @@ Mention copy-trader quality (win rate, profit factor) when relevant — users co
 
 Return ONLY valid JSON."""
 
-    if not _rate_limit_ok():
+    if not peek_global_budget():
         if cache["data"]:
-            return cache["data"]  # serve stale rather than nothing
+            return cache["data"]
+        return {
+            "headline": "Intelligence paused — hourly API budget reached.",
+            "ethereum_outlook": "Check back shortly.",
+            "flow_state": "NEUTRAL",
+            "top_signal": "NEUTRAL",
+            "key_themes": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    if not consume_global_budget():
+        if cache["data"]:
+            return cache["data"]
         return {
             "headline": "Intelligence paused — hourly API budget reached.",
             "ethereum_outlook": "Check back shortly.",
@@ -263,6 +277,7 @@ Return ONLY valid JSON."""
     try:
         text = await _call_claude(prompt, max_tokens=400, model="claude-sonnet-4-6")
         result = _parse_json_response(text)
+        log_info("market_summary_complete", model="sonnet")
     except RuntimeError:
         raise
     except Exception:

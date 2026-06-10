@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
+import { apiUrl } from './apiBase';
 
-// ── Market Data (CoinGecko free tier) ──────────
 export const api = {
   getEthPrice: () =>
     fetch(
@@ -30,10 +30,6 @@ export const api = {
       `/market_chart?vs_currency=usd&days=${days}`
     ).then((r) => r.json()),
 
-  // ── DEX Trade Quote (DefiLlama Swap API — no key needed) ──
-  // `from` (the sender's address) is required for the aggregator to return
-  // executable `tx` calldata. Without it, the quote is price-only and the
-  // swap can't be sent through MetaMask.
   getSwapQuote: (fromToken, toToken, amount, from) => {
     const params = new URLSearchParams({
       tokenIn: fromToken,
@@ -44,29 +40,28 @@ export const api = {
     });
     if (from) {
       params.set('from', from);
-      params.set('userAddress', from); // alias used by some aggregator routes
+      params.set('userAddress', from);
     }
     return fetch(`https://api.swap.defillama.com/v2/quote?${params.toString()}`).then((r) => r.json());
   },
 
   getWhaleTrades: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/invest/whale-trades`)
+    fetch(apiUrl('/api/invest/whale-trades'))
       .then((r) => r.json())
       .then((body) => (body.success ? body.data?.trades : body.trades) || []),
 
-  // ── Network dashboard (Dune-powered, cached on backend) ──
   getNetworkPulse: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/pulse`)
+    fetch(apiUrl('/api/network/pulse'))
       .then((r) => r.json())
       .then((body) => body.data || { available: false }),
 
   getNetworkTopTokens: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/top-tokens`)
+    fetch(apiUrl('/api/network/top-tokens'))
       .then((r) => r.json())
       .then((body) => body.data?.tokens || []),
 
   getNetworkLargeTrades: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/network/large-trades`)
+    fetch(apiUrl('/api/network/large-trades'))
       .then((r) => r.json())
       .then((body) => body.data?.trades || []),
 
@@ -83,69 +78,71 @@ export const api = {
       qualified_only: String(qualifiedOnly),
       strict: String(strict),
     });
-    return fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/top?${params}`)
+    return fetch(apiUrl(`/api/copy-trading/top?${params}`))
       .then((r) => r.json())
       .then((body) => body.data || { wallets: [], count: 0 });
   },
 
   getCopyFeatured: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/featured`)
+    fetch(apiUrl('/api/copy-trading/featured'))
       .then((r) => r.json())
       .then((body) => body.data?.traders || []),
 
   getCopyTrader: (address) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/${address}`)
+    fetch(apiUrl(`/api/copy-trading/${encodeURIComponent(address)}`))
       .then((r) => r.json())
       .then((body) => (body.success ? body.data?.wallet : null)),
 
   trackCopyTrader: (address) =>
-    apiFetch(`/api/copy-trading/${address}/track`, { method: 'POST', timeoutMs: 90000 }),
+    apiFetch(`/api/copy-trading/${encodeURIComponent(address)}/track`, { method: 'POST', timeoutMs: 20000 }),
 
-  // Real on-chain copy-trading metrics (Max Drawdown, Avg Duration, etc.) for one wallet
+  getQuota: () =>
+    apiFetch('/api/quota', { auth: true }).then((b) => b.data),
+
   getCopyTraderMetrics: (address) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/${address}/metrics`)
+    fetch(apiUrl(`/api/copy-trading/${encodeURIComponent(address)}/metrics`))
       .then((r) => r.json())
       .then((body) => (body.success ? body.data : { metrics: null, available: false })),
 
   untrackWallet: (address) =>
-    apiFetch(`/api/watchlist/${address}`, { method: 'DELETE', timeoutMs: 15000 }),
+    apiFetch(`/api/watchlist/${encodeURIComponent(address)}`, { method: 'DELETE', timeoutMs: 15000 }),
 
   getCopyRecentMoves: (limit = 12) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/recent-moves?limit=${limit}`)
+    fetch(apiUrl(`/api/copy-trading/recent-moves?limit=${limit}`))
       .then((r) => r.json())
       .then((body) => body.data?.moves || []),
 
   getLatestTransactions: (limit = 12) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/transactions/latest?limit=${limit}`)
+    fetch(apiUrl(`/api/transactions/latest?limit=${limit}`))
       .then((r) => r.json())
       .then((body) => body.data?.transactions || []),
 
-  // ── Pro waitlist (early-access capture) ──
   joinWaitlist: (email, source) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/waitlist`, {
+    fetch(apiUrl('/api/waitlist'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, source }),
     }).then((r) => r.json()),
 
-  // ── News Intelligence ──
   getNews: (opts = {}) => {
     const { category, source, sort = 'recent', limit = 40 } = opts;
     const params = new URLSearchParams({ sort, limit: String(limit) });
     if (category) params.set('category', category);
     if (source) params.set('source', source);
-    return fetch(`${import.meta.env.VITE_API_URL || ''}/api/news?${params}`)
+    return fetch(apiUrl(`/api/news?${params}`))
       .then((r) => r.json())
       .then((b) => b.data?.articles || []);
   },
 
   getNewsPulse: () =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/news/pulse`)
+    fetch(apiUrl('/api/news/pulse'))
       .then((r) => r.json())
       .then((b) => b.data || { available: false }),
 
   getNewsArticle: (id) =>
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/news/${id}`)
+    fetch(apiUrl(`/api/news/${id}`))
       .then((r) => r.json())
       .then((b) => b.data || null),
 };
+
+export { getApiBase, apiUrl } from './apiBase';

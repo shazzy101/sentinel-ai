@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
-ETHERSCAN_API_KEY = "XT2XUF6RCII7SIMCAJKRXXJ5XKMN785E8S"
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY", "")
 ETHERSCAN_BASE    = "https://api.etherscan.io/v2/api"
 COINGECKO_BASE    = "https://api.coingecko.com/api/v3"
 

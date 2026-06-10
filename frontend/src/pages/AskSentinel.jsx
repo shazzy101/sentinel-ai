@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { Link } from 'react-router-dom';
+import { streamAskAi } from '@/lib/authHeaders';
+import { api } from '@/lib/api';
 
 const SUGGESTED_PROMPTS = [
   'Which wallets are most bullish right now?',
@@ -73,15 +74,21 @@ function UserMessage({ text }) {
   );
 }
 
-function AssistantMessage({ text, wallets }) {
+function AssistantMessage({ text, wallets, streaming }) {
   return (
     <div className="flex flex-col items-start mb-4 gap-1.5">
       <div className="flex items-center gap-1.5">
         <HexIcon size={16} />
         <span className="text-[12px] text-text-muted font-medium">Hadaleum</span>
+        {streaming && (
+          <span className="text-[10px] text-green animate-pulse">streaming…</span>
+        )}
       </div>
       <div className="mr-auto max-w-[80%] bg-bg-surface border border-border-default rounded-2xl rounded-tl-sm px-4 py-3 text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
-        {text}
+        {text || (streaming ? ' ' : '')}
+        {streaming && !text && (
+          <span className="inline-block w-2 h-4 bg-green/60 animate-pulse align-middle ml-0.5" />
+        )}
         {wallets && wallets.length > 0 && (
           <div className="flex flex-col gap-2 mt-2">
             {wallets.slice(0, 3).map((w) => <WalletMiniCard key={w.address || w.label} wallet={w} />)}
@@ -92,42 +99,27 @@ function AssistantMessage({ text, wallets }) {
   );
 }
 
-function LoadingDots() {
-  return (
-    <div className="flex flex-col items-start mb-4 gap-1.5">
-      <div className="flex items-center gap-1.5">
-        <HexIcon size={16} />
-        <span className="text-[12px] text-text-muted font-medium">Hadaleum</span>
-      </div>
-      <div className="bg-bg-surface border border-border-default rounded-2xl rounded-tl-sm px-4 py-3">
-        <div className="flex gap-1">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full bg-text-muted animate-bounce"
-              style={{ animationDelay: `${i * 0.1}s` }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AskSentinelPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [quota, setQuota] = useState(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
+  const abortRef = useRef(null);
 
   useEffect(() => {
     document.title = 'Ask AI — Hadaleum';
   }, []);
 
   useEffect(() => {
+    api.getQuota().then(setQuota).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, streamingText]);
 
   const submit = useCallback(async (text) => {
     const question = (text || input).trim();
@@ -137,28 +129,60 @@ export default function AskSentinelPage() {
       textareaRef.current.style.height = 'auto';
     }
 
-    // Capture history from current messages BEFORE appending the new user message,
-    // so the backend receives prior turns only (not the current question twice).
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
     setLoading(true);
+    setStreamingText('');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let accumulated = '';
+    let streamDone = false;
 
     try {
-      const res = await fetch(`${API_BASE}/api/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: question, history }),
+      await streamAskAi({
+        message: question,
+        history,
+        signal: controller.signal,
+        onDelta: (chunk) => {
+          accumulated += chunk;
+          setStreamingText(accumulated);
+        },
+        onDone: (payload) => {
+          streamDone = true;
+          setMessages((prev) => [...prev, { role: 'assistant', content: payload.text || accumulated, wallets: null }]);
+          setStreamingText('');
+          if (payload.quota) {
+            setQuota((q) => ({ ...q, ask_remaining: payload.quota.ask_remaining, tokens_remaining: payload.quota.tokens_remaining }));
+          } else {
+            api.getQuota().then(setQuota).catch(() => {});
+          }
+        },
+        onError: (msg) => {
+          streamDone = true;
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg, wallets: null, isError: true }]);
+          setStreamingText('');
+        },
       });
-      const body = await res.json();
-      if (body.success) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: body.response, wallets: body.wallets }]);
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.', wallets: null }]);
+      if (!streamDone && accumulated) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: accumulated, wallets: null }]);
+        setStreamingText('');
       }
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Could not reach Hadaleum backend. Please check your connection.', wallets: null }]);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        const content = err.message || 'Could not reach Hadaleum backend.';
+        const upgradeHint = err.message?.includes('Upgrade') || err.message?.includes('Pro');
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: upgradeHint ? `${content} Visit /upgrade for higher limits.` : content,
+          wallets: null,
+          isError: true,
+        }]);
+      }
+      setStreamingText('');
     } finally {
       setLoading(false);
+      abortRef.current = null;
     }
   }, [input, loading, messages]);
 
@@ -179,11 +203,24 @@ export default function AskSentinelPage() {
     submit(prompt);
   }, [submit]);
 
-  const isEmpty = messages.length === 0;
+  const isEmpty = messages.length === 0 && !loading;
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      {/* Chat area */}
+      {quota && (
+        <div className="flex-shrink-0 px-8 py-2 border-b border-border-subtle bg-bg-surface/50">
+          <div className="max-w-3xl mx-auto flex items-center justify-between text-[11px] text-text-muted">
+            <span>
+              {quota.plan === 'pro' ? 'Pro' : quota.plan === 'free' ? 'Free' : 'Guest'} ·{' '}
+              {quota.ask_remaining ?? '—'} Ask messages left this hour
+            </span>
+            {quota.plan !== 'pro' && (
+              <Link to="/upgrade" className="text-green hover:underline">Upgrade for more</Link>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-6 w-full">
           {isEmpty ? (
@@ -193,7 +230,7 @@ export default function AskSentinelPage() {
                 Ask me anything about whale activity.
               </h2>
               <p className="text-[14px] text-text-muted text-center mb-12">
-                Powered by 2,796 tracked Ethereum wallets + Claude AI
+                Powered by tracked Ethereum wallets + Claude AI · responses stream live
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full mx-auto">
                 {SUGGESTED_PROMPTS.map((p) => (
@@ -213,16 +250,24 @@ export default function AskSentinelPage() {
               {messages.map((msg, i) =>
                 msg.role === 'user'
                   ? <UserMessage key={i} text={msg.content} />
-                  : <AssistantMessage key={i} text={msg.content} wallets={msg.wallets} />
+                  : (
+                    <AssistantMessage
+                      key={i}
+                      text={msg.content}
+                      wallets={msg.wallets}
+                      streaming={false}
+                    />
+                  ),
               )}
-              {loading && <LoadingDots />}
+              {loading && (
+                <AssistantMessage text={streamingText} streaming={loading} />
+              )}
               <div ref={bottomRef} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Sticky input */}
       <div className="flex-shrink-0 bg-bg-base border-t border-border-subtle px-8 py-4">
         <div className="max-w-3xl mx-auto w-full">
           <div className="bg-bg-surface border border-border-default rounded-2xl flex items-end gap-3 px-4 py-3 focus-within:border-border-focus transition-colors">

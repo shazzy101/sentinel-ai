@@ -74,7 +74,7 @@ function filterButtonClass(isActive) {
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function WatchlistPage() {
-  const { isPro, isTrialing } = useAuth();
+  const { isPro, isTrialing, refreshProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState('copy'); // copy | watchlist
   const [strictCopyFilter, setStrictCopyFilter] = useState(true);
@@ -260,6 +260,7 @@ export default function WatchlistPage() {
 
   const handleTrackCopyTrader = useCallback(async (trader) => {
     if (!trader?.address) return;
+    if (trackingId === trader.address) return;
     setTrackingId(trader.address);
     setIsAddModalOpen(false);
     try {
@@ -273,7 +274,7 @@ export default function WatchlistPage() {
       addToast(
         body.data?.already_tracked
           ? `${trader.label || 'Trader'} is already on your watchlist`
-          : `${trader.label || 'Trader'} added — scoring & AI analysis complete`,
+          : `${trader.label || 'Trader'} added — scan & AI analysis running in background`,
         'success',
       );
     } catch (err) {
@@ -281,7 +282,7 @@ export default function WatchlistPage() {
     } finally {
       setTrackingId(null);
     }
-  }, [refetch, addToast]);
+  }, [refetch, addToast, trackingId]);
 
   const handleUntrackCopyTrader = useCallback(async (trader) => {
     const label = trader?.label || trader?.address || 'Wallet';
@@ -295,13 +296,21 @@ export default function WatchlistPage() {
     [wallets],
   );
 
-  // Deep-link: /watchlist?tab=watchlist&add=0x...
+  // Deep-link: /watchlist?tab=watchlist&add=0x... or ?upgraded=1 after Stripe
   const addHandled = useRef(false);
+  const upgradeHandled = useRef(false);
   useEffect(() => {
     const tab = searchParams.get('tab');
     const add = searchParams.get('add');
+    const upgraded = searchParams.get('upgraded');
     if (tab === 'watchlist') setViewMode('watchlist');
     else if (tab === 'copy') setViewMode('copy');
+    if (upgraded === '1' && !upgradeHandled.current) {
+      upgradeHandled.current = true;
+      refreshProfile?.();
+      addToast('Welcome to Hadaleum Pro — full access unlocked', 'success');
+      setSearchParams({}, { replace: true });
+    }
     if (add && !addHandled.current) {
       addHandled.current = true;
       const addr = add.toLowerCase();
@@ -313,7 +322,7 @@ export default function WatchlistPage() {
       }
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams, handleTrackCopyTrader, addToast]);
+  }, [searchParams, setSearchParams, handleTrackCopyTrader, addToast, refreshProfile]);
 
   const scanStageMessage = isScanning && activeAddress && stage !== 'idle'
     ? STAGE_MESSAGES[stage] || 'Scanning...'
@@ -484,7 +493,7 @@ export default function WatchlistPage() {
               )}
           </span>
 
-          {viewMode === 'watchlist' && (
+          {import.meta.env.DEV && viewMode === 'watchlist' && (
             <>
               <button
                 type="button"
