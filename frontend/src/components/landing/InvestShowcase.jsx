@@ -227,7 +227,7 @@ export default function InvestShowcase() {
               <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-text-primary leading-[1.08] mb-5">
                 Copy whale trades.
                 <br />
-                <span className="gradient-text-accent">Execute in seconds.</span>
+                <span className="gradient-text-accent">Execute in seconds.</span> <span className="text-text-muted text-3xl md:text-4xl font-semibold">(Beta)</span>
               </h2>
               <p className="text-lg text-text-secondary leading-relaxed mb-8 max-w-lg">
                 When Wintermute moves 847 ETH, you see it instantly. One click copies the trade at your size — routed through every major DEX, signed in MetaMask. Non-custodial. Real-time.

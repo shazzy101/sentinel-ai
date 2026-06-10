@@ -102,7 +102,7 @@ async def get_cached_analysis(wallet_address: str) -> dict:
     try:
         result = (
             supabase_client.table("analyses")
-            .select("*")
+            .select("generated_at, signal, signal_reason, activity_summary, key_insight, risk_level, risk_reason, tags")
             .eq("wallet_address", wallet_address)
             .order("generated_at", desc=True)
             .limit(1)

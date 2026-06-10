@@ -36,6 +36,20 @@ from copy_traders_store import (
 )
 from copy_trader_moves import fetch_recent_copy_moves
 from scoring.engine import score_wallet
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+_SENTRY_DSN = os.getenv("SENTRY_DSN")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=0.1,
+        environment=os.getenv("ENVIRONMENT", "production"),
+    )
 
 
 CRON_TOP_N = 100          # 6-hour pass: top 100 by score
@@ -217,6 +231,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Production origins always included regardless of CORS_ORIGINS env var
 _CORS_ALWAYS = [
@@ -537,15 +554,16 @@ async def get_stats():
 # ROUTES — WALLET SCANNING
 # ─────────────────────────────────────────
 
+@limiter.limit("30/minute")
 @app.post("/api/scan")
-async def scan_wallet(request: WalletScanRequest):
-    address = request.address.strip()
+async def scan_wallet(request: Request, body: WalletScanRequest):
+    address = body.address.strip()
     try:
-        chain = request.chain or detect_chain(address)
+        chain = body.chain or detect_chain(address)
     except ValueError as e:
         return error("INVALID_ADDRESS", str(e), status_code=400)
 
-    label = request.label or f"{chain[:3].upper()}:{address[:8]}..."
+    label = body.label or f"{chain[:3].upper()}:{address[:8]}..."
 
     try:
         # Fetch balance, transactions, and token transfers concurrently
@@ -568,7 +586,7 @@ async def scan_wallet(request: WalletScanRequest):
             "address": address,
             "label": label,
             "chain": chain,
-            "tags": request.tags or [],
+            "tags": body.tags or [],
             "score": score_result["score"],
             "score_breakdown": score_result.get("breakdown", {}),
             "balance": balance,
@@ -788,7 +806,7 @@ async def get_watchlist(
         fetch_limit = min(max(limit, 1), 500)
         result = (
             supabase_client.table("wallets")
-            .select("*")
+            .select("id, address, label, chain, tags, score, score_breakdown, signal, signal_reason, balance, last_scanned, created_at")
             .eq("chain", "ethereum")
             .order("score", desc=True)
             .limit(fetch_limit if smart_only else min(fetch_limit * 3, 500))
@@ -1230,8 +1248,9 @@ async def api_usage():
 # ROUTES — AI INTELLIGENCE
 # ─────────────────────────────────────────
 
+@limiter.limit("30/minute")
 @app.get("/api/intelligence/summary")
-async def market_summary(refresh: bool = False):
+async def market_summary(request: Request, refresh: bool = False):
     try:
         from ai.analyst import _market_summary_cache
 
@@ -1241,7 +1260,7 @@ async def market_summary(refresh: bool = False):
 
         tx_result = (
             supabase_client.table("transactions")
-            .select("*")
+            .select("id")
             .order("timestamp", desc=True)
             .limit(50)
             .execute()
@@ -1382,8 +1401,9 @@ async def get_signals():
 # ROUTES — ASK SENTINEL AI CHAT
 # ─────────────────────────────────────────
 
+@limiter.limit("30/minute")
 @app.post("/api/ask")
-async def ask_sentinel(request: AskRequest):
+async def ask_sentinel(request: Request, body: AskRequest):
     """
     Claude answers questions about wallet data.
     Pulls live wallet + signal data as context.
@@ -1424,9 +1444,9 @@ CURRENT WALLET DATA (top 20 by score):
 Answer in 2-4 sentences max unless the user asks for a detailed breakdown. If asked for a list, use bullet points. Always cite specific wallet names and scores from the data above."""
 
         client = get_client()
-        messages = request.history + [{"role": "user", "content": request.message}]
+        messages = body.history + [{"role": "user", "content": body.message}]
         # Short questions use Haiku; longer follow-ups use Sonnet (cheaper default).
-        use_haiku = len(request.message) < 120 and len(request.history) <= 2
+        use_haiku = len(body.message) < 120 and len(body.history) <= 2
 
         response = await asyncio.to_thread(
             client.messages.create,
@@ -2253,7 +2273,7 @@ async def track_copy_trader(address: str):
     label = _copy_trader_label(trader)
     tags = list(dict.fromkeys((trader.get("tags") or []) + ["copy-trading", "dex-trader"]))
 
-    existing = supabase_client.table("wallets").select("*").eq("address", addr).execute()
+    existing = supabase_client.table("wallets").select("id, address, label, tags, signal, chain").eq("address", addr).execute()
     if existing.data:
         row = existing.data[0]
         merged_tags = list(dict.fromkeys((row.get("tags") or []) + tags))

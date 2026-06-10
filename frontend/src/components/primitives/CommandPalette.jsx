@@ -10,7 +10,7 @@ import { motionTokens, scaleIn } from '@/design/motion';
 
 const NAV = [
   { label: 'Watchlist', path: '/watchlist', icon: LayoutGrid, kbd: 'W' },
-  { label: 'Intelligence', path: '/intelligence', icon: Sparkles, kbd: 'I' },
+  { label: 'AI Signals', path: '/intelligence', icon: Sparkles, kbd: 'I' },
   { label: 'Markets', path: '/markets', icon: BarChart3, kbd: 'M' },
   { label: 'Invest', path: '/invest', icon: Zap, kbd: 'T' },
   { label: 'Ask AI', path: '/ask', icon: MessageSquare, kbd: 'A' },

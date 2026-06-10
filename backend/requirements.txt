@@ -7,3 +7,5 @@ supabase==2.7.0
 pydantic==2.8.0
 sqlalchemy==2.0.36
 feedparser==6.0.12
+slowapi==0.1.9
+sentry-sdk[fastapi]==2.8.0

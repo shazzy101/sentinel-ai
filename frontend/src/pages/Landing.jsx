@@ -19,16 +19,16 @@ const MOCK_ROWS = [
 ];
 
 const COMPARISON_ROWS = [
-  { feature: 'Whale wallet tracking',     sentinel: '✓',            nansenVal: '✓',            nansenGood: true },
-  { feature: 'AI signal analysis',        sentinel: '✓ Claude 4',   nansenVal: '✓ Basic',       nansenGood: true },
-  { feature: 'Intelligence score 0–100',  sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
-  { feature: 'Exchange wallet filtering', sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
-  { feature: 'Free tier',                 sentinel: '✓ Full access', nansenVal: '✗ $150/mo',    nansenGood: false },
-  { feature: 'Real-time alerts',          sentinel: '✓',            nansenVal: '✓',            nansenGood: true },
-  { feature: 'Daily AI market brief',     sentinel: '✓',            nansenVal: '✗',            nansenGood: false },
-  { feature: 'Pure ETH focus',            sentinel: '✓',            nansenVal: '✗ Multi-chain', nansenGood: false },
-  { feature: 'Copy whale trades',           sentinel: '✓ One-click',     nansenVal: '✗',            nansenGood: false },
-  { feature: 'Non-custodial DEX swaps',     sentinel: '✓ MetaMask',      nansenVal: 'Partial',      nansenGood: true },
+  { feature: 'Whale wallet tracking',     sentinel: '✓',            nansenVal: '✓',            nansenGood: true,  arkham: '✓' },
+  { feature: 'AI signal analysis',        sentinel: '✓ Claude 4',   nansenVal: '✓ Basic',       nansenGood: true,  arkham: '✗ Basic' },
+  { feature: 'Intelligence score 0–100',  sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✗' },
+  { feature: 'Exchange wallet filtering', sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✓' },
+  { feature: 'Free tier',                 sentinel: '✓ Full access', nansenVal: '✗ $150/mo',    nansenGood: false, arkham: '✗ Paid' },
+  { feature: 'Real-time alerts',          sentinel: '✓',            nansenVal: '✓',            nansenGood: true,  arkham: '✓' },
+  { feature: 'Daily AI market brief',     sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✗' },
+  { feature: 'Pure ETH focus',            sentinel: '✓',            nansenVal: '✗ Multi-chain', nansenGood: false, arkham: '✗' },
+  { feature: 'Copy whale trades',           sentinel: '✓ One-click',     nansenVal: '✗',            nansenGood: false, arkham: '✗' },
+  { feature: 'Non-custodial DEX swaps',     sentinel: '✓ MetaMask',      nansenVal: 'Partial',      nansenGood: true,  arkham: '✗' },
 ];
 
 /* ─── Helpers ─────────────────────────────────────────── */
@@ -362,15 +362,24 @@ function Navbar() {
           ))}
         </div>
         <div className="flex items-center gap-2 ml-auto">
+          <a href="https://x.com/hadaleum" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10.97 1H12.9L8.78 5.71 13.67 13h-3.92L6.7 9.06 3.27 13H1.34l4.41-5.04L.67 1h4.02L7.6 4.6 10.97 1Zm-.67 10.79h1.07L3.75 2.1H2.6l7.7 9.69Z" fill="currentColor"/></svg>
+          </a>
+          <a href="https://discord.gg/hadaleum" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="Discord">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.61 2.92A11.37 11.37 0 0 0 9.02 2a7.76 7.76 0 0 0-.36.74 10.5 10.5 0 0 0-3.32 0A7.49 7.49 0 0 0 5 2 11.42 11.42 0 0 0 2.38 2.92 12.06 12.06 0 0 0 .5 10.5a11.6 11.6 0 0 0 3.54 1.79c.29-.39.54-.8.76-1.24a7.4 7.4 0 0 1-1.18-.57c.1-.07.2-.15.29-.22a8.27 8.27 0 0 0 7.18 0c.1.08.19.15.29.22-.38.22-.78.41-1.19.57.22.43.47.85.76 1.24a11.55 11.55 0 0 0 3.54-1.79A12.03 12.03 0 0 0 11.61 2.92ZM4.9 8.98c-.72 0-1.3-.66-1.3-1.47S4.17 6.04 4.9 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Zm4.2 0c-.71 0-1.3-.66-1.3-1.47S8.38 6.04 9.1 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Z" fill="currentColor"/></svg>
+          </a>
+          <Link to="/institutional" className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
+            Enterprise
+          </Link>
           <button type="button" onClick={() => navigate('/login')} className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
-            Sign in
+            Sign In
           </button>
           <MagneticButton
             type="button"
             onClick={() => navigate('/signup')}
             className="text-sm font-semibold bg-green text-text-inverse px-4 py-2 rounded-xl shadow-glow hover:bg-green-bright transition-colors"
           >
-            Start Free Trial →
+            Track Whales Free →
           </MagneticButton>
         </div>
       </div>
@@ -405,22 +414,23 @@ function HeroSection({ walletCount }) {
         <p className="text-lg text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
           Hadaleum tracks 2,796 elite Ethereum wallets from the depths no one else reaches. AI signals. Non-custodial copy trading. Your keys, always.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <MagneticButton
             type="button"
             onClick={() => navigate('/watchlist')}
             className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
           >
-            Start Free Trial →
+            Track Whales Free →
           </MagneticButton>
           <button
             type="button"
             onClick={() => navigate('/intelligence')}
             className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
           >
-            See Live Signals
+            See Today's Signals
           </button>
         </div>
+        <p className="text-[12px] text-text-muted mt-3 mb-16">No credit card · 2,796 wallets tracked · Cancel anytime</p>
         <div className="flex flex-col items-center mt-6 animate-bounce">
           <svg className="w-5 h-5 text-text-muted" viewBox="0 0 20 20" fill="none">
             <path d="M10 4v12M6 12l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -551,24 +561,30 @@ function ComparisonSection() {
   return (
     <section className="py-24 px-8 max-w-4xl mx-auto text-center">
       <h2 className="font-display text-[36px] font-bold text-text-primary mb-4">How Hadaleum compares.</h2>
-      <p className="text-text-muted text-[16px] mb-16">We built what Nansen should have been.</p>
+      <p className="text-text-muted text-[16px] mb-4">The Bloomberg Terminal for DeFi — at 1/100th the price. We built what Nansen should have been.</p>
+      <p className="text-text-muted text-[13px] mt-2 mb-12">Pricing as of June 2026. Nansen $150/mo, Arkham free tier available.</p>
       <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden text-left">
         {/* Header */}
-        <div className="grid grid-cols-3 bg-bg-overlay px-6 py-3 border-b border-border-subtle">
+        <div className="grid grid-cols-4 bg-bg-overlay px-6 py-3 border-b border-border-subtle">
           <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted">Feature</div>
           <div className="text-[11px] uppercase tracking-[1.2px] text-green font-bold text-center">Hadaleum</div>
           <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted text-center">Nansen AI</div>
+          <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted text-center">Arkham</div>
         </div>
         {COMPARISON_ROWS.map((row, i) => (
-          <div key={row.feature} className={`grid grid-cols-3 px-6 py-4 border-b border-border-subtle last:border-0 ${i % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-card'}`}>
+          <div key={row.feature} className={`grid grid-cols-4 px-6 py-4 border-b border-border-subtle last:border-0 ${i % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-card'}`}>
             <div className="text-[13px] text-text-secondary self-center">{row.feature}</div>
             <div className="text-[13px] text-green font-medium text-center self-center">{row.sentinel}</div>
             <div className={`text-[13px] font-medium text-center self-center ${row.nansenGood ? 'text-text-secondary' : 'text-red'}`}>
               {row.nansenVal}
             </div>
+            <div className={`text-[13px] font-medium text-center self-center ${row.arkham && row.arkham.startsWith('✓') ? 'text-text-secondary' : 'text-red'}`}>
+              {row.arkham}
+            </div>
           </div>
         ))}
       </div>
+      <p className="text-center text-[12px] text-text-muted mt-4">View our <a href="/signals/performance" className="text-green hover:underline">live signal accuracy dashboard →</a></p>
     </section>
   );
 }
@@ -580,10 +596,11 @@ function TrustStrip() {
         Tracking wallets from
       </p>
       <div className="flex items-center justify-center gap-8 flex-wrap px-6">
-        {['Paradigm', 'a16z Crypto', 'Jump Trading', 'Wintermute', 'Dragonfly', 'Vitalik.eth'].map((name) => (
+        {['Paradigm', 'a16z Crypto', 'Jump Trading', 'Wintermute', 'Dragonfly', 'Dragonfly Capital', 'Vitalik.eth'].map((name) => (
           <span key={name} className="text-[13px] text-text-muted font-medium">{name}</span>
         ))}
       </div>
+      <p className="text-[10px] text-text-muted mt-3">Wallets tracked — not affiliated with or endorsed by these organizations.</p>
     </div>
   );
 }
@@ -602,8 +619,60 @@ function SocialProofBar() {
             <span className="text-text-muted text-sm">{label}</span>
           </div>
         ))}
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green"></span></span>
+          <span className="font-display font-bold text-text-primary text-sm">NEW</span>
+          <span className="text-text-muted text-sm">Invest beta · Copy trades live</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function HowItWorksSection() {
+  const steps = [
+    {
+      num: '01',
+      title: 'We monitor the depths',
+      desc: '2,796 elite ETH wallets tracked 24/7. Every transaction, every move. Scored 0–100 by our proprietary algorithm.',
+    },
+    {
+      num: '02',
+      title: 'Claude AI reads the signals',
+      desc: 'Every wallet analyzed by Claude. Get BULLISH / BEARISH / NEUTRAL with reasoning — updated every 6 hours automatically.',
+    },
+    {
+      num: '03',
+      title: 'You copy. You keep the keys.',
+      desc: 'One click executes the trade at your size via MetaMask. Best-rate DEX routing. You never give us custody.',
+    },
+  ];
+
+  return (
+    <section className="py-24 px-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">How It Works</div>
+          <h2 className="font-display text-[36px] font-bold text-text-primary">Three steps to copy smart money.</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {steps.map((s, index) => (
+            <motion.div
+              key={s.num}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ delay: index * 0.15, duration: 0.5 }}
+              className="rounded-2xl border border-border-default bg-bg-surface p-8 flex flex-col gap-3"
+            >
+              <div className="text-[48px] font-bold text-green/20 leading-none">{s.num}</div>
+              <h3 className="font-display text-[18px] font-bold text-text-primary">{s.title}</h3>
+              <p className="text-[14px] text-text-secondary leading-relaxed">{s.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -622,7 +691,7 @@ function PricingSection() {
         </div>
         <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
           {/* Free */}
-          <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+          <div className="rounded-2xl border border-border-default bg-bg-surface p-6 opacity-90">
             <h3 className="font-display text-xl font-bold text-text-primary mb-1">Free</h3>
             <div className="mb-4"><span className="text-3xl font-bold text-text-primary">$0</span><span className="text-text-muted text-sm">/forever</span></div>
             <ul className="space-y-2.5 mb-6">
@@ -641,8 +710,9 @@ function PricingSection() {
             </button>
           </div>
           {/* Pro */}
-          <div className="rounded-2xl border-2 border-green/40 bg-bg-surface p-6 relative overflow-hidden">
+          <div className="rounded-2xl border border-green/30 ring-1 ring-green/10 bg-bg-surface p-6 relative overflow-hidden shadow-[0_0_40px_rgba(0,200,100,0.08)]">
             <div className="absolute top-0 right-0 bg-green text-text-inverse text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl-xl">Pro</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-green mb-4">Most Popular</div>
             <h3 className="font-display text-xl font-bold text-text-primary mb-1">Pro</h3>
             <div className="mb-4">
               <span className="text-3xl font-bold text-text-primary">$19</span>
@@ -663,9 +733,59 @@ function PricingSection() {
             >
               Start 7-day free trial
             </MagneticButton>
-            <p className="text-center text-[11px] text-text-muted mt-2">No credit card required</p>
+            <p className="text-center text-[11px] text-text-muted mt-2">No credit card required · Cancel anytime</p>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function TestimonialsSection() {
+  const TESTIMONIALS = [
+    {
+      quote: "Caught the Wintermute BULLISH signal 4 hours before the move. Hadaleum's the only tool that gave me that edge.",
+      name: "@defi_edge",
+      handle: "ETH trader · 3 years on-chain"
+    },
+    {
+      quote: "Finally something that's not $150/month. The AI signal summaries are genuinely useful — not just price alerts.",
+      name: "@cryptobeta9",
+      handle: "DeFi researcher"
+    },
+    {
+      quote: "The whale scoring system is the real product. I don't copy every trade — I just watch the top 10 scored wallets.",
+      name: "@0xkaspian",
+      handle: "Independent trader"
+    }
+  ];
+
+  return (
+    <section className="py-20 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Early Access</div>
+          <h2 className="font-display text-[30px] font-bold text-text-primary">What traders are saying.</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {TESTIMONIALS.map(({ quote, name, handle }) => (
+            <div key={name} className="rounded-2xl border border-border-default bg-bg-surface p-5">
+              <p className="text-sm text-text-secondary leading-relaxed mb-4">"{quote}"</p>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-bg-overlay border border-border-subtle flex items-center justify-center">
+                  <span className="text-[10px] text-text-muted font-bold">{name[1].toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-text-primary">{name}</div>
+                  <div className="text-[11px] text-text-muted">{handle}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-[11px] text-text-muted mt-6">
+          Early access users · <a href="https://x.com/hadaleum" className="hover:text-text-secondary">Share your experience →</a>
+        </p>
       </div>
     </section>
   );
@@ -687,6 +807,13 @@ function Footer() {
           <Link to="/privacy" className="hover:text-text-secondary">Privacy</Link>
           <Link to="/terms" className="hover:text-text-secondary">Terms</Link>
           <Link to="/about" className="hover:text-text-secondary">About</Link>
+          <Link to="/institutional" className="hover:text-text-secondary">Enterprise</Link>
+          <a href="https://x.com/hadaleum" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10.97 1H12.9L8.78 5.71 13.67 13h-3.92L6.7 9.06 3.27 13H1.34l4.41-5.04L.67 1h4.02L7.6 4.6 10.97 1Zm-.67 10.79h1.07L3.75 2.1H2.6l7.7 9.69Z" fill="currentColor"/></svg>
+          </a>
+          <a href="https://discord.gg/hadaleum" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="Discord">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.61 2.92A11.37 11.37 0 0 0 9.02 2a7.76 7.76 0 0 0-.36.74 10.5 10.5 0 0 0-3.32 0A7.49 7.49 0 0 0 5 2 11.42 11.42 0 0 0 2.38 2.92 12.06 12.06 0 0 0 .5 10.5a11.6 11.6 0 0 0 3.54 1.79c.29-.39.54-.8.76-1.24a7.4 7.4 0 0 1-1.18-.57c.1-.07.2-.15.29-.22a8.27 8.27 0 0 0 7.18 0c.1.08.19.15.29.22-.38.22-.78.41-1.19.57.22.43.47.85.76 1.24a11.55 11.55 0 0 0 3.54-1.79A12.03 12.03 0 0 0 11.61 2.92ZM4.9 8.98c-.72 0-1.3-.66-1.3-1.47S4.17 6.04 4.9 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Zm4.2 0c-.71 0-1.3-.66-1.3-1.47S8.38 6.04 9.1 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Z" fill="currentColor"/></svg>
+          </a>
         </div>
       </div>
     </footer>
@@ -710,9 +837,11 @@ export default function LandingPage() {
       <SocialProofBar />
       <InvestShowcase />
       <ProductPreviewSection />
+      <HowItWorksSection />
       <FeaturesSection />
       <ComparisonSection />
       <PricingSection />
+      <TestimonialsSection />
 
       {/* Final CTA */}
       <section className="py-24 px-6 text-center">

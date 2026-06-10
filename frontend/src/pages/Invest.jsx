@@ -79,10 +79,11 @@ function LiveWhaleMovesFeed({ wallets, onCopyTrade, selectedAddress }) {
               </div>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onCopyTrade(w); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green text-bg-base rounded-lg text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all shrink-0"
+                disabled
+                title="Copy trading coming soon"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green/40 text-bg-base rounded-lg text-[12px] font-semibold opacity-60 cursor-not-allowed shrink-0"
               >
-                Copy trade
+                Coming Soon
               </button>
             </div>
           </div>
@@ -296,7 +297,15 @@ export default function InvestPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      <div className="flex-shrink-0 flex flex-col items-end gap-1 px-5 py-3 border-b border-border-subtle">
+      <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-border-subtle flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-amber/10 border border-amber/20 text-amber self-start">⚡ Beta — Copy trading coming soon</span>
+          <div className="rounded-xl border border-amber/20 bg-amber/[0.04] px-5 py-4 text-sm text-text-secondary">
+            <strong className="text-text-primary">Copy trading is in beta.</strong> We're finalizing DEX routing and MetaMask integration.{' '}
+            <a href="/upgrade" className="text-green hover:text-green-bright ml-1">Join the waitlist →</a>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1">
         {!wallet.isConnected ? (
           <MagneticButton type="button" onClick={wallet.connectWallet} disabled={wallet.connecting}
             className="text-[12px] px-3 py-1.5 border border-border-default rounded-lg text-text-secondary hover:bg-bg-elevated">
@@ -311,6 +320,7 @@ export default function InvestPage() {
         {wallet.error && (
           <p className="text-[10px] text-red max-w-xs text-right">{wallet.error}</p>
         )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
@@ -510,7 +520,7 @@ export default function InvestPage() {
                           <p className="text-amber/70">This is not financial advice. Smart contract interactions carry risk of loss. You are in full control of your wallet at all times.</p>
                         </div>
                       </div>
-                      <Button variant="primary" fullWidth onClick={handleExecute}>Confirm in MetaMask →</Button>
+                      <Button variant="primary" fullWidth disabled title="MetaMask execution coming soon">Confirm in MetaMask →</Button>
                       <button type="button" onClick={() => setStep('quote')} className="w-full text-xs text-text-muted hover:text-text-secondary py-1">← Back</button>
                     </div>
                   )}

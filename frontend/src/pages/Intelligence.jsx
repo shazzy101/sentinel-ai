@@ -11,6 +11,8 @@ import { apiFetch } from '../lib/apiClient';
 import SignalAccuracyWidget from '../components/intelligence/SignalAccuracyWidget';
 import { supabase } from '../lib/supabase';
 import { TableSkeleton } from '../components/primitives/DataState';
+import { useAuth } from '@/context/AuthProvider';
+import PaywallGate from '@/components/auth/PaywallGate';
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -121,7 +123,7 @@ function SignalRow({ item }) {
   );
 }
 
-function SignalFeed({ whaleSignals, copySignals }) {
+function SignalFeed({ whaleSignals, copySignals, isPro, isTrialing }) {
   const [tab, setTab] = useState('copy');
   const filteredWhales = whaleSignals.filter((s) => (s.score ?? 0) >= 55);
 
@@ -157,9 +159,16 @@ function SignalFeed({ whaleSignals, copySignals }) {
               Copy trader signals loading from Dune rankings…
             </div>
           ) : (
-            copySignals.slice(0, 10).map((item) => (
-              <CopyTraderSignalRow key={item.wallet_address} item={item} />
-            ))
+            <>
+              {copySignals.slice(0, 10).map((item, i) => (
+                (isPro || isTrialing || i < 1) && (
+                  <CopyTraderSignalRow key={item.wallet_address} item={item} />
+                )
+              ))}
+              {!isPro && !isTrialing && copySignals.length > 1 && (
+                <PaywallGate feature="Unlimited AI Signals" blur={false} />
+              )}
+            </>
           )
         ) : filteredWhales.length === 0 ? (
           <div className="py-8 text-center text-[12px] text-text-muted leading-relaxed max-w-md mx-auto">
@@ -167,9 +176,16 @@ function SignalFeed({ whaleSignals, copySignals }) {
             scan smart-money wallets on My Watchlist to populate this feed.
           </div>
         ) : (
-          filteredWhales.map((item) => (
-            <SignalRow key={item.wallet_address || item.wallet_label} item={item} />
-          ))
+          <>
+            {filteredWhales.map((item, i) => (
+              (isPro || isTrialing || i < 1) && (
+                <SignalRow key={item.wallet_address || item.wallet_label} item={item} />
+              )
+            ))}
+            {!isPro && !isTrialing && filteredWhales.length > 1 && (
+              <PaywallGate feature="Unlimited AI Signals" blur={false} />
+            )}
+          </>
         )}
       </div>
     </TextureCard>
@@ -203,6 +219,7 @@ function LoadingState() {
 }
 
 export default function IntelligencePage() {
+  const { isPro, isTrialing } = useAuth();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [whaleSignals, setWhaleSignals] = useState([]);
@@ -399,7 +416,7 @@ export default function IntelligencePage() {
         </div>
       </section>
 
-      <SignalFeed whaleSignals={whaleSignals} copySignals={copySignals} />
+      <SignalFeed whaleSignals={whaleSignals} copySignals={copySignals} isPro={isPro} isTrialing={isTrialing} />
 
       {/* Ask AI shortcut */}
       <div className="bg-bg-surface border border-green/20 rounded-xl p-5 flex items-center justify-between gap-4">

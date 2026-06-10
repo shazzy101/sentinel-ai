@@ -42,7 +42,7 @@ export default function AboutPage() {
           <HexLogo size={40} />
           <div>
             <h1 className="font-display text-3xl font-bold text-text-primary">About Hadaleum</h1>
-            <p className="text-text-muted text-sm mt-1">ha-DAL-ee-um · The arena of the deepest intelligence.</p>
+            <p className="text-text-muted text-sm mt-1">ha-DAL-ee-um · Built by Shazaib Amlani · Ethereum intelligence for traders who can't afford Nansen.</p>
           </div>
         </div>
 
@@ -55,6 +55,27 @@ export default function AboutPage() {
           <p className="text-text-secondary leading-relaxed">
             The core value: <strong className="text-text-primary">copy smart money trades without giving up custody of your keys.</strong> No competitor offers non-custodial copy trading with AI-filtered whale signals. That is the moat.
           </p>
+        </section>
+
+        {/* Built by */}
+        <section>
+          <h2 className="font-display text-xl font-bold text-text-primary mb-4">Built by</h2>
+          <div className="rounded-xl border border-border-default bg-bg-surface p-6 flex items-start gap-5">
+            <div className="w-14 h-14 rounded-full bg-bg-overlay border border-border-default flex items-center justify-center flex-shrink-0">
+              <span className="text-text-muted text-xl font-bold">S</span>
+            </div>
+            <div>
+              <div className="font-semibold text-text-primary">Shazaib Amlani</div>
+              <div className="text-sm text-text-muted mb-3">Founder & Builder</div>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                Built Hadaleum after spending months trying to track whale wallets manually across Nansen, Dune, and Etherscan tabs. The intelligence was all there — it just wasn't connected. Hadaleum is the tool I needed: whale signals, AI analysis, and one-click copy trading, non-custodial, at a price that isn't $150/month.
+              </p>
+              <div className="flex gap-4 mt-4">
+                <a href="https://x.com/shazaibamlani" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:text-text-secondary transition-colors">X / Twitter ↗</a>
+                <a href="https://linkedin.com/in/shazaibamlani" target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted hover:text-text-secondary transition-colors">LinkedIn ↗</a>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Data Sources */}

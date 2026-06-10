@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist' },
   { label: 'Invest', icon: Zap, path: '/invest' },
   { label: 'News Intelligence', icon: Newspaper, path: '/news' },
-  { label: 'Intelligence', icon: Sparkles, path: '/intelligence' },
+  { label: 'AI Signals', icon: Sparkles, path: '/intelligence' },
   { label: 'Ask AI', icon: MessageSquare, path: '/ask' },
   { label: 'Alerts', icon: Bell, path: '/alerts' },
 ];

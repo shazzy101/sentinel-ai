@@ -1,3 +1,5 @@
+import { motion } from 'motion/react';
+
 const SIGNAL_CLASSES = {
   BULLISH: 'bg-green-dim border border-green-border text-green',
   BEARISH: 'bg-red-dim border border-red-border text-red',
@@ -19,22 +21,29 @@ const RISK_CLASSES = {
   HIGH: 'text-red bg-red-dim border border-red-border',
 };
 
-const SIGNAL_DOT = {
-  BULLISH: 'bg-green',
-  BEARISH: 'bg-red',
-  NEUTRAL: 'bg-amber',
+const SIGNAL_ARROW = {
+  BULLISH: '↑',
+  BEARISH: '↓',
+  NEUTRAL: '—',
 };
 
 export function SignalPill({ signal }) {
   const normalized = (signal || 'NEUTRAL').toUpperCase();
   const classes = SIGNAL_CLASSES[normalized] || SIGNAL_CLASSES.NEUTRAL;
-  const dotClass = SIGNAL_DOT[normalized] || SIGNAL_DOT.NEUTRAL;
+  const arrow = SIGNAL_ARROW[normalized] || SIGNAL_ARROW.NEUTRAL;
 
   return (
-    <span className={`text-[10px] font-bold uppercase tracking-[0.8px] px-2 py-[3px] rounded-[4px] inline-flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 ${classes}`.trim()}>
-      <span className={`w-1.5 h-1.5 rounded-full inline-block ${dotClass}`} />
+    <motion.span
+      key={normalized}
+      initial={{ opacity: 0, scale: 0.8, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.8, y: 4 }}
+      transition={{ duration: 0.2 }}
+      className={`text-[10px] font-bold uppercase tracking-[0.8px] px-2 py-[3px] rounded-[4px] inline-flex items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 ${classes}`.trim()}
+    >
+      <span className="text-[9px] leading-none">{arrow}</span>
       {normalized}
-    </span>
+    </motion.span>
   );
 }
 

@@ -18,6 +18,8 @@ import StatWidget from '../components/primitives/StatWidget';
 import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
 import { api } from '../lib/api';
+import { useAuth } from '@/context/AuthProvider';
+import PaywallGate from '@/components/auth/PaywallGate';
 
 const EXCHANGE_NAMES = [
   'Binance', 'Coinbase', 'Kraken', 'KuCoin', 'OKX', 'Crypto.com', 'Gemini',
@@ -72,6 +74,7 @@ function filterButtonClass(isActive) {
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function WatchlistPage() {
+  const { isPro, isTrialing } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState('copy'); // copy | watchlist
   const [strictCopyFilter, setStrictCopyFilter] = useState(true);
@@ -208,9 +211,10 @@ export default function WatchlistPage() {
     }), [wallets, searchQuery, signalFilter, sortBy, smartMoneyOnly]);
 
   const displayWallets = useMemo(() => {
+    if (!isPro && !isTrialing) return filteredWallets.slice(0, 10);
     const limited = showTop100 ? filteredWallets.slice(0, 100) : filteredWallets;
     return showAll ? limited : limited.slice(0, 50);
-  }, [filteredWallets, showAll, showTop100]);
+  }, [filteredWallets, showAll, showTop100, isPro, isTrialing]);
 
   const filteredCopyTraders = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -642,14 +646,18 @@ export default function WatchlistPage() {
               onRetry={refetch}
               onOpenAddModal={() => setIsAddModalOpen(true)}
             />
-            {!showAll && filteredWallets.length > 50 && (
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-border-subtle text-center hover:bg-bg-elevated transition-colors"
-              >
-                Show all {filteredWallets.length} wallets ↓
-              </button>
+            {!isPro && !isTrialing ? (
+              <PaywallGate feature="Full 2,796 Wallet Watchlist" blur={false} />
+            ) : (
+              !showAll && filteredWallets.length > 50 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="w-full py-3 text-[12px] text-text-muted hover:text-text-secondary border-t border-border-subtle text-center hover:bg-bg-elevated transition-colors"
+                >
+                  Show all {filteredWallets.length} wallets ↓
+                </button>
+              )
             )}
           </>
         )}

@@ -21,6 +21,8 @@ const PrivacyPage = lazy(() => import('./pages/Privacy'));
 const TermsPage = lazy(() => import('./pages/Terms'));
 const DisclaimerPage = lazy(() => import('./pages/Disclaimer'));
 const SignalsLeaderboardPage = lazy(() => import('./pages/SignalsLeaderboard'));
+const InstitutionalPage = lazy(() => import('./pages/Institutional'));
+const SignalPerformancePage = lazy(() => import('./pages/SignalPerformance'));
 const WatchlistPage = lazy(() => import('./pages/Watchlist'));
 const IntelligencePage = lazy(() => import('./pages/Intelligence'));
 const AlertsPage = lazy(() => import('./pages/Alerts'));
@@ -58,7 +60,7 @@ function WatchlistRoute() {
 function IntelligenceRoute() {
   return (
     <Shell
-      title="Intelligence"
+      title="AI Signals"
       actions={
         <Button variant="ghost" className="flex items-center gap-1.5" onClick={() => window.dispatchEvent(new Event('regenerate-intelligence'))}>
           Regenerate
@@ -136,6 +138,8 @@ function AnimatedRoutes() {
         <Route path="/terms" element={<MotionPage><Suspense fallback={<PageLoader />}><TermsPage /></Suspense></MotionPage>} />
         <Route path="/disclaimer" element={<MotionPage><Suspense fallback={<PageLoader />}><DisclaimerPage /></Suspense></MotionPage>} />
         <Route path="/signals" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalsLeaderboardPage /></Suspense></MotionPage>} />
+        <Route path="/signals/performance" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalPerformancePage /></Suspense></MotionPage>} />
+        <Route path="/institutional" element={<MotionPage><Suspense fallback={<PageLoader />}><InstitutionalPage /></Suspense></MotionPage>} />
 
         {/* Protected app routes */}
         <Route path="/watchlist" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><WatchlistRoute /></Suspense></AuthGuard></MotionPage>} />
