@@ -408,7 +408,6 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
                 "value_symbol": tx.get("value_symbol", "ETH"),
                 "direction": tx.get("direction", "unknown"),
                 "status": tx.get("status", "unknown"),
-                "raw_data": tx,
             })
 
         if tx_records:
