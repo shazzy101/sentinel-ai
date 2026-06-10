@@ -204,6 +204,7 @@ export default function InvestPage() {
         TOKEN_ADDRESSES[fromToken],
         TOKEN_ADDRESSES[toToken],
         amountIn,
+        wallet.address,
       );
       if (data?.error || data?.message) throw new Error(data.error || data.message);
       setQuote(data);

@@ -29,6 +29,26 @@ function fmt(n, dec = 2) {
   return Number(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
+// Map a token symbol to a TradingView-resolvable, exchange-qualified symbol.
+// Bare symbols like "UNIUSD" often won't resolve — TradingView needs an
+// exchange prefix. Majors use Coinbase USD; everything else defaults to the
+// Binance USDT pair (covers nearly all top ETH-ecosystem tokens).
+const TV_SYMBOL_OVERRIDES = {
+  ETH: 'COINBASE:ETHUSD', WETH: 'COINBASE:ETHUSD', BTC: 'COINBASE:BTCUSD', WBTC: 'BINANCE:WBTCUSDT',
+  USDC: 'COINBASE:USDCUSD', USDT: 'COINBASE:USDTUSD', DAI: 'COINBASE:DAIUSD',
+  STETH: 'BINANCE:STETHUSDT', WSTETH: 'BINANCE:WSTETHUSDT', WEETH: 'BINANCE:WEETHUSDT',
+  UNI: 'BINANCE:UNIUSDT', LINK: 'BINANCE:LINKUSDT', AAVE: 'BINANCE:AAVEUSDT', MKR: 'BINANCE:MKRUSDT',
+  LDO: 'BINANCE:LDOUSDT', ARB: 'BINANCE:ARBUSDT', PEPE: 'BINANCE:PEPEUSDT', SHIB: 'BINANCE:SHIBUSDT',
+  ENS: 'BINANCE:ENSUSDT', CRV: 'BINANCE:CRVUSDT', SNX: 'BINANCE:SNXUSDT', COMP: 'BINANCE:COMPUSDT',
+  GRT: 'BINANCE:GRTUSDT', MATIC: 'BINANCE:MATICUSDT', FET: 'BINANCE:FETUSDT', INJ: 'BINANCE:INJUSDT',
+  RENDER: 'BINANCE:RENDERUSDT', IMX: 'BINANCE:IMXUSDT', PRIME: 'BINANCE:PRIMEUSDT',
+};
+function toTradingViewSymbol(sym) {
+  if (!sym) return 'COINBASE:ETHUSD';
+  const s = String(sym).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return TV_SYMBOL_OVERRIDES[s] || `BINANCE:${s}USDT`;
+}
+
 function OrderBook({ price }) {
   const mid = Number(price) || 1700;
   const asks = useMemo(() => Array.from({ length: 8 }, (_, i) => ({
@@ -129,6 +149,7 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
         TOKEN_ADDRESSES[fromToken],
         TOKEN_ADDRESSES[toToken],
         toTokenUnits(amount, fromToken),
+        wallet.address,
       );
       if (data?.error || data?.message) throw new Error(data.error || data.message);
       setQuote(data);
@@ -305,6 +326,9 @@ function TopTradersTable({ wallets }) {
 
 export default function NansenTradingTerminal({ ethData, wallets, selectedToken, onSelectToken }) {
   const [chartInterval, setChartInterval] = useState('5');
+  const activeSymbol = (selectedToken?.symbol || 'ETH').toUpperCase();
+  const tvSymbol = toTradingViewSymbol(activeSymbol);
+  const pairLabel = `${activeSymbol}-USD`;
   const change24h = ethData?.usd_24h_change ?? 0;
   const price = ethData?.usd ?? 0;
 
@@ -345,7 +369,7 @@ export default function NansenTradingTerminal({ ethData, wallets, selectedToken,
         <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden flex flex-col min-h-[360px]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[13px] font-semibold text-text-primary">ETH-USDC</span>
+              <span className="font-mono text-[13px] font-semibold text-text-primary">{pairLabel}</span>
               <span className="text-[11px] text-text-muted">Token God Mode · Spot</span>
             </div>
             <div className="flex items-center gap-1">
@@ -362,7 +386,7 @@ export default function NansenTradingTerminal({ ethData, wallets, selectedToken,
               })}
             </div>
           </div>
-          <TradingViewChart symbol="ETHUSD" interval={chartInterval} height={420} />
+          <TradingViewChart symbol={tvSymbol} interval={chartInterval} height={420} />
         </div>
 
         <GlassCard padding={false} className="hidden xl:flex flex-col min-h-[360px]">

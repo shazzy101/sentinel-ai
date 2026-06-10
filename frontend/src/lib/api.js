@@ -31,12 +31,23 @@ export const api = {
     ).then((r) => r.json()),
 
   // ── DEX Trade Quote (DefiLlama Swap API — no key needed) ──
-  getSwapQuote: (fromToken, toToken, amount) =>
-    fetch(
-      `https://api.swap.defillama.com/v2/quote` +
-      `?tokenIn=${fromToken}&tokenOut=${toToken}` +
-      `&amountIn=${amount}&chain=ethereum&slippage=0.5`
-    ).then((r) => r.json()),
+  // `from` (the sender's address) is required for the aggregator to return
+  // executable `tx` calldata. Without it, the quote is price-only and the
+  // swap can't be sent through MetaMask.
+  getSwapQuote: (fromToken, toToken, amount, from) => {
+    const params = new URLSearchParams({
+      tokenIn: fromToken,
+      tokenOut: toToken,
+      amountIn: String(amount),
+      chain: 'ethereum',
+      slippage: '0.5',
+    });
+    if (from) {
+      params.set('from', from);
+      params.set('userAddress', from); // alias used by some aggregator routes
+    }
+    return fetch(`https://api.swap.defillama.com/v2/quote?${params.toString()}`).then((r) => r.json());
+  },
 
   getWhaleTrades: () =>
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/invest/whale-trades`)

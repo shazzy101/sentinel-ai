@@ -57,16 +57,26 @@ export default function TradingViewChart({
       });
     }
 
+    // Poll for the tv.js library (loaded in index.html) up to ~10s instead of
+    // a single 1s attempt, so the chart never silently fails to render if the
+    // script is slow on a cold load.
     if (typeof window.TradingView === 'undefined') {
-      timer = setTimeout(() => {
-        if (typeof window.TradingView !== 'undefined') createWidget();
-      }, 1000);
+      let attempts = 0;
+      timer = setInterval(() => {
+        attempts += 1;
+        if (typeof window.TradingView !== 'undefined') {
+          clearInterval(timer);
+          createWidget();
+        } else if (attempts >= 40) {
+          clearInterval(timer);
+        }
+      }, 250);
     } else {
       createWidget();
     }
 
     return () => {
-      if (timer) clearTimeout(timer);
+      if (timer) clearInterval(timer);
       widgetRef.current = null;
     };
   }, [symbol, interval]);
