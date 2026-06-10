@@ -106,4 +106,25 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, source }),
     }).then((r) => r.json()),
+
+  // ── News Intelligence ──
+  getNews: (opts = {}) => {
+    const { category, source, sort = 'recent', limit = 40 } = opts;
+    const params = new URLSearchParams({ sort, limit: String(limit) });
+    if (category) params.set('category', category);
+    if (source) params.set('source', source);
+    return fetch(`${import.meta.env.VITE_API_URL || ''}/api/news?${params}`)
+      .then((r) => r.json())
+      .then((b) => b.data?.articles || []);
+  },
+
+  getNewsPulse: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/news/pulse`)
+      .then((r) => r.json())
+      .then((b) => b.data || { available: false }),
+
+  getNewsArticle: (id) =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/news/${id}`)
+      .then((r) => r.json())
+      .then((b) => b.data || null),
 };

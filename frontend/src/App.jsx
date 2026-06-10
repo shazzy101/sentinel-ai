@@ -10,6 +10,7 @@ import MarketsPage, { EthPriceBadge } from './pages/Markets';
 import AlertsPage from './pages/Alerts';
 import InvestPage from './pages/Invest';
 import AskSentinelPage from './pages/AskSentinel';
+import NewsPage from './pages/News';
 
 function WatchlistRoute() {
   return (
@@ -73,6 +74,14 @@ function AskSentinelRoute() {
   );
 }
 
+function NewsRoute() {
+  return (
+    <Shell title="News Intelligence">
+      <NewsPage />
+    </Shell>
+  );
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -92,6 +101,7 @@ function AnimatedRoutes() {
         <Route path="/markets" element={<MotionPage><MarketsRoute /></MotionPage>} />
         <Route path="/invest" element={<MotionPage><InvestRoute /></MotionPage>} />
         <Route path="/ask" element={<MotionPage><AskSentinelRoute /></MotionPage>} />
+        <Route path="/news" element={<MotionPage><NewsRoute /></MotionPage>} />
         <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
         <Route path="/alerts" element={<MotionPage><AlertsRoute /></MotionPage>} />
       </Routes>

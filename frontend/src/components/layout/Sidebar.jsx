@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   LayoutGrid, Sparkles, BarChart3, MessageSquare,
-  Bell, ExternalLink, Search, Zap,
+  Bell, ExternalLink, Search, Zap, Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
@@ -16,6 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const NAV_ITEMS = [
   { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist' },
+  { label: 'News Intelligence', icon: Newspaper, path: '/news' },
   { label: 'Intelligence', icon: Sparkles, path: '/intelligence' },
   { label: 'Markets', icon: BarChart3, path: '/markets' },
   { label: 'Invest', icon: Zap, path: '/invest' },
