@@ -1409,8 +1409,9 @@ _EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 @app.post("/api/waitlist")
-async def join_waitlist(request: WaitlistRequest):
-    """Capture a Pro early-access signup. Stores email + source in Supabase."""
+async def join_waitlist(request: WaitlistRequest, background_tasks: BackgroundTasks):
+    """Capture a Pro early-access signup. Stores email in Supabase and sends a
+    welcome email via Resend (best-effort, in the background)."""
     email = (request.email or "").strip().lower()
     if not _EMAIL_RE.match(email):
         return error("INVALID_EMAIL", "Please enter a valid email address.", status_code=400)
@@ -1423,7 +1424,18 @@ async def join_waitlist(request: WaitlistRequest):
             },
             on_conflict="email",
         ).execute()
-        return success({"joined": True, "email": email})
+
+        # Fire the welcome email in the background — never block or fail the signup.
+        from integrations import resend
+        if resend.is_configured():
+            background_tasks.add_task(
+                resend.send_email,
+                email,
+                "You're on the Sentinel Pro waitlist 🎉",
+                resend.waitlist_welcome_html(),
+            )
+
+        return success({"joined": True, "email": email, "emailed": resend.is_configured()})
     except Exception as e:
         # Table may not exist yet — surface a clear, non-crashing error.
         return error(
