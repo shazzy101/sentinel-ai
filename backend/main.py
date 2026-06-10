@@ -34,6 +34,7 @@ from copy_traders_store import (
     load_copy_traders,
     sync_copy_traders_to_db,
 )
+from copy_trader_moves import fetch_recent_copy_moves
 from scoring.engine import score_wallet
 
 
@@ -1487,6 +1488,8 @@ async def get_eth_market_data():
 # but caching avoids repeat round-trips on every dashboard load.
 _network_cache: dict = {}
 _NETWORK_TTL_SECS = 600  # 10 min
+_copy_moves_cache: dict = {}
+_COPY_MOVES_TTL_SECS = 300  # 5 min — Etherscan-backed, refresh often
 
 
 async def _cached_dune(key: str, query_id: int, limit: int):
@@ -2135,23 +2138,25 @@ async def copy_trading_featured():
     })
 
 
-# Tokens worth surfacing for copy-trade signals (majors + liquid DeFi)
-_COPY_QUALITY_SYMBOLS = {
-    "ETH", "WETH", "WBTC", "USDC", "USDT", "DAI", "UNI", "LINK", "AAVE", "ARB", "OP",
-    "PEPE", "SHIB", "LDO", "MKR", "CRV", "SNX", "COMP", "ENS", "RNDR", "FET", "INJ",
-    "WSTETH", "STETH", "WEETH", "CBETH", "RETH", "BONK", "FLOKI", "MATIC", "POL",
-    "GMX", "PENDLE", "EIGEN", "ETHFI", "ONDO", "WLD", "BLUR", "APE", "SAND", "MANA",
-    "TIA", "SEI", "SUI", "SOL", "DOGE", "HYPE",
-}
-
-
 @app.get("/api/copy-trading/recent-moves")
 async def copy_trading_recent_moves(limit: int = 15):
     """
-    Recent large DEX swaps from ranked copy traders into liquid tokens.
-    Filters out random meme noise so Markets shows actionable copy signals.
+    Recent DEX swaps from top ranked copy traders — no whale/$250k gate.
+    Scans latest on-chain token transfers for elite traders (Etherscan).
     """
     limit = max(1, min(limit, 30))
+    cache_key = f"moves_{limit}"
+    entry = _copy_moves_cache.get(cache_key)
+    if entry and (datetime.now(timezone.utc) - entry["ts"]).total_seconds() < _COPY_MOVES_TTL_SECS:
+        moves = entry["moves"]
+        return success({
+            "moves": moves,
+            "count": len(moves),
+            "available": bool(moves),
+            "source": "etherscan",
+            "cached": True,
+        })
+
     all_wallets = _load_copy_trading_wallets()
     pool = _sort_copy_traders(
         _filter_copy_traders(
@@ -2160,58 +2165,32 @@ async def copy_trading_recent_moves(limit: int = 15):
             min_profit_factor=2,
             min_track_days=90,
             qualified_only=True,
+            strict=True,
         ),
         "copy_score",
-    )[:500]
-    trader_map = {(w.get("address") or "").lower(): _enrich_copy_trader(w) for w in pool}
+    )
+    enriched_pool = [_enrich_copy_trader(w) for w in pool[:50]]
 
-    rows = await _cached_dune("large_trades", dune.QUERY_WHALE_TRADES, limit=80)
-    moves: list[dict] = []
-    seen: set[str] = set()
+    try:
+        moves = await fetch_recent_copy_moves(
+            enriched_pool,
+            limit=limit,
+            traders_to_scan=40,
+            transfer_limit=25,
+        )
+    except Exception:
+        moves = entry["moves"] if entry else []
 
-    for r in rows:
-        addr = (r.get("trader") or "").lower()
-        trader = trader_map.get(addr)
-        if not trader:
-            continue
+    if moves:
+        _copy_moves_cache[cache_key] = {"moves": moves, "ts": datetime.now(timezone.utc)}
 
-        bought = (r.get("token_bought_symbol") or "").upper()
-        sold = (r.get("token_sold_symbol") or "").upper()
-        if bought not in _COPY_QUALITY_SYMBOLS and sold not in _COPY_QUALITY_SYMBOLS:
-            continue
-
-        tx_hash = r.get("tx_hash") or ""
-        if not tx_hash or tx_hash in seen:
-            continue
-        seen.add(tx_hash)
-
-        metrics = trader.get("metrics") or {}
-        stable = {"USDC", "USDT", "DAI"}
-        if bought in stable:
-            action = "take_profit"
-        elif sold in stable or sold in ("WETH", "ETH"):
-            action = "buy"
-        else:
-            action = "rotate"
-
-        moves.append({
-            "time": r.get("block_time"),
-            "tx_hash": tx_hash,
-            "trader_address": r.get("trader"),
-            "trader_label": trader.get("label"),
-            "copy_score": trader.get("copy_trading_score"),
-            "win_rate_pct": metrics.get("win_rate_pct"),
-            "profit_factor": metrics.get("profit_factor"),
-            "sold": sold,
-            "bought": bought,
-            "amount_usd": r.get("amount_usd"),
-            "project": r.get("project"),
-            "action": action,
-        })
-        if len(moves) >= limit:
-            break
-
-    return success({"moves": moves, "count": len(moves), "available": bool(moves)})
+    return success({
+        "moves": moves,
+        "count": len(moves),
+        "available": bool(moves),
+        "source": "etherscan",
+        "cached": False,
+    })
 
 
 @app.get("/api/copy-trading/{address}")
@@ -2220,7 +2199,23 @@ async def copy_trading_detail(address: str):
     addr = address.strip().lower()
     for w in _load_copy_trading_wallets():
         if (w.get("address") or "").lower() == addr:
-            return success({"wallet": _enrich_copy_trader(w)})
+            enriched = _enrich_copy_trader(w)
+            try:
+                enriched["eth_balance"] = await get_eth_balance(addr)
+            except Exception:
+                enriched["eth_balance"] = None
+            oc = enriched.get("on_chain_data") or {}
+            enriched["capital_note"] = (
+                "Copy traders are ranked by DEX trading performance, not ETH balance. "
+                "Most keep capital in USDC/WETH/tokens between trades — low native ETH is normal."
+            )
+            if oc.get("total_volume_usd"):
+                enriched["trading_volume_usd"] = oc["total_volume_usd"]
+            elif oc.get("avg_trade_usd") and oc.get("total_trades"):
+                enriched["trading_volume_usd"] = round(
+                    float(oc["avg_trade_usd"]) * int(oc["total_trades"]), 2
+                )
+            return success({"wallet": enriched})
     return error("NOT_FOUND", "Copy trader not found", status_code=404)
 
 

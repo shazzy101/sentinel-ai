@@ -90,8 +90,8 @@ export default function CopyTraderTable({
   return (
     <GlassCard padding={false} className="h-full min-h-0 overflow-hidden" innerClassName="flex flex-col h-full min-h-0">
       <div className="flex-shrink-0 px-4 py-2 border-b border-border-subtle flex items-center justify-between">
-        <span className="text-[11px] text-text-muted">
-          {totalQualified?.toLocaleString() ?? wallets.length} real DEX traders · bots filtered · ranked by copy-trading score
+        <span className="text-[11px] text-text-muted leading-relaxed">
+          {totalQualified?.toLocaleString() ?? wallets.length} DEX traders ranked by edge, not ETH balance · low native ETH is normal
         </span>
       </div>
       <div className="flex-1 min-h-0 overflow-auto">

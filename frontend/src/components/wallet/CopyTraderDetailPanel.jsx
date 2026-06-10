@@ -107,7 +107,21 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
           <span className="text-text-muted">{oc.trades_per_day?.toFixed(1)} trades/day</span>
           <span className="text-text-muted">·</span>
           <span className="text-text-muted">{formatUsd(oc.avg_trade_usd)} avg swap</span>
+          {detail.trading_volume_usd != null && (
+            <>
+              <span className="text-text-muted">·</span>
+              <span className="text-text-muted">{formatUsd(detail.trading_volume_usd)} 180d vol</span>
+            </>
+          )}
         </div>
+        {(detail.eth_balance != null || detail.capital_note) && (
+          <p className="mt-2 text-[10px] text-text-muted leading-relaxed max-w-md">
+            {detail.eth_balance != null && (
+              <span className="font-mono text-text-secondary">{Number(detail.eth_balance).toFixed(4)} ETH </span>
+            )}
+            {detail.capital_note || 'Ranked by DEX performance — low native ETH is normal; capital is usually in tokens.'}
+          </p>
+        )}
         <Button variant="icon" className="absolute right-4 top-3" onClick={onClose} aria-label="Close">✕</Button>
       </div>
 

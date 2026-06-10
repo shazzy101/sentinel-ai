@@ -12,6 +12,16 @@ function compact(n) {
   return `$${x.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
+function formatMoveSize(move) {
+  if (move.amount_usd != null && move.amount_usd > 0) {
+    return compact(move.amount_usd);
+  }
+  const soldAmt = move.sold_amount != null ? Number(move.sold_amount).toLocaleString(undefined, { maximumFractionDigits: 4 }) : '';
+  const boughtAmt = move.bought_amount != null ? Number(move.bought_amount).toLocaleString(undefined, { maximumFractionDigits: 4 }) : '';
+  if (soldAmt && boughtAmt) return `${soldAmt} ${move.sold} → ${boughtAmt} ${move.bought}`;
+  return '—';
+}
+
 function relTime(ts) {
   if (!ts) return '';
   const ms = Date.now() - new Date(ts).getTime();
@@ -48,7 +58,7 @@ function MoveRow({ move, onCopy }) {
           <ArrowRight className="h-3 w-3 text-text-muted shrink-0" />
           <span className="font-medium text-text-primary">{move.bought}</span>
           <span className="text-text-muted">·</span>
-          <span className="font-mono text-text-secondary">{compact(move.amount_usd)}</span>
+          <span className="font-mono text-text-secondary">{formatMoveSize(move)}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-2 mt-1 text-[10px] text-text-muted">
           <span className="font-mono">{Math.round(move.win_rate_pct ?? 0)}% WR</span>
@@ -283,7 +293,7 @@ export default function CopyTradingIntelligence() {
         <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between gap-3">
           <div>
             <div className="text-[14px] font-medium text-text-primary">Copy-Worthy Moves</div>
-            <div className="text-[10px] text-text-muted mt-0.5">Ranked traders · Dune DEX · $250k+ swaps</div>
+            <div className="text-[10px] text-text-muted mt-0.5">Live swaps from top copy traders · on-chain · no size minimum</div>
           </div>
           <button
             type="button"
@@ -295,7 +305,7 @@ export default function CopyTradingIntelligence() {
         </div>
         {!hasCopyActivity ? (
           <div className="px-4 py-10 text-center text-[12px] text-text-muted leading-relaxed">
-            No recent moves from top copy traders into major tokens yet. Check back shortly — Dune refreshes every few hours.
+            No recent swaps from top copy traders yet. The feed refreshes every few minutes from on-chain token transfers.
           </div>
         ) : (
           copyMoves.map((m) => (
