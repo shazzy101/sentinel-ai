@@ -6,6 +6,8 @@ import {
   getExistingWallet,
   subscribeWallet,
   getChainId,
+  initMetaMaskDiscovery,
+  isMetaMaskInstalled,
   ERROR_MESSAGES,
 } from '../lib/web3';
 import { CHAIN_ID_MAINNET } from '../lib/tokens';
@@ -20,7 +22,7 @@ export function WalletProvider({ children }) {
   const [error, setError] = useState(null);
 
   const refreshBalance = useCallback(async (addr) => {
-    if (!addr || !window.ethereum) {
+    if (!addr || !isMetaMaskInstalled()) {
       setBalance(null);
       return;
     }
@@ -38,6 +40,8 @@ export function WalletProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    initMetaMaskDiscovery();
+
     let cancelled = false;
     async function restore() {
       try {
@@ -50,10 +54,15 @@ export function WalletProvider({ children }) {
         }
       } catch { /* ignore */ }
     }
+
     restore();
-    return subscribeWallet({
+    // EIP-6963 providers may announce shortly after load
+    const retry = setTimeout(() => { if (!cancelled) restore(); }, 600);
+
+    const unsubscribe = subscribeWallet({
       onAccounts: (addr) => {
         setAddress(addr);
+        setError(null);
         refreshBalance(addr);
       },
       onChain: () => {
@@ -61,6 +70,12 @@ export function WalletProvider({ children }) {
         getExistingWallet().then((addr) => refreshBalance(addr));
       },
     });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retry);
+      unsubscribe();
+    };
   }, [refreshBalance, refreshChain]);
 
   const connectWallet = useCallback(async () => {
@@ -79,7 +94,7 @@ export function WalletProvider({ children }) {
           ? ERROR_MESSAGES.REJECTED.message
           : err.message;
       setError(msg);
-      throw err;
+      return null;
     } finally {
       setConnecting(false);
     }
@@ -90,11 +105,17 @@ export function WalletProvider({ children }) {
     try {
       await ensureMainnet();
       await refreshChain();
+      return true;
     } catch (err) {
-      setError(err.message);
-      throw err;
+      const msg = err.code === 'REJECTED'
+        ? 'Network switch cancelled.'
+        : err.message;
+      setError(msg);
+      return false;
     }
   }, [refreshChain]);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const value = useMemo(() => ({
     address,
@@ -102,12 +123,14 @@ export function WalletProvider({ children }) {
     chainId,
     isMainnet: chainId === CHAIN_ID_MAINNET,
     isConnected: Boolean(address),
+    isInstalled: isMetaMaskInstalled(),
     connecting,
     error,
     connectWallet,
     switchToMainnet,
+    clearError,
     refreshBalance: () => refreshBalance(address),
-  }), [address, balance, chainId, connecting, error, connectWallet, switchToMainnet, refreshBalance]);
+  }), [address, balance, chainId, connecting, error, connectWallet, switchToMainnet, clearError, refreshBalance]);
 
   return (
     <WalletContext.Provider value={value}>

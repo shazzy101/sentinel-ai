@@ -17,27 +17,89 @@ export const ERROR_MESSAGES = {
     message: "You don't have enough ETH to complete this trade.",
   },
   REJECTED: {
-    title: 'Transaction Cancelled',
-    message: 'You rejected the transaction in MetaMask.',
+    title: 'Connection Cancelled',
+    message: 'You rejected the MetaMask connection request.',
   },
 };
 
+/** @type {import('ethers').Eip1193Provider | null} */
+let cachedMetaMaskProvider = null;
+let discoveryStarted = false;
+
+function pickMetaMaskFromEthereum(ethereum) {
+  if (!ethereum) return null;
+  // Rabby and some wallets spoof isMetaMask — prefer explicit MetaMask flags
+  const isRealMetaMask = (p) => p?.isMetaMask && !p?.isRabby && !p?.isBraveWallet;
+  if (isRealMetaMask(ethereum)) return ethereum;
+  if (Array.isArray(ethereum.providers)) {
+    const mm = ethereum.providers.find(isRealMetaMask);
+    if (mm) return mm;
+  }
+  return null;
+}
+
+/** Discover MetaMask via EIP-6963 (avoids wrong wallet when multiple extensions installed). */
+export function initMetaMaskDiscovery() {
+  if (typeof window === 'undefined' || discoveryStarted) return;
+  discoveryStarted = true;
+
+  cachedMetaMaskProvider = pickMetaMaskFromEthereum(window.ethereum);
+
+  window.addEventListener('eip6963:announceProvider', (event) => {
+    const { info, provider } = event.detail || {};
+    const rdns = info?.rdns || '';
+    const name = info?.name || '';
+    if (rdns === 'io.metamask' || name === 'MetaMask') {
+      cachedMetaMaskProvider = provider;
+    }
+  });
+
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+}
+
+/** Returns the MetaMask EIP-1193 provider, or null if not installed. */
+export function getMetaMaskProvider() {
+  if (typeof window === 'undefined') return null;
+  if (!discoveryStarted) initMetaMaskDiscovery();
+  if (cachedMetaMaskProvider) return cachedMetaMaskProvider;
+  cachedMetaMaskProvider = pickMetaMaskFromEthereum(window.ethereum);
+  return cachedMetaMaskProvider;
+}
+
+export function isMetaMaskInstalled() {
+  return Boolean(getMetaMaskProvider());
+}
+
 export async function connectWallet() {
-  if (!window.ethereum) {
-    const err = new Error('MetaMask not installed. Please install MetaMask to trade.');
+  const provider = getMetaMaskProvider();
+  if (!provider) {
+    const err = new Error(ERROR_MESSAGES.NO_METAMASK.message);
     err.code = 'NO_METAMASK';
     throw err;
   }
+
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (!accounts || accounts.length === 0) {
+    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    if (!accounts?.length) {
       throw new Error('No accounts found in MetaMask');
     }
-    await ensureMainnet();
-    return accounts[0];
+
+    const address = accounts[0];
+
+    // Connect succeeds even on wrong network — user can switch before trading
+    try {
+      await ensureMainnet(provider);
+    } catch (netErr) {
+      if (netErr.code !== 'REJECTED' && netErr.code !== 4001) {
+        netErr.networkWarning = true;
+        throw netErr;
+      }
+    }
+
+    return address;
   } catch (err) {
     if (err.code === 4001) {
-      const e = new Error('Connection rejected. Please approve MetaMask connection to continue.');
+      const e = new Error(ERROR_MESSAGES.REJECTED.message);
       e.code = 'REJECTED';
       throw e;
     }
@@ -45,21 +107,31 @@ export async function connectWallet() {
   }
 }
 
-export async function getChainId() {
-  if (!window.ethereum) return null;
-  const hex = await window.ethereum.request({ method: 'eth_chainId' });
+export async function getChainId(provider = getMetaMaskProvider()) {
+  if (!provider) return null;
+  const hex = await provider.request({ method: 'eth_chainId' });
   return parseInt(hex, 16);
 }
 
-export async function ensureMainnet() {
-  const chainId = await getChainId();
+export async function ensureMainnet(provider = getMetaMaskProvider()) {
+  if (!provider) {
+    const err = new Error(ERROR_MESSAGES.NO_METAMASK.message);
+    err.code = 'NO_METAMASK';
+    throw err;
+  }
+  const chainId = await getChainId(provider);
   if (chainId === CHAIN_ID_MAINNET) return;
   try {
-    await window.ethereum.request({
+    await provider.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: '0x1' }],
     });
   } catch (err) {
+    if (err.code === 4001) {
+      const e = new Error('Network switch cancelled. Switch to Ethereum Mainnet to trade.');
+      e.code = 'REJECTED';
+      throw e;
+    }
     if (err.code === 4902) {
       throw new Error('Please add Ethereum Mainnet to MetaMask.');
     }
@@ -67,22 +139,23 @@ export async function ensureMainnet() {
   }
 }
 
-export async function getWalletBalance(address) {
-  const balance = await window.ethereum.request({
+export async function getWalletBalance(address, provider = getMetaMaskProvider()) {
+  if (!provider) return null;
+  const balance = await provider.request({
     method: 'eth_getBalance',
     params: [address, 'latest'],
   });
   return parseInt(balance, 16) / 1e18;
 }
 
-export async function sendTransaction(txData) {
-  if (!window.ethereum) {
-    const err = new Error('MetaMask not installed');
+export async function sendTransaction(txData, provider = getMetaMaskProvider()) {
+  if (!provider) {
+    const err = new Error(ERROR_MESSAGES.NO_METAMASK.message);
     err.code = 'NO_METAMASK';
     throw err;
   }
   try {
-    return await window.ethereum.request({
+    return await provider.request({
       method: 'eth_sendTransaction',
       params: [txData],
     });
@@ -102,10 +175,11 @@ export async function sendTransaction(txData) {
 }
 
 /** Poll until tx is mined or timeout (default 3 min) */
-export async function waitForTransaction(txHash, { timeoutMs = 180_000, intervalMs = 2_000 } = {}) {
+export async function waitForTransaction(txHash, { timeoutMs = 180_000, intervalMs = 2_000, provider = getMetaMaskProvider() } = {}) {
+  if (!provider) throw new Error('MetaMask not available');
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const receipt = await window.ethereum.request({
+    const receipt = await provider.request({
       method: 'eth_getTransactionReceipt',
       params: [txHash],
     });
@@ -125,49 +199,35 @@ export function formatWalletAddress(addr) {
 }
 
 export function subscribeWallet(callbacks) {
-  if (!window.ethereum) return () => {};
+  const provider = getMetaMaskProvider();
+  if (!provider) return () => {};
 
   const onAccounts = (accounts) => callbacks.onAccounts?.(accounts[0] || null);
   const onChain = () => callbacks.onChain?.();
 
-  window.ethereum.on?.('accountsChanged', onAccounts);
-  window.ethereum.on?.('chainChanged', onChain);
+  provider.on?.('accountsChanged', onAccounts);
+  provider.on?.('chainChanged', onChain);
 
   return () => {
-    window.ethereum.removeListener?.('accountsChanged', onAccounts);
-    window.ethereum.removeListener?.('chainChanged', onChain);
+    provider.removeListener?.('accountsChanged', onAccounts);
+    provider.removeListener?.('chainChanged', onChain);
   };
 }
 
 export async function getExistingWallet() {
-  if (!window.ethereum) return null;
-  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-  const addr = accounts[0] || null;
-  if (addr) {
-    try {
-      await ensureMainnet();
-    } catch {
-      // User may decline network switch on restore — still return address
-    }
-  }
-  return addr;
+  const provider = getMetaMaskProvider();
+  if (!provider) return null;
+  const accounts = await provider.request({ method: 'eth_accounts' });
+  return accounts[0] || null;
 }
 
 /** Convenience namespace for Invest / copy-trade flows */
 export const web3 = {
   async connect() {
-    if (!window.ethereum) {
-      throw new Error('MetaMask not installed. Please install MetaMask to use the trade feature.');
-    }
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    return accounts[0];
+    return connectWallet();
   },
   async getBalance(address) {
-    const hex = await window.ethereum.request({
-      method: 'eth_getBalance',
-      params: [address, 'latest'],
-    });
-    return parseInt(hex, 16) / 1e18;
+    return getWalletBalance(address);
   },
   async sendTx(txData) {
     return sendTransaction(txData);
@@ -176,14 +236,14 @@ export const web3 = {
     return formatWalletAddress(addr);
   },
   isInstalled() {
-    return typeof window.ethereum !== 'undefined';
+    return isMetaMaskInstalled();
   },
 };
 
 const ERC20_ABI = {
-  balanceOf: '0x70a08231', // balanceOf(address)
-  allowance: '0xdd62ed3e', // allowance(address,address)
-  approve: '0x095ea7b3', // approve(address,uint256)
+  balanceOf: '0x70a08231',
+  allowance: '0xdd62ed3e',
+  approve: '0x095ea7b3',
 };
 
 function padAddress(addr) {
@@ -195,8 +255,8 @@ function padUint256(value) {
   return hex.padStart(64, '0');
 }
 
-async function ethCall(to, data) {
-  return window.ethereum.request({
+async function ethCall(to, data, provider = getMetaMaskProvider()) {
+  return provider.request({
     method: 'eth_call',
     params: [{ to, data }, 'latest'],
   });
@@ -218,12 +278,13 @@ export async function getTokenAllowance(tokenAddress, ownerAddress, spenderAddre
 
 /** Send ERC-20 approve tx. Returns tx hash. */
 export async function approveToken(tokenAddress, spenderAddress, amountRaw) {
+  const provider = getMetaMaskProvider();
+  const accounts = await provider.request({ method: 'eth_accounts' });
   const data = ERC20_ABI.approve + padAddress(spenderAddress) + padUint256(amountRaw);
-  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
   return sendTransaction({
     from: accounts[0],
     to: tokenAddress,
     data: `0x${data}`,
     value: '0x0',
-  });
+  }, provider);
 }

@@ -296,17 +296,20 @@ export default function InvestPage() {
 
   return (
     <div className="h-full min-h-0 flex flex-col">
-      <div className="flex-shrink-0 flex items-center justify-end px-5 py-3 border-b border-border-subtle">
+      <div className="flex-shrink-0 flex flex-col items-end gap-1 px-5 py-3 border-b border-border-subtle">
         {!wallet.isConnected ? (
           <MagneticButton type="button" onClick={wallet.connectWallet} disabled={wallet.connecting}
             className="text-[12px] px-3 py-1.5 border border-border-default rounded-lg text-text-secondary hover:bg-bg-elevated">
-            {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
+            {wallet.connecting ? 'Connecting…' : wallet.isInstalled ? 'Connect MetaMask' : 'Install MetaMask'}
           </MagneticButton>
         ) : (
           <div className="flex items-center gap-2 text-[11px] font-mono text-text-secondary">
             <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
             {formatWalletAddress(wallet.address)}
           </div>
+        )}
+        {wallet.error && (
+          <p className="text-[10px] text-red max-w-xs text-right">{wallet.error}</p>
         )}
       </div>
 

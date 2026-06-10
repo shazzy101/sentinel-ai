@@ -97,7 +97,11 @@ export default function SettingsPage() {
                 {planLabel}
               </span>
             </Row>
-            <Row icon={Shield} label="Wallet" sub={wallet.isConnected ? 'Connected via MetaMask' : 'Not connected — non-custodial'}>
+            <Row icon={Shield} label="Wallet" sub={
+              wallet.isConnected
+                ? `Connected · ${wallet.isMainnet ? 'Mainnet' : 'Wrong network'}`
+                : wallet.isInstalled ? 'Not connected — non-custodial' : 'MetaMask not detected'
+            }>
               {wallet.isConnected ? (
                 <span className="font-mono text-[11px] text-text-secondary">{formatWalletAddress(wallet.address)}</span>
               ) : (
@@ -107,10 +111,22 @@ export default function SettingsPage() {
                   disabled={wallet.connecting}
                   className="text-[11px] text-green hover:underline disabled:opacity-50"
                 >
-                  {wallet.connecting ? 'Connecting…' : 'Connect'}
+                  {wallet.connecting ? 'Connecting…' : wallet.isInstalled ? 'Connect' : 'Install MetaMask'}
                 </button>
               )}
             </Row>
+            {wallet.error && (
+              <p className="text-[11px] text-red mt-1">{wallet.error}</p>
+            )}
+            {wallet.isConnected && !wallet.isMainnet && (
+              <button
+                type="button"
+                onClick={wallet.switchToMainnet}
+                className="text-[11px] text-amber hover:underline mt-1"
+              >
+                Switch to Ethereum Mainnet →
+              </button>
+            )}
           </div>
           {!auth?.isPro && auth?.user && (
             <Button variant="primary" className="mt-4 w-full" onClick={() => navigate('/upgrade')}>

@@ -11,7 +11,7 @@ import { motionTokens } from '@/design/motion';
 import SentinelLogo from '../ui/SentinelLogo';
 import ProWaitlist from '../ui/ProWaitlist';
 import { useWallet } from '@/hooks/useWallet';
-import { formatWalletAddress } from '@/lib/web3';
+import { formatWalletAddress, ERROR_MESSAGES } from '@/lib/web3';
 import { useAuth } from '@/context/AuthProvider';
 import { useTheme } from '@/context/ThemeProvider';
 
@@ -266,14 +266,29 @@ export default function Sidebar({ onOpenCommand }) {
               )}
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={wallet.connectWallet}
-              disabled={wallet.connecting}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-green/30 bg-green/10 px-3 py-2 text-[11px] font-medium text-green hover:bg-green/15 transition-colors disabled:opacity-50"
-            >
-              {wallet.connecting ? 'Connecting…' : 'Connect MetaMask'}
-            </button>
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={wallet.connectWallet}
+                disabled={wallet.connecting}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-green/30 bg-green/10 px-3 py-2 text-[11px] font-medium text-green hover:bg-green/15 transition-colors disabled:opacity-50"
+              >
+                {wallet.connecting ? 'Connecting…' : wallet.isInstalled ? 'Connect MetaMask' : 'Install MetaMask'}
+              </button>
+              {!wallet.isInstalled && (
+                <a
+                  href={ERROR_MESSAGES.NO_METAMASK.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block text-center text-[10px] text-text-muted hover:text-green transition-colors"
+                >
+                  Get MetaMask extension →
+                </a>
+              )}
+            </div>
+          )}
+          {wallet.error && (
+            <p className="text-[10px] text-red leading-snug px-0.5">{wallet.error}</p>
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue uppercase">
