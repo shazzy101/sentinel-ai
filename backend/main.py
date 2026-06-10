@@ -638,6 +638,35 @@ def enrich_wallet_performance(
     ]
 
 
+def derive_flow_signal(score: int, breakdown: dict | None) -> tuple[str, str]:
+    """
+    Heuristic BULLISH/BEARISH/NEUTRAL signal derived from the v4 score
+    breakdown — NO Claude call. Used to fill the signal everywhere when a
+    fresh AI analysis isn't available, so the watchlist / copy-trade feeds
+    never look empty. The real AI signal always takes precedence.
+
+    Reads recency/activity/defi from the breakdown (each 0-25) plus score.
+    """
+    bd = breakdown or {}
+    recency = bd.get("recency", 0) or 0
+    activity = bd.get("activity", 0) or 0
+    defi = bd.get("defi", 0) or 0
+
+    # Actively deploying capital: recent + engaged + real activity
+    if recency >= 16 and activity >= 13 and (defi >= 10 or score >= 80):
+        return "BULLISH", "Actively deploying capital — recent on-chain activity with DeFi engagement."
+    # Was a real wallet, has gone quiet — reducing footprint
+    if recency <= 4 and score >= 45:
+        return "BEARISH", "Previously active wallet has gone quiet — reduced on-chain footprint."
+    # Score-only fallback when breakdown is missing
+    if not bd:
+        if score >= 80:
+            return "BULLISH", "High-conviction wallet by Sentinel score."
+        if score <= 25:
+            return "NEUTRAL", "Limited recent signal."
+    return "NEUTRAL", "Steady on-chain presence with no strong directional bias."
+
+
 @app.get("/api/watchlist")
 async def get_watchlist(
     limit: int = 100,
@@ -682,9 +711,11 @@ async def get_watchlist(
             for wallet in wallets:
                 wid = wallet.get("id")
                 latest = latest_by_wallet.get(wid)
-                wallet["signal"] = latest.get("signal") if latest else None
-                wallet["signal_reason"] = latest.get("signal_reason") if latest else None
-                if latest:
+                if latest and latest.get("signal"):
+                    # Real AI analysis available — use it.
+                    wallet["signal"] = latest.get("signal")
+                    wallet["signal_reason"] = latest.get("signal_reason")
+                    wallet["signal_source"] = "ai"
                     wallet["analysis"] = {
                         "signal": latest.get("signal"),
                         "signal_reason": latest.get("signal_reason"),
@@ -695,6 +726,14 @@ async def get_watchlist(
                         "tags": latest.get("tags") or [],
                         "generated_at": latest.get("generated_at"),
                     }
+                else:
+                    # No AI signal yet — derive a flow signal (zero Claude cost)
+                    sig, reason = derive_flow_signal(
+                        wallet.get("score") or 0, wallet.get("score_breakdown")
+                    )
+                    wallet["signal"] = sig
+                    wallet["signal_reason"] = reason
+                    wallet["signal_source"] = "flow"
                 if include_ytd and wid:
                     enrich_wallet_performance(
                         wallet,
