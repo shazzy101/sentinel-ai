@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { Sparkles, X, Check } from 'lucide-react';
 import { api } from '../../lib/api';
 
+// Session-scoped so the "joined" state resets when the tab/window is fully
+// closed — a fresh visit shows the waitlist CTA again (re-submits are safe,
+// the backend upserts by unique email).
 const JOINED_KEY = 'sentinel_pro_waitlist_joined';
 
 const PRO_PERKS = [
@@ -37,7 +40,7 @@ function WaitlistModal({ source, onClose, joined, onJoined }) {
     try {
       const res = await api.joinWaitlist(value, source || 'app');
       if (res?.success) {
-        localStorage.setItem(JOINED_KEY, value);
+        sessionStorage.setItem(JOINED_KEY, value);
         setStatus('success');
         onJoined?.();
       } else {
@@ -129,7 +132,7 @@ function WaitlistModal({ source, onClose, joined, onJoined }) {
  */
 export default function ProWaitlist({ variant = 'button', source = 'app', className = '' }) {
   const [open, setOpen] = useState(false);
-  const [joined, setJoined] = useState(() => !!localStorage.getItem(JOINED_KEY));
+  const [joined, setJoined] = useState(() => !!sessionStorage.getItem(JOINED_KEY));
 
   const label = joined ? '✓ On the Pro waitlist' : 'Upgrade to Pro';
 
