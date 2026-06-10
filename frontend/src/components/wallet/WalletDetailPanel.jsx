@@ -10,6 +10,7 @@ import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
 import TradeModal from './TradeModal';
 import { useEnsName, traderDisplayName } from '../../lib/ens';
+import { formatEthAmount, formatEthAxis } from '../../lib/formatAmount';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -67,7 +68,7 @@ const CustomYtdTooltip = ({ active, payload, label }) => {
     <div className="bg-bg-surface border border-border-subtle rounded-lg px-3 py-2 text-[11px] shadow-lg">
       <div className="text-text-muted mb-0.5">{label}</div>
       <div className="font-mono font-medium text-text-primary">
-        {val != null ? `${Number(val).toFixed(4)} ETH` : '—'}
+        {val != null ? formatEthAmount(val) : '—'}
       </div>
     </div>
   );
@@ -161,7 +162,11 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   useEffect(() => { setUserTags(getUserTags(wallet?.address)); }, [wallet?.address]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; setTab('overview'); }, [wallet?.address]);
 
-  const hasAnalysis = Boolean(analysis.signal_reason || detail?.signal_reason);
+  const hasAnalysis = Boolean(
+    analysis.signal_reason || detail?.signal_reason
+    || analysis.activity_summary || analysis.key_insight,
+  );
+  const analysisPending = !hasAnalysis && detail?.signal_source !== 'flow';
 
   // If a scored, tracked wallet has no AI analysis yet, generate it once
   // automatically so the user never sits on a stale "Awaiting analysis" state.
@@ -169,10 +174,11 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     if (loading) return;
     if (!detail?.address || score <= 0) return;
     if (hasAnalysis) return;
+    if (analysisPending && autoAnalyzed.current === detail.address) return;
     if (autoAnalyzed.current === detail.address) return;
     autoAnalyzed.current = detail.address;
     onRescan?.();
-  }, [loading, detail?.address, score, hasAnalysis, onRescan]);
+  }, [loading, detail?.address, score, hasAnalysis, analysisPending, onRescan]);
 
   if (!detail) return null;
 
@@ -203,7 +209,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               <ChainBadge chain={detail.chain} />
               {detail.balance != null && (
                 <span className="text-[11px] font-mono text-text-secondary">
-                  {Number(detail.balance).toLocaleString(undefined, { maximumFractionDigits: 4 })} ETH
+                  {formatEthAmount(detail.balance)}
                 </span>
               )}
               {ytdPct != null && (
@@ -323,16 +329,27 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               </div>
 
               {hasAnalysis ? (
-                <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
-                  {analysis.signal_reason || detail.signal_reason}
-                </p>
-              ) : (
+                <>
+                  {detail.signal_source === 'flow' && (
+                    <span className="text-[9px] uppercase tracking-wide text-text-muted mb-1 block">
+                      Flow-based signal · rescan for full AI analysis
+                    </span>
+                  )}
+                  <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
+                    {analysis.signal_reason || detail.signal_reason}
+                  </p>
+                </>
+              ) : analysisPending ? (
                 <div className="rounded-xl border border-border-subtle bg-bg-elevated/40 px-3 py-3 flex items-center gap-2.5">
                   <Spinner size="sm" />
                   <span className="text-[12px] text-text-secondary">
                     Generating AI analysis from on-chain activity…
                   </span>
                 </div>
+              ) : (
+                <p className="text-[12px] text-text-muted leading-relaxed">
+                  No AI analysis yet. Tap <strong className="text-text-secondary">Rescan wallet</strong> below to run Claude on this wallet&apos;s activity.
+                </p>
               )}
 
               {analysis.activity_summary && (
@@ -466,8 +483,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                       tick={{ fontSize: 9, fill: '#666' }}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(v) => `${Number(v).toFixed(1)}`}
-                      width={38}
+                      tickFormatter={formatEthAxis}
+                      width={44}
                     />
                     <Tooltip content={<CustomYtdTooltip />} />
                     <Area
@@ -491,17 +508,19 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                     <div className="flex gap-3 mt-3 pt-3 border-t border-border-subtle">
                       <div className="flex-1 text-center">
                         <div className="text-[10px] text-text-muted">Peak</div>
-                        <div className="text-[12px] font-mono font-medium text-green">{maxV.toFixed(2)} ETH</div>
+                        <div className="text-[12px] font-mono font-medium text-green">{formatEthAmount(maxV)}</div>
                       </div>
                       <div className="w-px bg-border-subtle" />
                       <div className="flex-1 text-center">
                         <div className="text-[10px] text-text-muted">Low</div>
-                        <div className="text-[12px] font-mono font-medium text-red">{minV.toFixed(2)} ETH</div>
+                        <div className="text-[12px] font-mono font-medium text-red">{formatEthAmount(minV)}</div>
                       </div>
                       <div className="w-px bg-border-subtle" />
                       <div className="flex-1 text-center">
                         <div className="text-[10px] text-text-muted">Now</div>
-                        <div className="text-[12px] font-mono font-medium text-text-primary">{(sparkData[sparkData.length - 1]?.balance ?? 0).toFixed(2)} ETH</div>
+                        <div className="text-[12px] font-mono font-medium text-text-primary">
+                          {formatEthAmount(sparkData[sparkData.length - 1]?.balance ?? detail.balance ?? 0)}
+                        </div>
                       </div>
                     </div>
                   );
@@ -515,7 +534,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         {tab === 'activity' && (
           <div className="px-5 py-4">
             <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-3">
-              Recent Transactions
+              Recent Activity
+              <span className="normal-case tracking-normal text-text-muted/80 ml-1">· ETH + token transfers</span>
             </div>
             {recentTxs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -527,10 +547,17 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
-                {recentTxs.slice(0, 20).map((tx) => (
+                {recentTxs.slice(0, 20).map((tx, i) => {
+                  const sym = tx.value_symbol || 'ETH';
+                  const isToken = tx.activity_type === 'token' || (sym !== 'ETH' && sym !== 'WETH');
+                  const val = Number(tx.value || 0);
+                  const displayVal = val === 0 && !isToken
+                    ? 'Contract call'
+                    : `${tx.direction === 'in' ? '+' : '-'}${formatEthAmount(Math.abs(val), { symbol: sym })}`;
+                  return (
                   <a
-                    key={tx.hash}
-                    href={`https://etherscan.io/tx/${tx.hash}`}
+                    key={`${tx.hash}-${i}`}
+                    href={`https://etherscan.io/tx/${(tx.hash || '').split('#')[0]}`}
                     target="_blank"
                     rel="noreferrer"
                     className="group flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-bg-elevated/40 px-3 py-2.5 hover:border-border-default hover:bg-bg-elevated transition-all"
@@ -540,21 +567,23 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                         {tx.direction === 'in' ? '↓' : '↑'}
                       </div>
                       <div className="min-w-0">
-                        <div className={`text-[12px] font-mono font-medium ${tx.direction === 'in' ? 'text-green' : 'text-red'}`}>
-                          {tx.direction === 'in' ? '+' : '-'}{Number(tx.value || 0).toFixed(4)} {tx.value_symbol || 'ETH'}
+                        <div className={`text-[12px] font-mono font-medium ${tx.direction === 'in' ? 'text-green' : isToken || val > 0 ? 'text-red' : 'text-text-secondary'}`}>
+                          {displayVal}
                         </div>
                         <div className="text-[10px] text-text-muted truncate">
                           {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : '—'}
+                          {isToken && tx.token_name ? ` · ${tx.token_name}` : ''}
                         </div>
                       </div>
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <span className="text-[10px] text-text-muted group-hover:text-text-secondary transition-colors">
-                        {tx.status || 'ok'}
+                        {isToken ? 'token' : tx.status || 'ok'}
                       </span>
                     </div>
                   </a>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

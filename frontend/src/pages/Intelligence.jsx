@@ -52,8 +52,10 @@ function relativeTime(ts) {
 
 function CopyTraderSignalRow({ item }) {
   const m = item.copy_metrics || {};
+  const signal = item.signal || 'NEUTRAL';
+  const borderClass = signal === 'BULLISH' ? 'border-l-green/40' : 'border-l-border-subtle';
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-border-subtle last:border-0">
+    <div className={`flex items-start gap-3 py-4 border-b border-border-subtle last:border-0 border-l-2 pl-3 -ml-3 ${borderClass}`}>
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green/15 border border-green/25 flex items-center justify-center">
         <span className="text-[11px] font-bold font-mono text-green">#{item.rank}</span>
       </div>
@@ -80,18 +82,27 @@ function SignalRow({ item }) {
   const addr = item.wallet_address
     ? `${item.wallet_address.slice(0, 6)}…${item.wallet_address.slice(-4)}`
     : '';
+  const signal = item.signal || 'NEUTRAL';
+  const borderClass = signal === 'BULLISH'
+    ? 'border-l-green/50 bg-green/[0.03]'
+    : signal === 'BEARISH'
+      ? 'border-l-red/50 bg-red/[0.03]'
+      : 'border-l-border-subtle';
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-border-subtle last:border-0">
-      <ScoreRing score={score} size={38} strokeWidth={3} />
+    <div className={`flex items-start gap-3 py-4 border-b border-border-subtle last:border-0 border-l-2 pl-3 -ml-3 ${borderClass}`}>
+      <ScoreRing score={score} size={40} strokeWidth={3} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[13px] font-medium text-text-primary truncate">
+          <span className="text-[14px] font-medium text-text-primary truncate">
             {item.wallet_label || 'Unknown wallet'}
           </span>
-          <span className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded ${gradeColor(grade)}`}>
+          <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${gradeColor(grade)}`}>
             {grade}
           </span>
+          {item.signal_source === 'ai' && (
+            <span className="text-[9px] text-text-muted uppercase tracking-wide">AI</span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="font-mono text-[10px] text-text-muted">{addr}</span>
@@ -100,13 +111,68 @@ function SignalRow({ item }) {
           )}
         </div>
         {item.signal_reason && (
-          <p className="text-[12px] text-text-secondary mt-1 leading-relaxed line-clamp-2">
+          <p className="text-[13px] text-text-secondary mt-2 leading-relaxed line-clamp-3">
             {item.signal_reason}
           </p>
         )}
       </div>
-      <SignalPill signal={item.signal || 'NEUTRAL'} />
+      <SignalPill signal={signal} />
     </div>
+  );
+}
+
+function SignalFeed({ whaleSignals, copySignals }) {
+  const [tab, setTab] = useState('copy');
+  const filteredWhales = whaleSignals.filter((s) => (s.score ?? 0) >= 55);
+
+  return (
+    <TextureCard className="overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle gap-3">
+        <div className="flex gap-1 p-0.5 rounded-lg bg-bg-elevated border border-border-subtle">
+          {[
+            { key: 'copy', label: 'Copy Traders', count: copySignals.length },
+            { key: 'whale', label: 'Whale Alerts', count: filteredWhales.length },
+          ].map(({ key, label, count }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`text-[11px] px-3 py-1.5 rounded-md transition-colors ${
+                tab === key
+                  ? 'bg-bg-surface text-text-primary font-medium shadow-sm'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {label}
+              {count > 0 && <span className="ml-1 opacity-60">{count}</span>}
+            </button>
+          ))}
+        </div>
+        <ChainBadge chain="ethereum" />
+      </div>
+      <div className="px-5 pb-2">
+        {tab === 'copy' ? (
+          copySignals.length === 0 ? (
+            <div className="py-8 text-center text-[12px] text-text-muted leading-relaxed">
+              Copy trader signals loading from Dune rankings…
+            </div>
+          ) : (
+            copySignals.slice(0, 10).map((item) => (
+              <CopyTraderSignalRow key={item.wallet_address} item={item} />
+            ))
+          )
+        ) : filteredWhales.length === 0 ? (
+          <div className="py-8 text-center text-[12px] text-text-muted leading-relaxed max-w-md mx-auto">
+            No high-conviction whale alerts yet. Exchange hot wallets and low-score noise are filtered out —
+            scan smart-money wallets on My Watchlist to populate this feed.
+          </div>
+        ) : (
+          filteredWhales.map((item) => (
+            <SignalRow key={item.wallet_address || item.wallet_label} item={item} />
+          ))
+        )}
+      </div>
+    </TextureCard>
   );
 }
 
@@ -333,41 +399,7 @@ export default function IntelligencePage() {
         </div>
       </section>
 
-      <TextureCard className="overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-          <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Whale signals</div>
-          <ChainBadge chain="ethereum" />
-        </div>
-        <div className="px-5">
-          {whaleSignals.length === 0 ? (
-            <div className="py-6 text-center text-[12px] text-text-muted">
-              No whale signals yet — scan wallets on My Watchlist.
-            </div>
-          ) : (
-            whaleSignals.map((item) => (
-              <SignalRow key={item.wallet_address || item.wallet_label} item={item} />
-            ))
-          )}
-        </div>
-      </TextureCard>
-
-      <TextureCard className="overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-          <div className="text-[10px] uppercase tracking-[1px] text-text-muted">Top copy traders</div>
-          <span className="text-[10px] text-green font-medium">Dune-ranked</span>
-        </div>
-        <div className="px-5">
-          {copySignals.length === 0 ? (
-            <div className="py-6 text-center text-[12px] text-text-muted">
-              Copy trader rankings loading…
-            </div>
-          ) : (
-            copySignals.slice(0, 8).map((item) => (
-              <CopyTraderSignalRow key={item.wallet_address} item={item} />
-            ))
-          )}
-        </div>
-      </TextureCard>
+      <SignalFeed whaleSignals={whaleSignals} copySignals={copySignals} />
 
       {/* Ask AI shortcut */}
       <div className="bg-bg-surface border border-green/20 rounded-xl p-5 flex items-center justify-between gap-4">

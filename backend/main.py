@@ -425,6 +425,34 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
                 ).execute()
             prune_wallet_transactions(wallet_id, keep=MAX_TXS_PER_WALLET)
 
+    # Persist ERC-20 flows — most DEX activity shows up here, not in native ETH value.
+    if token_transfers:
+        token_records = []
+        seen_token_hashes: set[str] = set()
+        for tx in token_transfers:
+            tx_hash = tx.get("hash", "")
+            sym = (tx.get("token_symbol") or "TOKEN").upper()
+            dedupe_key = f"{tx_hash}:{sym}"
+            if not tx_hash or dedupe_key in seen_token_hashes:
+                continue
+            seen_token_hashes.add(dedupe_key)
+            token_records.append({
+                "wallet_id": wallet_id,
+                "hash": f"{tx_hash}#{sym}",
+                "chain": chain,
+                "timestamp": tx.get("timestamp"),
+                "value": tx.get("value", 0),
+                "value_symbol": sym,
+                "direction": tx.get("direction", "unknown"),
+                "status": "success",
+            })
+        if token_records:
+            for i in range(0, len(token_records), 100):
+                supabase_client.table("transactions").upsert(
+                    token_records[i : i + 100], on_conflict="hash", ignore_duplicates=True
+                ).execute()
+            prune_wallet_transactions(wallet_id, keep=MAX_TXS_PER_WALLET)
+
     # AI analysis is OPT-IN. Background data-refresh crons pass analyze=False so
     # they never call Claude. analyze_wallet still checks the DB cache first, so
     # even when enabled, repeat scans within the TTL are free.
@@ -643,7 +671,11 @@ def enrich_wallet_performance(
     perf = compute_ytd_growth(transactions, float(wallet.get("balance") or 0))
     wallet["ytd_growth_pct"] = perf["ytd_pct"]
     wallet["ytd_start_balance"] = perf["ytd_start_balance"]
-    wallet["ytd_sparkline"] = downsample_sparkline(perf["sparkline"]) if lite else perf["sparkline"]
+    raw_spark = downsample_sparkline(perf["sparkline"]) if lite else perf["sparkline"]
+    wallet["ytd_sparkline"] = [
+        {**pt, "date": pt.get("date") or pt.get("ts")}
+        for pt in raw_spark
+    ]
     if lite:
         return
     wallet["transactions"] = [
@@ -687,6 +719,42 @@ def derive_flow_signal(score: int, breakdown: dict | None) -> tuple[str, str]:
         if score <= 25:
             return "NEUTRAL", "Limited recent signal."
     return "NEUTRAL", "Steady on-chain presence with no strong directional bias."
+
+
+_EXCHANGE_KEYWORDS = (
+    "binance", "coinbase", "kraken", "kucoin", "okx", "crypto.com", "gemini",
+    "bitstamp", "bittrex", "huobi", "gate.io", "bitfinex", "bithumb", "coinone",
+    "hot wallet", "mev bot", "deposit funder", "funder", "exchange",
+)
+
+
+def _is_exchange_wallet(label: str | None) -> bool:
+    low = (label or "").lower()
+    return any(k in low for k in _EXCHANGE_KEYWORDS)
+
+
+def _merge_recent_activity(eth_txs: list[dict], token_txs: list[dict], limit: int = 25) -> list[dict]:
+    """Combine native ETH txs and ERC-20 transfers for the activity feed."""
+    merged: list[dict] = []
+    for tx in eth_txs or []:
+        merged.append({
+            **tx,
+            "activity_type": "eth",
+            "value_symbol": tx.get("value_symbol") or "ETH",
+        })
+    for tx in token_txs or []:
+        merged.append({
+            "hash": tx.get("hash"),
+            "timestamp": tx.get("timestamp"),
+            "value": tx.get("value", 0),
+            "value_symbol": tx.get("token_symbol") or tx.get("value_symbol") or "TOKEN",
+            "direction": tx.get("direction", "unknown"),
+            "status": tx.get("status", "success"),
+            "activity_type": "token",
+            "token_name": tx.get("token_name"),
+        })
+    merged.sort(key=lambda t: t.get("timestamp") or "", reverse=True)
+    return merged[:limit]
 
 
 @app.get("/api/watchlist")
@@ -808,7 +876,7 @@ async def remove_from_watchlist(address: str):
 
 @app.get("/api/wallets/{address}")
 async def get_wallet_detail(address: str):
-    """Return full wallet data with latest analysis. Fetches live balance if not recently scanned."""
+    """Return full wallet data with latest analysis. Refreshes live balance + token activity."""
     try:
         wallet_row = (
             supabase_client.table("wallets")
@@ -821,6 +889,12 @@ async def get_wallet_detail(address: str):
 
         wallet = wallet_row.data[0]
         wallet_id = wallet["id"]
+
+        # Live balance (DB can be stale)
+        try:
+            wallet["balance"] = await get_eth_balance(address)
+        except Exception:
+            pass
 
         # Latest analysis
         analysis_row = (
@@ -845,19 +919,39 @@ async def get_wallet_detail(address: str):
             }
             wallet["signal"] = a.get("signal")
             wallet["signal_reason"] = a.get("signal_reason")
+            wallet["signal_source"] = "ai"
+        else:
+            sig, reason = derive_flow_signal(
+                wallet.get("score") or 0, wallet.get("score_breakdown")
+            )
+            wallet["signal"] = sig
+            wallet["signal_reason"] = reason
+            wallet["signal_source"] = "flow"
 
-        # Recent transactions (last 20 for detail view)
+        # Recent transactions from DB + live token transfers
         tx_row = (
             supabase_client.table("transactions")
             .select("hash, timestamp, value, value_symbol, direction, status")
             .eq("wallet_id", wallet_id)
             .order("timestamp", desc=True)
-            .limit(20)
+            .limit(40)
             .execute()
         )
-        wallet["recent_transactions"] = tx_row.data or []
+        eth_txs = [
+            t for t in (tx_row.data or [])
+            if (t.get("value_symbol") or "ETH").upper() == "ETH"
+            and "#" not in (t.get("hash") or "")
+        ]
 
-        # Full tx history for YTD chart
+        token_txs: list[dict] = []
+        try:
+            token_txs = await get_eth_token_transfers(address, limit=30)
+        except Exception:
+            pass
+
+        wallet["recent_transactions"] = _merge_recent_activity(eth_txs, token_txs)
+
+        # Full tx history for YTD chart (ETH native + stored token rows)
         all_tx = (
             supabase_client.table("transactions")
             .select("hash, timestamp, value, value_symbol, direction, status")
@@ -866,8 +960,12 @@ async def get_wallet_detail(address: str):
             .limit(120)
             .execute()
         )
-        txs = all_tx.data or []
-        enrich_wallet_performance(wallet, txs)
+        chart_txs = [
+            t for t in (all_tx.data or [])
+            if (t.get("value_symbol") or "ETH").upper() == "ETH"
+            and "#" not in (t.get("hash") or "")
+        ]
+        enrich_wallet_performance(wallet, chart_txs)
 
         return success({"wallet": wallet})
     except Exception as e:
@@ -1162,18 +1260,36 @@ async def get_signals():
             wid = row.get("wallet_id")
             if not wid or wid in seen:
                 continue
+            label = wallet.get("label") or ""
+            if _is_exchange_wallet(label):
+                continue
+            score = wallet.get("score") or 0
+            if score < 55:
+                continue
+            signal = row.get("signal", "NEUTRAL")
+            # Skip low-conviction neutral noise (micro-deposits, routine exchange flows)
+            reason = (row.get("signal_reason") or "").lower()
+            if signal == "NEUTRAL" and score < 70:
+                if any(p in reason for p in ("micro", "single small", "routine", "insufficient", "no meaningful", "no directional")):
+                    continue
             seen.add(wid)
-            tags = wallet.get("tags") or []
             whale_signals.append({
-                "wallet_type": "copy_trader" if "copy-trading" in tags else "whale",
-                "wallet_label": wallet.get("label", "Unknown"),
+                "wallet_type": "copy_trader" if "copy-trading" in (wallet.get("tags") or []) else "whale",
+                "wallet_label": label or "Unknown",
                 "wallet_address": wallet.get("address", ""),
                 "chain": "ethereum",
-                "signal": row.get("signal", "NEUTRAL"),
+                "signal": signal,
                 "signal_reason": row.get("signal_reason"),
-                "score": wallet.get("score") or 0,
+                "score": score,
                 "generated_at": row.get("generated_at"),
+                "signal_source": "ai",
             })
+
+        _signal_rank = {"BULLISH": 0, "BEARISH": 1, "NEUTRAL": 2}
+        whale_signals.sort(
+            key=lambda s: (_signal_rank.get(s["signal"], 9), -(s["score"] or 0)),
+        )
+        whale_signals = whale_signals[:12]
 
         copy_leaders = []
         for t in _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True)[:10]:
