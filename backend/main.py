@@ -237,6 +237,11 @@ class AskRequest(BaseModel):
     history: list[dict] = []
 
 
+class WaitlistRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=200)
+    source: Optional[str] = None
+
+
 # ─────────────────────────────────────────
 # EXCEPTION HANDLERS
 # ─────────────────────────────────────────
@@ -1392,6 +1397,51 @@ async def network_large_trades():
             "trader_score": match.get("score") if match else None,
         })
     return success({"trades": trades, "available": True})
+
+
+# ─────────────────────────────────────────
+# ROUTES — PRO WAITLIST (early-access capture; Stripe billing later)
+# ─────────────────────────────────────────
+
+import re as _re
+
+_EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+@app.post("/api/waitlist")
+async def join_waitlist(request: WaitlistRequest):
+    """Capture a Pro early-access signup. Stores email + source in Supabase."""
+    email = (request.email or "").strip().lower()
+    if not _EMAIL_RE.match(email):
+        return error("INVALID_EMAIL", "Please enter a valid email address.", status_code=400)
+    try:
+        supabase_client.table("waitlist").upsert(
+            {
+                "email": email,
+                "source": (request.source or "app")[:80],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="email",
+        ).execute()
+        return success({"joined": True, "email": email})
+    except Exception as e:
+        # Table may not exist yet — surface a clear, non-crashing error.
+        return error(
+            "WAITLIST_UNAVAILABLE",
+            "Could not save your signup right now. Please try again shortly.",
+            status_code=503,
+            details={"reason": str(e)[:160]},
+        )
+
+
+@app.get("/api/admin/waitlist-count")
+async def waitlist_count():
+    """Founder view: how many Pro early-access signups so far."""
+    try:
+        res = supabase_client.table("waitlist").select("email", count="exact").execute()
+        return success({"count": res.count if res.count is not None else len(res.data or [])})
+    except Exception as e:
+        return error("WAITLIST_UNAVAILABLE", "Waitlist table not available.", status_code=503, details={"reason": str(e)[:160]})
 
 
 async def _cron_dune_refresh():

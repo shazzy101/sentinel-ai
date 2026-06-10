@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
 import SentinelLogo from '../ui/SentinelLogo';
+import ProWaitlist from '../ui/ProWaitlist';
 import { useWallet } from '@/hooks/useWallet';
 import { formatWalletAddress } from '@/lib/web3';
 
@@ -195,6 +196,11 @@ export default function Sidebar({ onOpenCommand }) {
             <ExternalLink className="h-3 w-3" strokeWidth={1.75} />
             View landing page
           </a>
+        </div>
+
+        {/* Upgrade to Pro (waitlist) */}
+        <div className="border-t border-white/[0.06] px-4 py-3">
+          <ProWaitlist variant="sidebar" source="sidebar" />
         </div>
 
         {/* User + MetaMask */}

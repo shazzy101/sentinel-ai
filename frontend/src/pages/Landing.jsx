@@ -7,6 +7,7 @@ import AppBackground from '../components/primitives/AppBackground';
 import MagneticButton from '../components/primitives/MagneticButton';
 import AnimatedCounter from '../components/primitives/AnimatedCounter';
 import SentinelLogo from '../components/ui/SentinelLogo';
+import ProWaitlist from '../components/ui/ProWaitlist';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
@@ -642,6 +643,22 @@ export default function LandingPage() {
       <ProductPreviewSection />
       <FeaturesSection />
       <ComparisonSection />
+
+      {/* Final CTA — Pro early access */}
+      <section className="py-24 px-6 text-center">
+        <div className="max-w-2xl mx-auto rounded-3xl border border-green/20 bg-green/[0.04] px-8 py-14">
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Coming soon</div>
+          <h2 className="font-display text-[34px] md:text-[40px] font-bold text-text-primary leading-tight mb-4">
+            Be first to Sentinel Pro.
+          </h2>
+          <p className="text-[15px] text-text-secondary leading-relaxed max-w-lg mx-auto mb-8">
+            Real-time signals on 800+ whales, unlimited copy-trading, and instant alerts.
+            Join the waitlist for launch pricing — no card required.
+          </p>
+          <ProWaitlist variant="hero" source="landing" />
+        </div>
+      </section>
+
       <Footer />
     </div>
   );

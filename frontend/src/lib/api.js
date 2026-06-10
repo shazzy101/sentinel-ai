@@ -98,4 +98,12 @@ export const api = {
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/transactions/latest?limit=${limit}`)
       .then((r) => r.json())
       .then((body) => body.data?.transactions || []),
+
+  // ── Pro waitlist (early-access capture) ──
+  joinWaitlist: (email, source) =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, source }),
+    }).then((r) => r.json()),
 };
