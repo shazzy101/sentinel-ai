@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
 from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
-from db.supabase import supabase_client
+from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
 from integrations import dune
 from responses import error, success
 from performance import build_copy_trader_sparkline, compute_ytd_growth, downsample_sparkline
@@ -356,8 +356,11 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
     When analyze=False, skips the Claude call entirely — used by the data-refresh
     crons so background passes never burn API budget. AI analysis is layered on
     separately (on-demand scans + a small top-N daily pass).
+
+    Transaction storage is capped at MAX_TXS_PER_WALLET per wallet to stay within
+    Supabase free-tier database limits.
     """
-    balance, transactions = await fetch_wallet_data(address, chain)
+    balance, transactions = await fetch_wallet_data(address, chain, tx_limit=MAX_TXS_PER_WALLET)
     # Token transfers feed the DeFi-engagement signal in the v4 scoring engine.
     try:
         token_transfers = await get_eth_token_transfers(address, limit=30)
@@ -415,6 +418,7 @@ async def persist_wallet_scan(address: str, label: str, chain: str, tags: list[s
                 supabase_client.table("transactions").upsert(
                     tx_records[i : i + 100], on_conflict="hash", ignore_duplicates=True
                 ).execute()
+            prune_wallet_transactions(wallet_id, keep=MAX_TXS_PER_WALLET)
 
     # AI analysis is OPT-IN. Background data-refresh crons pass analyze=False so
     # they never call Claude. analyze_wallet still checks the DB cache first, so

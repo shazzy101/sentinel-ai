@@ -60,7 +60,6 @@ class Transaction(Base):
     value_symbol: Mapped[Optional[str]] = mapped_column(Text)
     direction: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[Optional[str]] = mapped_column(Text)
-    raw_data: Mapped[Optional[dict]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     wallet: Mapped[Optional["Wallet"]] = relationship(back_populates="transactions")

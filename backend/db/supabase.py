@@ -52,6 +52,45 @@ except Exception:
     supabase_client = _MockClient()
 
 
+# Max transactions stored per wallet (keeps DB under Supabase free-tier quota)
+MAX_TXS_PER_WALLET = 120
+
+
+def prune_wallet_transactions(wallet_id: str, keep: int = MAX_TXS_PER_WALLET) -> int:
+    """Delete oldest transactions for one wallet, keeping only `keep` most recent."""
+    try:
+        result = (
+            supabase_client.table("transactions")
+            .select("id")
+            .eq("wallet_id", wallet_id)
+            .order("timestamp", desc=True)
+            .execute()
+        )
+        rows = result.data or []
+        if len(rows) <= keep:
+            return 0
+        to_delete = [r["id"] for r in rows[keep:]]
+        deleted = 0
+        for i in range(0, len(to_delete), 100):
+            chunk = to_delete[i : i + 100]
+            supabase_client.table("transactions").delete().in_("id", chunk).execute()
+            deleted += len(chunk)
+        return deleted
+    except Exception as e:
+        print(f"[DB] prune_wallet_transactions failed: {e}")
+        return 0
+
+
+def prune_all_transactions(keep: int = MAX_TXS_PER_WALLET) -> int:
+    """Prune all wallets via Postgres function (fast bulk delete)."""
+    try:
+        result = supabase_client.rpc("prune_wallet_transactions", {"keep_count": keep}).execute()
+        return int(result.data) if result.data is not None else 0
+    except Exception as e:
+        print(f"[DB] prune_all_transactions failed: {e}")
+        return 0
+
+
 # ─────────────────────────────────────────
 # ANALYSIS CACHE HELPERS
 # ─────────────────────────────────────────
