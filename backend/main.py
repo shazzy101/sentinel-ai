@@ -194,19 +194,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Production origins always included regardless of CORS_ORIGINS env var
+_CORS_ALWAYS = [
+    "https://hadaleum.com",
+    "https://www.hadaleum.com",
+    "https://sentinel-ai.pages.dev",
+]
 _CORS_ORIGINS_DEFAULT = (
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174,"
-    "http://localhost:5176,http://127.0.0.1:5176,"
-    "https://sentinel-ai.pages.dev,"
-    "https://hadaleum.com,"
-    "https://www.hadaleum.com"
+    "http://localhost:5176,http://127.0.0.1:5176"
 )
-_cors_origins = [
-    o.strip()
-    for o in os.getenv("CORS_ORIGINS", _CORS_ORIGINS_DEFAULT).split(",")
-    if o.strip()
-]
+_cors_origins = list(set(
+    _CORS_ALWAYS + [
+        o.strip()
+        for o in os.getenv("CORS_ORIGINS", _CORS_ORIGINS_DEFAULT).split(",")
+        if o.strip()
+    ]
+))
 
 app.add_middleware(
     CORSMiddleware,

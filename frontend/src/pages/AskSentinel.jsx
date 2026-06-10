@@ -193,7 +193,7 @@ export default function AskSentinelPage() {
                 Ask me anything about whale activity.
               </h2>
               <p className="text-[14px] text-text-muted text-center mb-12">
-                Powered by 800+ tracked Ethereum wallets + Claude AI
+                Powered by 2,796 tracked Ethereum wallets + Claude AI
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full mx-auto">
                 {SUGGESTED_PROMPTS.map((p) => (

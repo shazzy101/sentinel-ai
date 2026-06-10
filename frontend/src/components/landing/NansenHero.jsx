@@ -78,7 +78,7 @@ export default function NansenHero() {
                 </span>
               </TextureButton>
             </Link>
-            <span className="text-[13px] text-text-muted font-mono">800+ wallets · Claude AI · Free beta</span>
+            <span className="text-[13px] text-text-muted font-mono">2,796 wallets · Claude AI · Free tier available</span>
           </motion.div>
         </div>
 

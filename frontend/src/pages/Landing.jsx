@@ -431,7 +431,7 @@ function HeroSection({ walletCount }) {
             { val: walletCount, lbl: 'Wallets Tracked', suffix: '' },
             { val: 6, lbl: 'Hour Scan Cycle', suffix: 'hr' },
             { val: 100, lbl: 'Ethereum Focus', suffix: '%' },
-            { val: 0, lbl: 'Cost During Beta', prefix: '$' },
+            { val: 19, lbl: 'Pro Plan / Month', prefix: '$' },
           ].map(({ val, lbl, suffix, prefix }, i) => (
             <motion.div
               key={lbl}
@@ -441,15 +441,11 @@ function HeroSection({ walletCount }) {
               className="flex flex-col items-center gap-1"
             >
               <span className="font-display font-bold text-3xl text-text-primary">
-                {lbl.includes('Beta') ? (
-                  'Free'
-                ) : (
-                  <>
+                <>
                     {prefix}
                     <AnimatedCounter value={val} decimals={0} />
                     {suffix}
                   </>
-                )}
               </span>
               <span className="text-2xs text-text-muted uppercase tracking-widest">{lbl}</span>
             </motion.div>
@@ -479,7 +475,7 @@ function FeaturesSection() {
   const blocks = [
     {
       tag: 'Whale Watchlist',
-      title: '800+ wallets. Ranked by intelligence, not balance.',
+      title: '2,796 wallets. Ranked by intelligence, not balance.',
       body: 'Every major Ethereum whale scored 0–100 using our proprietary methodology: activity, success rate, recency, and balance weight. Exchange hot wallets automatically filtered out.',
       cta: 'View Watchlist →',
       ctaPath: '/watchlist',
@@ -698,7 +694,7 @@ function Footer() {
 }
 
 export default function LandingPage() {
-  const [walletCount, setWalletCount] = useState(94);
+  const [walletCount, setWalletCount] = useState(2796);
 
   useEffect(() => {
     document.title = 'Hadaleum — Ethereum Whale Intelligence';
@@ -728,18 +724,34 @@ export default function LandingPage() {
       <ComparisonSection />
       <PricingSection />
 
-      {/* Final CTA — Pro early access */}
+      {/* Final CTA */}
       <section className="py-24 px-6 text-center">
         <div className="max-w-2xl mx-auto rounded-3xl border border-green/20 bg-green/[0.04] px-8 py-14">
-          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Coming soon</div>
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Start today</div>
           <h2 className="font-display text-[34px] md:text-[40px] font-bold text-text-primary leading-tight mb-4">
-            Be first to Hadaleum Pro.
+            The deepest layer of Ethereum intelligence.
           </h2>
           <p className="text-[15px] text-text-secondary leading-relaxed max-w-lg mx-auto mb-8">
-            Full watchlist, unlimited AI signals, non-custodial copy trading, and instant alerts.
-            Join the waitlist for launch pricing — no card required.
+            Full 2,796-wallet watchlist, unlimited AI signals, non-custodial copy trading, and instant alerts.
+            Start free — upgrade to Pro when you're ready.
           </p>
-          <ProWaitlist variant="hero" source="landing" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <MagneticButton
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
+            >
+              Start 7-day free trial →
+            </MagneticButton>
+            <button
+              type="button"
+              onClick={() => navigate('/upgrade')}
+              className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
+            >
+              View pricing
+            </button>
+          </div>
+          <p className="text-[12px] text-text-muted mt-4">No credit card required · Cancel anytime</p>
         </div>
       </section>
 

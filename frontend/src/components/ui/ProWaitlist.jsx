@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 const JOINED_KEY = 'sentinel_pro_waitlist_joined';
 
 const PRO_PERKS = [
-  'Real-time AI signals on all 800+ wallets',
+  'Real-time AI signals on all 2,796 wallets',
   'Unlimited copy-trading & one-click execution',
   'Instant alerts (email + push)',
   'Full network intelligence + whale moves',
