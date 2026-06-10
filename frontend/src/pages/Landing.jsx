@@ -11,11 +11,11 @@ import ProWaitlist from '../components/ui/ProWaitlist';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
-  { name: 'Wintermute',   addr: '0x3f5c…d60', score: 89, signal: 'BULLISH' },
-  { name: 'Jump Trading', addr: '0x28c6…a28', score: 76, signal: 'NEUTRAL' },
-  { name: 'Paradigm',     addr: '0xd551…4ff', score: 82, signal: 'BULLISH' },
-  { name: 'a16z Crypto',  addr: '0x4e9c…a67', score: 71, signal: 'NEUTRAL' },
-  { name: 'Dragonfly',    addr: '0x564…ced', score: 63, signal: 'BEARISH' },
+  { name: 'Wintermute',        addr: '0x4f3a…192F', score: 89, signal: 'BULLISH' },
+  { name: 'Jump Crypto',       addr: '0x4634…9758', score: 76, signal: 'NEUTRAL' },
+  { name: 'Paradigm',          addr: '0x5F51…26Fb', score: 82, signal: 'BULLISH' },
+  { name: 'a16z Crypto',       addr: '0x05e7…8019', score: 71, signal: 'NEUTRAL' },
+  { name: 'Dragonfly Capital', addr: '0x5642…ACe',  score: 63, signal: 'BEARISH' },
 ];
 
 const COMPARISON_ROWS = [
@@ -136,12 +136,13 @@ function ProductMockup() {
 
 /* ─── Animated whale ticker ──────────────────────────── */
 const TICKER_WHALES = [
-  { name: 'Wintermute',   addr: '0x3f5c…d60', score: 89, signal: 'BULLISH' },
-  { name: 'Paradigm',     addr: '0xd551…4ff', score: 82, signal: 'BULLISH' },
-  { name: 'Jump Trading', addr: '0x28c6…a28', score: 76, signal: 'BULLISH' },
-  { name: 'a16z Crypto',  addr: '0x4e9c…a67', score: 71, signal: 'NEUTRAL' },
-  { name: 'Dragonfly',    addr: '0x564…ced',  score: 63, signal: 'BEARISH' },
-  { name: 'Vitalik.eth',  addr: '0xd8dA…4955', score: 91, signal: 'BULLISH' },
+  { name: 'Wintermute',        addr: '0x4f3a…192F', score: 89, signal: 'BULLISH' },
+  { name: 'Paradigm',          addr: '0x5F51…26Fb', score: 82, signal: 'BULLISH' },
+  { name: 'Jump Crypto',       addr: '0x4634…9758', score: 76, signal: 'BULLISH' },
+  { name: 'a16z Crypto',       addr: '0x05e7…8019', score: 71, signal: 'NEUTRAL' },
+  { name: 'Dragonfly Capital', addr: '0x5642…ACe',  score: 63, signal: 'BEARISH' },
+  { name: 'Vitalik.eth',       addr: '0xd8dA…6045', score: 91, signal: 'BULLISH' },
+  { name: 'ETH Foundation',    addr: '0xde0B…BAe',  score: 85, signal: 'BULLISH' },
 ];
 
 function WhaleTicker() {
@@ -194,7 +195,7 @@ function WatchlistVisual() {
 
   return (
     <div ref={ref} className="bg-bg-surface border border-border-default rounded-xl overflow-hidden">
-      {[{ name: 'Wintermute', score: 89 }, { name: 'Paradigm', score: 82 }, { name: 'Jump Trading', score: 76 }, { name: 'a16z Crypto', score: 71 }, { name: 'Dragonfly', score: 63 }]
+      {[{ name: 'Wintermute', score: 89 }, { name: 'Paradigm', score: 82 }, { name: 'Jump Crypto', score: 76 }, { name: 'a16z Crypto', score: 71 }, { name: 'Dragonfly Capital', score: 63 }]
         .map((w, i) => (
           <div key={w.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0">
             <div className="text-[10px] text-text-muted font-mono w-4">{i + 1}</div>
@@ -643,11 +644,15 @@ function TrustStrip() {
         Tracking wallets from
       </p>
       <div className="flex items-center justify-center gap-8 flex-wrap px-6">
-        {['Paradigm', 'a16z Crypto', 'Jump Trading', 'Wintermute', 'Dragonfly', 'Dragonfly Capital', 'Vitalik.eth'].map((name) => (
+        {['Wintermute', 'Paradigm', 'Jump Crypto', 'a16z Crypto', 'Dragonfly Capital', 'Cumberland DRW', 'Galaxy Digital', 'Vitalik.eth', 'ETH Foundation'].map((name) => (
           <span key={name} className="text-[13px] text-text-muted font-medium">{name}</span>
         ))}
       </div>
-      <p className="text-[10px] text-text-muted mt-3">Wallets tracked — not affiliated with or endorsed by these organizations.</p>
+      <p className="text-[10px] text-text-muted mt-3">
+        Public on-chain addresses — verifiable on{' '}
+        <a href="https://etherscan.io" target="_blank" rel="noopener noreferrer" className="text-green/60 hover:text-green underline underline-offset-2">Etherscan</a>.
+        {' '}Not affiliated with or endorsed by these organizations.
+      </p>
     </div>
   );
 }
@@ -883,6 +888,7 @@ export default function LandingPage() {
       <HeroSection walletCount={walletCount} />
       <WhaleTicker />
       <SocialProofBar />
+      <TrustStrip />
       <InvestShowcase />
       <ProductPreviewSection />
       <HowItWorksSection />
