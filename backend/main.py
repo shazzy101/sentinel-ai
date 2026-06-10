@@ -1542,6 +1542,83 @@ async def news_pulse():
         return error("NEWS_UNAVAILABLE", "News pulse not available yet.", status_code=503, details={"reason": str(e)[:160]})
 
 
+async def _news_wallet_reactions(tokens: list[str]) -> list[dict]:
+    """Recent large on-chain DEX moves in the article's affected tokens, from the
+    cached Dune whale-trades feed. Correlated activity — not claimed causation."""
+    if not tokens:
+        return []
+    toks = {t.upper() for t in tokens}
+    if "ETH" in toks:
+        toks.add("WETH")  # ETH article → also surface WETH moves
+    try:
+        rows = await _cached_dune("large_trades", dune.QUERY_WHALE_TRADES, limit=30)
+    except Exception:
+        return []
+    out: list[dict] = []
+    seen: set[str] = set()
+    for r in rows:
+        bought = (r.get("token_bought_symbol") or "").upper()
+        sold = (r.get("token_sold_symbol") or "").upper()
+        if bought in toks:
+            side, action, tok = "buy", "bought", bought
+        elif sold in toks:
+            side, action, tok = "sell", "sold", sold
+        else:
+            continue
+        trader = r.get("trader") or ""
+        if trader in seen:
+            continue
+        seen.add(trader)
+        usd = r.get("amount_usd") or 0
+        amt = f"${usd / 1e6:.2f}M" if usd >= 1e6 else f"${usd / 1e3:.0f}K"
+        out.append({
+            "label": f"{trader[:6]}…{trader[-4:]}" if trader else "Whale",
+            "side": side,
+            "action": f"{action} {tok}",
+            "amount": amt,
+        })
+        if len(out) >= 6:
+            break
+    return out
+
+
+@app.get("/api/news/{article_id}")
+async def get_news_article(article_id: str):
+    """Single article with on-demand AI deep-dive (high-impact only, cached) +
+    whale reactions in the affected tokens."""
+    try:
+        res = supabase_client.table("news").select("*").eq("id", article_id).limit(1).execute()
+        if not res.data:
+            return error("NOT_FOUND", "Article not found.", status_code=404)
+        a = res.data[0]
+
+        # AI deep-dive: only for high-impact stories, only once (cached in the row).
+        if not a.get("ai_summary") and (a.get("importance_score") or 0) >= 60:
+            try:
+                from ai.news_analyst import analyze_news
+                analysis = await analyze_news(
+                    a["title"], a.get("summary") or "", a.get("affected_tokens") or []
+                )
+                if analysis and analysis.get("executive_summary"):
+                    ai_fields = {
+                        "ai_summary": analysis.get("executive_summary"),
+                        "bull_thesis": analysis.get("bull_thesis"),
+                        "bear_thesis": analysis.get("bear_thesis"),
+                        "market_impact": analysis.get("market_impact"),
+                        "confidence": analysis.get("confidence"),
+                        "ai_generated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    a.update(ai_fields)
+                    supabase_client.table("news").update(ai_fields).eq("id", article_id).execute()
+            except Exception:
+                pass
+
+        a["wallet_reactions"] = await _news_wallet_reactions(a.get("affected_tokens") or [])
+        return success({"article": a})
+    except Exception as e:
+        return error("NEWS_UNAVAILABLE", "Article not available.", status_code=503, details={"reason": str(e)[:160]})
+
+
 @app.post("/api/admin/ingest-news")
 async def ingest_news():
     """Fetch + score the latest news from all RSS sources (no Claude)."""
@@ -1819,7 +1896,7 @@ async def copy_trading_top(
     )
 
     pool = _sort_copy_traders(pool, sort)
-    page_limit = max(1, min(limit, 100))
+    page_limit = max(1, min(limit, 300))
     page_offset = max(0, offset)
     page = pool[page_offset : page_offset + page_limit]
     enriched = [_enrich_copy_trader(w) for w in page]
