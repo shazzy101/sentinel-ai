@@ -702,7 +702,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-bg-base text-text-primary relative">
+    <div className="force-dark min-h-screen bg-bg-base text-text-primary relative">
       <AppBackground variant="landing" />
       <ScrollWhalePaths />
       <Navbar />

@@ -26,6 +26,7 @@ const AlertsPage = lazy(() => import('./pages/Alerts'));
 const InvestPage = lazy(() => import('./pages/Invest'));
 const AskSentinelPage = lazy(() => import('./pages/AskSentinel'));
 const NewsPage = lazy(() => import('./pages/News'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
 
 // Markets is eagerly loaded because EthPriceBadge is used as a Shell prop
 import MarketsPage, { EthPriceBadge } from './pages/Markets';
@@ -108,6 +109,14 @@ function NewsRoute() {
   );
 }
 
+function SettingsRoute() {
+  return (
+    <Shell title="Settings">
+      <SettingsPage />
+    </Shell>
+  );
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -134,6 +143,7 @@ function AnimatedRoutes() {
         <Route path="/ask" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AskSentinelRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/news" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><NewsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/alerts" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AlertsRoute /></Suspense></AuthGuard></MotionPage>} />
+        <Route path="/settings" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><SettingsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
       </Routes>
     </AnimatePresence>

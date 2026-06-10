@@ -279,6 +279,13 @@ export default function WatchlistPage() {
     }
   }, [refetch, addToast]);
 
+  const handleUntrackCopyTrader = useCallback(async (trader) => {
+    const label = trader?.label || trader?.address || 'Wallet';
+    setSelectedWallet(null);
+    await refetch();
+    addToast(`${label} removed from watchlist`, 'info');
+  }, [refetch, addToast]);
+
   const trackedAddresses = useMemo(
     () => new Set(wallets.map((w) => (w.address || '').toLowerCase())),
     [wallets],
@@ -661,6 +668,7 @@ export default function WatchlistPage() {
                 wallet={selectedWallet}
                 onClose={() => setSelectedWallet(null)}
                 onTrack={handleTrackCopyTrader}
+                onUntrack={handleUntrackCopyTrader}
                 isTracked={trackedAddresses.has((selectedWallet.address || '').toLowerCase())}
                 isTracking={trackingId === selectedWallet.address}
               />

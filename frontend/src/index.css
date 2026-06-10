@@ -24,10 +24,11 @@
 
   body {
     margin: 0;
-    background: #070708;
-    color: #F4F4F5;
+    background: var(--bg-base);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -46,11 +47,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--border-default);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--border-strong);
   }
 
   :root {
@@ -120,6 +121,107 @@
     --chart-3: #F59E0B;
     --chart-4: #818CF8;
     --chart-5: #EF4444;
+
+    /* ── Structural surface/text/border tokens (theme-aware) ── */
+    /* Dark theme (default) */
+    --bg-base: #070708;
+    --bg-surface: #0C0C0F;
+    --bg-card: #0E0E11;
+    --bg-elevated: #141418;
+    --bg-overlay: #121216;
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --text-inverse: #070708;
+    --border-subtle: rgba(255, 255, 255, 0.04);
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --glass-bg: rgba(14, 14, 17, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-inset: rgba(255, 255, 255, 0.04);
+    --surface-hover: rgba(255, 255, 255, 0.04);
+    color-scheme: dark;
+  }
+
+  /* ── Force-dark scope (marketing/landing keeps its dark design in any theme) ── */
+  .force-dark {
+    --background: #070708;
+    --foreground: #F4F4F5;
+    --card: #0E0E11;
+    --card-foreground: #F4F4F5;
+    --popover: #121216;
+    --popover-foreground: #F4F4F5;
+    --primary: #00D992;
+    --primary-foreground: #041510;
+    --secondary: #16161A;
+    --secondary-foreground: #F4F4F5;
+    --muted: #16161A;
+    --muted-foreground: #71717A;
+    --accent: #1A1A1F;
+    --accent-foreground: #F4F4F5;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.08);
+    --ring: #00D992;
+    --bg-base: #070708;
+    --bg-surface: #0C0C0F;
+    --bg-card: #0E0E11;
+    --bg-elevated: #141418;
+    --bg-overlay: #121216;
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --text-inverse: #070708;
+    --border-subtle: rgba(255, 255, 255, 0.04);
+    --border-default: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --glass-bg: rgba(14, 14, 17, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-inset: rgba(255, 255, 255, 0.04);
+    --surface-hover: rgba(255, 255, 255, 0.04);
+    color-scheme: dark;
+    background: var(--bg-base);
+    color: var(--text-primary);
+  }
+
+  /* ── Light theme overrides ── */
+  html.light {
+    --background: #F7F7F9;
+    --foreground: #18181B;
+    --card: #FFFFFF;
+    --card-foreground: #18181B;
+    --popover: #FFFFFF;
+    --popover-foreground: #18181B;
+    --primary: #00B87C;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F1F1F3;
+    --secondary-foreground: #18181B;
+    --muted: #F1F1F3;
+    --muted-foreground: #71717A;
+    --accent: #ECECEF;
+    --accent-foreground: #18181B;
+    --destructive: #DC2626;
+    --destructive-foreground: #FFFFFF;
+    --border: rgba(0, 0, 0, 0.10);
+    --input: rgba(0, 0, 0, 0.10);
+    --ring: #00B87C;
+
+    --bg-base: #F7F7F9;
+    --bg-surface: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F1F1F4;
+    --bg-overlay: #FFFFFF;
+    --text-primary: #18181B;
+    --text-secondary: #52525B;
+    --text-muted: #8A8A93;
+    --text-inverse: #FFFFFF;
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-default: rgba(0, 0, 0, 0.10);
+    --border-strong: rgba(0, 0, 0, 0.16);
+    --glass-bg: rgba(255, 255, 255, 0.78);
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-inset: rgba(0, 0, 0, 0.03);
+    --surface-hover: rgba(0, 0, 0, 0.04);
+    color-scheme: light;
   }
 }
 
@@ -130,15 +232,15 @@
 
 /* ── Glass surface utility ── */
 .glass-surface {
-  background: rgba(14, 14, 17, 0.72);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
 }
 
 .glass-border {
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-inset);
 }
 
 /* ── Landing hero grid ── */
@@ -194,7 +296,7 @@
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #F4F4F5 0%, #A1A1AA 100%);
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -210,9 +312,9 @@
   .skeleton {
     background: linear-gradient(
       90deg,
-      #141418 25%,
-      #1A1A20 50%,
-      #141418 75%
+      var(--bg-elevated) 25%,
+      var(--surface-hover) 50%,
+      var(--bg-elevated) 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import {
   LayoutGrid, Sparkles, BarChart3, MessageSquare,
   Bell, ExternalLink, Search, Zap, Newspaper, LogIn, LogOut, Star,
+  Settings as SettingsIcon, Moon, Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
@@ -12,6 +13,7 @@ import ProWaitlist from '../ui/ProWaitlist';
 import { useWallet } from '@/hooks/useWallet';
 import { formatWalletAddress } from '@/lib/web3';
 import { useAuth } from '@/context/AuthProvider';
+import { useTheme } from '@/context/ThemeProvider';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -136,6 +138,7 @@ export default function Sidebar({ onOpenCommand }) {
   const navigate = useNavigate();
   const wallet = useWallet();
   const auth = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <aside className="relative z-30 flex w-[240px] flex-shrink-0 flex-col p-3">
@@ -191,8 +194,32 @@ export default function Sidebar({ onOpenCommand }) {
           </div>
         </div>
 
-        {/* Landing link */}
-        <div className="border-t border-white/[0.06] px-4 py-3">
+        {/* Settings / theme / landing */}
+        <div className="border-t border-white/[0.06] px-4 py-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className={cn(
+                'flex items-center gap-2 text-[11px] transition-colors',
+                location.pathname === '/settings' ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary',
+              )}
+            >
+              <SettingsIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Settings
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border-default text-text-muted hover:text-text-primary hover:border-border-strong transition-colors"
+            >
+              {isDark
+                ? <Sun className="h-3.5 w-3.5" strokeWidth={1.75} />
+                : <Moon className="h-3.5 w-3.5" strokeWidth={1.75} />}
+            </button>
+          </div>
           <a
             href="/"
             className="flex items-center gap-2 text-[11px] text-text-muted transition-colors hover:text-text-secondary"

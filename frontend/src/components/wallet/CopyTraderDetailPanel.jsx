@@ -4,8 +4,9 @@ import { ExternalLink } from 'lucide-react';
 import Spinner from '../ui/Spinner';
 import Button from '../ui/Button';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
-import { resolveSparklineData, sparklineReturnPct, formatUsd } from '../../lib/chartUtils';
+import { formatUsd } from '../../lib/chartUtils';
 import { api } from '../../lib/api';
+import { useEnsName, traderDisplayName, shortAddress } from '../../lib/ens';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -17,28 +18,39 @@ const METRIC_CARDS = [
   { key: 'track_record_days', label: 'Track Record', fmt: (v) => `${v} days`, good: (v) => v >= 90 },
 ];
 
-export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTracked, isTracking }) {
+export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntrack, isTracked, isTracking }) {
   const [detail, setDetail] = useState(wallet);
+  const [removing, setRemoving] = useState(false);
   const scrollRef = useRef(null);
-  const m = detail?.metrics || {};
+  const ensName = useEnsName(detail?.address);
+
+  // Live, on-chain-computed metrics (fills Max Drawdown + Avg Duration that the
+  // offline Dune dataset leaves null).
+  const [liveMetrics, setLiveMetrics] = useState(null);
+  const [liveState, setLiveState] = useState('idle'); // idle | loading | done | unavailable
+
+  const m = useMemo(
+    () => ({ ...(detail?.metrics || {}), ...(liveMetrics || {}) }),
+    [detail, liveMetrics],
+  );
   const oc = detail?.on_chain_data || {};
 
-  // True on-chain YTD (real ETH balance curve) when this address has been
-  // scanned. Falls back to the estimated P&L curve only when unavailable.
+  // Only real on-chain YTD balance history is shown — no synthetic/estimated curve.
   const [ytd, setYtd] = useState(null); // { sparkline:[{balance,ts}], pct }
-
-  const estSparkData = useMemo(() => resolveSparklineData(detail), [detail]);
-  const estReturnPct = sparklineReturnPct(detail);
-
   const hasTrueYtd = ytd?.sparkline?.length >= 2;
-  const sparkData = hasTrueYtd ? ytd.sparkline : estSparkData;
-  const returnPct = hasTrueYtd ? ytd.pct : estReturnPct;
+  const sparkData = hasTrueYtd ? ytd.sparkline : [];
+  const returnPct = hasTrueYtd ? ytd.pct : null;
   const up = (returnPct ?? 0) >= 0;
   const trendColor = up ? '#00D992' : '#FF4D4D';
+
+  const needsLiveMetrics =
+    (detail?.metrics?.max_drawdown_pct == null || detail?.metrics?.avg_trade_duration_hrs == null);
 
   useEffect(() => {
     setDetail(wallet);
     setYtd(null);
+    setLiveMetrics(null);
+    setLiveState('idle');
     if (!wallet?.address) return;
     let cancelled = false;
     api.getCopyTrader(wallet.address)
@@ -59,17 +71,49 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
     return () => { cancelled = true; };
   }, [wallet?.address]);
 
+  // Compute real Max Drawdown + Avg Duration on demand when the dataset is missing them.
+  useEffect(() => {
+    if (!wallet?.address || !needsLiveMetrics) return;
+    let cancelled = false;
+    setLiveState('loading');
+    api.getCopyTraderMetrics(wallet.address)
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.available && res.metrics) {
+          setLiveMetrics(res.metrics);
+          setLiveState('done');
+        } else {
+          setLiveState('unavailable');
+        }
+      })
+      .catch(() => { if (!cancelled) setLiveState('unavailable'); });
+    return () => { cancelled = true; };
+  }, [wallet?.address, needsLiveMetrics]);
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [wallet?.address]);
 
+  const handleRemove = async () => {
+    if (removing) return;
+    setRemoving(true);
+    try {
+      await api.untrackWallet(detail.address);
+      onUntrack?.(detail);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   if (!detail) return null;
+
+  const displayName = traderDisplayName(detail, ensName);
 
   return (
     <aside className="w-full h-full min-h-0 bg-bg-surface border-l border-border-subtle flex flex-col shadow-2xl">
       <div className="flex-shrink-0 px-5 py-4 border-b border-border-subtle relative">
         <div className="font-display text-[16px] font-bold text-text-primary pr-10 leading-snug break-words">
-          {detail.label || `DEX Trader #${detail.rank}`}
+          {displayName}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
           <span className="px-2 py-0.5 rounded bg-green/10 text-green border border-green/20 font-mono">
@@ -96,10 +140,19 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
         </div>
 
         <div className="px-5 py-4 border-b border-border-subtle">
-          <div className="text-[10px] uppercase tracking-widest text-text-muted mb-3">Copy-Trade Quality Metrics</div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] uppercase tracking-widest text-text-muted">Copy-Trade Quality Metrics</div>
+            {liveState === 'loading' && (
+              <span className="flex items-center gap-1.5 text-[9px] text-text-muted">
+                <Spinner size="sm" /> computing on-chain
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {METRIC_CARDS.map(({ key, label, fmt, good }) => {
               const val = m[key];
+              const isLiveKey = key === 'max_drawdown_pct' || key === 'avg_trade_duration_hrs';
+              const isComputing = val == null && isLiveKey && liveState === 'loading';
               const isGood = val != null && good(val);
               return (
                 <div key={key} className="rounded-xl border border-border-subtle bg-bg-elevated/50 px-3 py-2.5">
@@ -107,48 +160,62 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
                   <div className={`font-mono text-[15px] font-bold mt-0.5 ${
                     val == null ? 'text-text-muted' : isGood ? 'text-green' : 'text-text-primary'
                   }`}>
-                    {val != null ? fmt(val) : 'Pending ranker'}
+                    {val != null ? fmt(val) : isComputing ? 'Computing…' : '—'}
                   </div>
                 </div>
               );
             })}
           </div>
+          {liveState === 'unavailable' && needsLiveMetrics && (
+            <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
+              Drawdown & duration need a longer on-chain trade history than this wallet currently exposes.
+            </p>
+          )}
         </div>
 
-        {sparkData.length >= 2 && (
-          <div className="px-5 py-4 border-b border-border-subtle">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase tracking-widest text-text-muted">
-                {hasTrueYtd ? 'Year-to-Date · On-chain ETH balance' : 'Estimated P&L Trend'}
+        <div className="px-5 py-4 border-b border-border-subtle">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase tracking-widest text-text-muted">
+              Year-to-Date · On-chain ETH balance
+            </span>
+            {hasTrueYtd && returnPct != null && (
+              <span className={`font-mono text-[13px] font-bold ${up ? 'text-green' : 'text-red'}`}>
+                {up ? '+' : ''}{returnPct.toFixed(1)}% YTD
               </span>
-              {returnPct != null && (
-                <span className={`font-mono text-[13px] font-bold ${up ? 'text-green' : 'text-red'}`}>
-                  {up ? '+' : ''}{returnPct.toFixed(1)}%{hasTrueYtd ? ' YTD' : ''}
-                </span>
-              )}
-            </div>
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={sparkData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="copyTraderGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={trendColor} stopOpacity={0.25} />
-                    <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5} fill="url(#copyTraderGrad)" dot={false} />
-                <Tooltip
-                  contentStyle={{ background: '#141418', border: '1px solid #28283A', borderRadius: '6px', fontSize: '11px' }}
-                  formatter={(v) => [hasTrueYtd ? `${Number(v).toFixed(2)} ETH` : Number(v).toFixed(1), hasTrueYtd ? 'Balance' : 'Index']}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-            <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
-              {hasTrueYtd
-                ? 'Real on-chain ETH balance since Jan 1, reconstructed from this wallet’s transaction history.'
-                : 'Curve estimated from win rate, profit factor, and trade volume. Track this wallet to fetch its real on-chain balance history.'}
-            </p>
+            )}
           </div>
-        )}
+          {hasTrueYtd ? (
+            <>
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={sparkData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="copyTraderGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={trendColor} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5} fill="url(#copyTraderGrad)" dot={false} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-primary)' }}
+                    formatter={(v) => [`${Number(v).toFixed(2)} ETH`, 'Balance']}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
+                Real on-chain ETH balance since Jan 1, reconstructed from this wallet’s transaction history.
+              </p>
+            </>
+          ) : (
+            <div className="rounded-xl border border-border-subtle bg-bg-elevated/40 px-4 py-5 text-center">
+              <div className="text-[12px] text-text-secondary font-medium">No on-chain balance history yet</div>
+              <p className="text-[11px] text-text-muted mt-1 leading-relaxed max-w-[280px] mx-auto">
+                {isTracked
+                  ? 'Rescan this wallet from the watchlist to reconstruct its real YTD balance curve.'
+                  : 'Track this wallet to reconstruct its real year-to-date balance curve from on-chain history.'}
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="px-5 py-4">
           <TextureCard>
@@ -169,9 +236,19 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
 
       <div className="flex-shrink-0 px-5 py-4 border-t border-border-subtle space-y-2">
         {isTracked ? (
-          <div className="text-center py-2 px-3 rounded-xl border border-blue/25 bg-blue/10 text-[12px] text-blue font-medium">
-            ✓ On your watchlist — view in My Watchlist tab
-          </div>
+          <>
+            <div className="text-center py-2 px-3 rounded-xl border border-blue/25 bg-blue/10 text-[12px] text-blue font-medium">
+              ✓ On your watchlist
+            </div>
+            <Button
+              variant="danger"
+              fullWidth
+              disabled={removing}
+              onClick={handleRemove}
+            >
+              {removing ? <><Spinner size="sm" /> Removing…</> : 'Remove from watchlist'}
+            </Button>
+          </>
         ) : (
           <Button
             variant="primary"

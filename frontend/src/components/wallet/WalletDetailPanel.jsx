@@ -9,6 +9,7 @@ import ScoreRing from '../ui/ScoreRing';
 import { ChainBadge, GradeBadge, RiskBadge, SignalPill } from '../ui/Badge';
 import { TextureCard, TextureCardContent } from '../ui/texture-card';
 import TradeModal from './TradeModal';
+import { useEnsName, traderDisplayName } from '../../lib/ens';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -98,6 +99,8 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const [newTag, setNewTag] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
   const scrollRef = useRef(null);
+  const autoAnalyzed = useRef(null);
+  const ensName = useEnsName(wallet?.address);
 
   const score = Number(detail?.score || 0);
   const grade = gradeFromScore(score);
@@ -151,12 +154,29 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [wallet?.address]);
+    // Re-fetch when the wallet is rescanned (last_scanned changes) so a freshly
+    // generated AI analysis / transaction history appears without reopening.
+  }, [wallet?.address, wallet?.last_scanned]);
 
   useEffect(() => { setUserTags(getUserTags(wallet?.address)); }, [wallet?.address]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; setTab('overview'); }, [wallet?.address]);
 
+  const hasAnalysis = Boolean(analysis.signal_reason || detail?.signal_reason);
+
+  // If a scored, tracked wallet has no AI analysis yet, generate it once
+  // automatically so the user never sits on a stale "Awaiting analysis" state.
+  useEffect(() => {
+    if (loading) return;
+    if (!detail?.address || score <= 0) return;
+    if (hasAnalysis) return;
+    if (autoAnalyzed.current === detail.address) return;
+    autoAnalyzed.current = detail.address;
+    onRescan?.();
+  }, [loading, detail?.address, score, hasAnalysis, onRescan]);
+
   if (!detail) return null;
+
+  const displayName = traderDisplayName(detail, ensName);
 
   const handleRemove = async () => {
     if (removing) return;
@@ -177,7 +197,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="font-display text-[15px] font-bold text-text-primary leading-tight truncate">
-              {detail.label || 'Unnamed wallet'}
+              {displayName}
             </div>
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
               <ChainBadge chain={detail.chain} />
@@ -282,6 +302,10 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                     ))}
                   </div>
                 </div>
+                <div className="mt-3 pt-2.5 border-t border-border-subtle text-[10px] text-text-muted leading-relaxed">
+                  Computed from this wallet&apos;s on-chain activity — transaction frequency, DeFi
+                  engagement, recency, success rate and balance. Not an estimate.
+                </div>
               </TextureCardContent>
             </TextureCard>
 
@@ -298,9 +322,18 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                 )}
               </div>
 
-              <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
-                {analysis.signal_reason || detail.signal_reason || 'Awaiting AI analysis — rescan this wallet to generate insights.'}
-              </p>
+              {hasAnalysis ? (
+                <p className="text-[12px] text-text-secondary leading-[1.75] break-words">
+                  {analysis.signal_reason || detail.signal_reason}
+                </p>
+              ) : (
+                <div className="rounded-xl border border-border-subtle bg-bg-elevated/40 px-3 py-3 flex items-center gap-2.5">
+                  <Spinner size="sm" />
+                  <span className="text-[12px] text-text-secondary">
+                    Generating AI analysis from on-chain activity…
+                  </span>
+                </div>
+              )}
 
               {analysis.activity_summary && (
                 <p className="text-[12px] text-text-secondary leading-[1.75] mt-2 break-words">

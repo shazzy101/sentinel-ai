@@ -2,10 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import Sparkline from '../ui/Sparkline';
 import { resolveSparklineData, sparklineReturnPct } from '../../lib/chartUtils';
-
-function shortAddr(a) {
-  return a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—';
-}
+import { shortAddress, isGenericLabel } from '../../lib/ens';
 
 function fmtMetric(v, suffix = '') {
   if (v == null || v === '') return '—';
@@ -18,6 +15,9 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
   const sparkData = useMemo(() => resolveSparklineData(wallet), [wallet]);
   const returnPct = sparklineReturnPct(wallet);
   const [copied, setCopied] = useState(false);
+
+  const hasRealName = !isGenericLabel(wallet.label);
+  const primaryName = hasRealName ? wallet.label : shortAddress(wallet.address);
 
   function handleCopy(e) {
     e.stopPropagation();
@@ -42,8 +42,8 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
 
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[13px] font-medium text-text-primary truncate">
-            {wallet.label || `Trader #${wallet.rank ?? index + 1}`}
+          <span className={`text-[13px] font-medium text-text-primary truncate ${hasRealName ? '' : 'font-mono'}`}>
+            {primaryName}
           </span>
           {isTracked && (
             <span className="flex-shrink-0 text-[8px] px-1.5 py-0.5 rounded bg-blue/15 text-blue border border-blue/25 uppercase tracking-wide font-semibold">
@@ -52,7 +52,9 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
           )}
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="font-mono text-[10px] text-text-muted">{shortAddr(wallet.address)}</span>
+          <span className="font-mono text-[10px] text-text-muted">
+            {hasRealName ? shortAddress(wallet.address) : 'Unnamed trader'}
+          </span>
           <button
             type="button"
             onClick={handleCopy}

@@ -1937,6 +1937,26 @@ async def copy_trading_detail(address: str):
     return error("NOT_FOUND", "Copy trader not found", status_code=404)
 
 
+@app.get("/api/copy-trading/{address}/metrics")
+async def copy_trading_live_metrics(address: str):
+    """
+    Compute real on-chain copy-trading metrics (incl. Max Drawdown and Avg
+    Trade Duration) for a single wallet, on demand. Fills the metrics the
+    offline Dune dataset leaves null.
+    """
+    addr = address.strip().lower()
+    if not _re.match(r"^0x[a-f0-9]{40}$", addr):
+        return error("BAD_ADDRESS", "Invalid Ethereum address", status_code=400)
+    try:
+        from copy_trading_live import compute_live_metrics
+        metrics = await compute_live_metrics(addr)
+    except Exception as e:
+        return error("METRICS_FAILED", str(e), status_code=500)
+    if not metrics:
+        return success({"metrics": None, "available": False})
+    return success({"metrics": metrics, "available": True})
+
+
 @app.post("/api/copy-trading/{address}/track")
 async def track_copy_trader(address: str):
     """
@@ -1967,48 +1987,34 @@ async def track_copy_trader(address: str):
 
     try:
         chain = "ethereum"
-        balance, transactions, token_transfers = await asyncio.gather(
-            get_eth_balance(addr),
-            get_eth_transactions(addr, limit=50),
-            get_eth_token_transfers(addr, limit=20),
-        )
-        all_transactions = transactions + token_transfers
-        analysis = await analyze_wallet(
-            wallet_name=label,
-            transactions=transactions[:10],
-            balance=balance,
-            chain=chain,
-            address=addr,
-        )
-        score_result = score_wallet(all_transactions, balance, chain, address=addr, label=label)
-        wallet_payload = {
-            "address": addr,
-            "label": label,
-            "chain": chain,
-            "tags": tags,
-            "score": score_result["score"],
-            "score_breakdown": score_result.get("breakdown", {}),
-            "balance": balance,
-            "last_scanned": datetime.now(timezone.utc).isoformat(),
-        }
-        upserted = (
-            supabase_client.table("wallets")
-            .upsert(wallet_payload, on_conflict="address", ignore_duplicates=False)
-            .execute()
-        )
-        wallet_id = (upserted.data or [{}])[0].get("id")
-        if wallet_id:
-            try:
-                supabase_client.table("analyses").update({"wallet_id": wallet_id}).eq("wallet_address", addr).execute()
-            except Exception:
-                pass
+        # Full scan: persists on-chain transactions AND runs + links Claude AI
+        # analysis. This populates the Activity tab, the YTD chart, and the AI
+        # analysis so a freshly-tracked wallet is never stuck "Awaiting AI analysis".
+        await persist_wallet_scan(addr, label, chain, tags=tags, analyze=True)
 
-        wallet_out = {
-            **wallet_payload,
-            "grade": score_result["grade"],
-            "signal": analysis.get("signal", "NEUTRAL"),
-            "analysis": analysis,
-        }
+        row = (
+            supabase_client.table("wallets").select("*").eq("address", addr).execute().data
+            or [{}]
+        )[0]
+        analysis = None
+        try:
+            a = (
+                supabase_client.table("analyses")
+                .select("*")
+                .eq("wallet_address", addr)
+                .order("generated_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if a.data:
+                analysis = a.data[0]
+        except Exception:
+            pass
+
+        wallet_out = {**row}
+        if analysis:
+            wallet_out["analysis"] = analysis
+            wallet_out["signal"] = analysis.get("signal", row.get("signal", "NEUTRAL"))
         enriched = _enrich_copy_trader({**trader, **wallet_out})
         return success({
             "wallet": enriched,
