@@ -226,12 +226,16 @@ export default function Sidebar({ onOpenCommand }) {
             </button>
           )}
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue">
-              SA
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue uppercase">
+              {wallet.isConnected ? wallet.address.slice(2, 4) : 'G'}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-medium text-text-primary">Shazaib</div>
-              <div className="text-[10px] text-text-muted">Pro plan</div>
+              <div className="truncate text-[12px] font-medium text-text-primary font-mono">
+                {wallet.isConnected ? formatWalletAddress(wallet.address) : 'Guest'}
+              </div>
+              <div className="text-[10px] text-text-muted">
+                {wallet.isConnected ? 'Connected' : 'Free · Beta'}
+              </div>
             </div>
           </div>
         </div>

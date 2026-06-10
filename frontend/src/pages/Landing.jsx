@@ -478,7 +478,7 @@ function FeaturesSection() {
   const blocks = [
     {
       tag: 'Whale Watchlist',
-      title: '94 wallets. Ranked by intelligence, not balance.',
+      title: '800+ wallets. Ranked by intelligence, not balance.',
       body: 'Every major Ethereum whale scored 0–100 using our proprietary methodology: activity, success rate, recency, and balance weight. Exchange hot wallets automatically filtered out.',
       cta: 'View Watchlist →',
       ctaPath: '/watchlist',
