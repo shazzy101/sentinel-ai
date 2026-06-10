@@ -27,6 +27,13 @@ from performance import (
     downsample_sparkline,
     estimate_supplemental_metrics,
 )
+from copy_traders_store import (
+    copy_traders_meta,
+    invalidate_copy_traders_cache,
+    is_exchange_trader,
+    load_copy_traders,
+    sync_copy_traders_to_db,
+)
 from scoring.engine import score_wallet
 
 
@@ -45,6 +52,7 @@ _cron_state: dict = {
 _admin_cooldowns: dict = {
     "batch_ingest": None,
     "rescan_all": None,
+    "sync_copy_traders": None,
 }
 _ADMIN_COOLDOWN_SECS = 3600  # 1 hour between batch operations
 
@@ -180,6 +188,15 @@ async def _startup_balance_sync():
         pass
 
 
+async def _startup_copy_traders():
+    """Warm copy-trader cache from Supabase (or JSON fallback) on boot."""
+    await asyncio.sleep(2)
+    try:
+        load_copy_traders(force_refresh=True)
+    except Exception:
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
@@ -187,6 +204,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_full())
     asyncio.create_task(_cron_ai_top())
     asyncio.create_task(_startup_balance_sync())
+    asyncio.create_task(_startup_copy_traders())
     asyncio.create_task(_cron_dune_refresh())
     asyncio.create_task(_cron_news())
     yield
@@ -1114,6 +1132,39 @@ async def backfill_balances(background_tasks: BackgroundTasks, limit: int = 94):
     return success({"status": "queued", "limit": min(limit, 100)})
 
 
+@app.post("/api/admin/sync-copy-traders")
+async def admin_sync_copy_traders():
+    """
+    Upsert copy_trading_top_wallets.json into Supabase copy_traders table
+    and refresh the in-memory leaderboard cache.
+    """
+    last = _admin_cooldowns["sync_copy_traders"]
+    if last:
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        if elapsed < 300:
+            wait_min = max(1, int((300 - elapsed) / 60))
+            return error(
+                "RATE_LIMITED",
+                f"Copy-trader sync ran recently. Try again in ~{wait_min}m.",
+                status_code=429,
+            )
+    _admin_cooldowns["sync_copy_traders"] = datetime.now(timezone.utc)
+    try:
+        result = sync_copy_traders_to_db()
+        _invalidate_copy_trading_cache()
+        load_copy_traders(force_refresh=True)
+        meta = copy_traders_meta()
+        return success({
+            "synced": result.get("synced", 0),
+            "total": result.get("total", 0),
+            "errors": result.get("errors") or [],
+            "source": meta.get("source"),
+            "count": meta.get("count"),
+        })
+    except Exception as e:
+        return error("SYNC_FAILED", str(e), status_code=500)
+
+
 @app.post("/api/admin/rescan-top")
 async def trigger_rescan(background_tasks: BackgroundTasks, n: int = CRON_TOP_N):
     """Manually trigger a background rescan of the top-N wallets."""
@@ -1292,7 +1343,7 @@ async def get_signals():
         whale_signals = whale_signals[:12]
 
         copy_leaders = []
-        for t in _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True)[:10]:
+        for t in _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True)[:10]:
             m = t.get("metrics") or {}
             copy_leaders.append({
                 "wallet_type": "copy_trader",
@@ -1896,22 +1947,25 @@ async def get_whale_trades():
 # ─────────────────────────────────────────
 # ROUTES — COPY TRADING INTELLIGENCE
 # ─────────────────────────────────────────
+# COPY TRADING — ranked DEX traders (Supabase → JSON fallback)
+# ─────────────────────────────────────────
 
-_COPY_TRADING_PATH = Path(__file__).resolve().parent / "data" / "copy_trading_top_wallets.json"
-_copy_trading_cache: dict = {"data": None, "loaded_at": None}
+_copy_trading_cache: dict = {"loaded_at": None, "source": None}
 
 
 def _load_copy_trading_wallets() -> list[dict]:
-    """Load ranked copy-trading candidates from offline Dune pipeline."""
-    if _copy_trading_cache["data"] is not None:
-        return _copy_trading_cache["data"]
-    if not _COPY_TRADING_PATH.exists():
-        return []
-    with open(_COPY_TRADING_PATH, encoding="utf-8") as f:
-        data = json.load(f)
-    _copy_trading_cache["data"] = data if isinstance(data, list) else []
-    _copy_trading_cache["loaded_at"] = datetime.now(timezone.utc).isoformat()
-    return _copy_trading_cache["data"]
+    """Load ranked copy-trading candidates — DB primary, JSON fallback."""
+    wallets = load_copy_traders()
+    meta = copy_traders_meta()
+    _copy_trading_cache["loaded_at"] = meta.get("loaded_at")
+    _copy_trading_cache["source"] = meta.get("source")
+    return wallets
+
+
+def _invalidate_copy_trading_cache() -> None:
+    invalidate_copy_traders_cache()
+    _copy_trading_cache["loaded_at"] = None
+    _copy_trading_cache["source"] = None
 
 
 def _find_copy_trader(address: str) -> dict | None:
@@ -1956,6 +2010,9 @@ def _filter_copy_traders(
 
     filtered = []
     for w in wallets:
+        if is_exchange_trader(w):
+            continue
+
         m = w.get("metrics") or {}
         oc = w.get("on_chain_data") or {}
         tpd = float(oc.get("trades_per_day") or 0)
@@ -1992,17 +2049,23 @@ def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
 
 def _enrich_copy_trader(wallet: dict) -> dict:
     """Attach performance sparkline and human-readable label for list/detail views."""
-    sparkline, return_pct = build_copy_trader_sparkline(wallet)
-    metrics, metrics_meta = estimate_supplemental_metrics(
+    metrics_meta = dict(wallet.get("metrics_meta") or {})
+    metrics, est_meta = estimate_supplemental_metrics(
         wallet.get("metrics") or {},
         wallet.get("on_chain_data") or {},
     )
+    for k, v in est_meta.items():
+        metrics_meta.setdefault(k, v)
+
+    sparkline, return_pct = build_copy_trader_sparkline({**wallet, "metrics": metrics})
+    if wallet.get("pnl_sparkline"):
+        metrics_meta.setdefault("performance_sparkline", "on_chain")
+
     out = {**wallet, "metrics": metrics}
     out["performance_sparkline"] = sparkline
-    out["estimated_return_pct"] = return_pct
+    out["estimated_return_pct"] = return_pct if return_pct is not None else wallet.get("estimated_return_pct")
     if metrics_meta:
         out["metrics_meta"] = metrics_meta
-    # Replace generic "Dune DEX Trader #0" labels with ranked display names
     out["label"] = _copy_trader_label(wallet)
     return out
 
@@ -2017,12 +2080,11 @@ async def copy_trading_top(
     min_track_days: int = 0,
     max_drawdown: float | None = None,
     qualified_only: bool = True,
-    strict: bool = False,
+    strict: bool = True,
 ):
     """
     Top-ranked DEX traders for copy-trading.
-    2,796 qualified wallets after bot/MEV filtering.
-    Pass strict=true for 60% WR / 2.0 PF / 90d track filters.
+    Default strict=true: 60% WR, 2.0 PF, 90d track, max 20% drawdown when known.
     """
     all_wallets = _load_copy_trading_wallets()
     pool = _filter_copy_traders(
@@ -2053,7 +2115,22 @@ async def copy_trading_top(
             "Avg Duration",
             "Track Record",
         ],
-        "source": "dune_dex_trades",
+        "source": _copy_trading_cache.get("source") or "ranker",
+        "loaded_at": _copy_trading_cache.get("loaded_at"),
+    })
+
+
+@app.get("/api/copy-trading/featured")
+async def copy_trading_featured():
+    """Top 3 elite copy traders for hero cards — strict quality filters."""
+    pool = _sort_copy_traders(
+        _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True),
+        "copy_score",
+    )[:3]
+    enriched = [_enrich_copy_trader(w) for w in pool]
+    return success({
+        "traders": enriched,
+        "count": len(enriched),
         "loaded_at": _copy_trading_cache.get("loaded_at"),
     })
 

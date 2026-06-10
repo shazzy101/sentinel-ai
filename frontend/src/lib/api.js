@@ -75,16 +75,23 @@ export const api = {
       limit = 50,
       sort = 'copy_score',
       qualifiedOnly = true,
+      strict = true,
     } = opts;
     const params = new URLSearchParams({
       limit: String(limit),
       sort,
       qualified_only: String(qualifiedOnly),
+      strict: String(strict),
     });
     return fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/top?${params}`)
       .then((r) => r.json())
       .then((body) => body.data || { wallets: [], count: 0 });
   },
+
+  getCopyFeatured: () =>
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/featured`)
+      .then((r) => r.json())
+      .then((body) => body.data?.traders || []),
 
   getCopyTrader: (address) =>
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/copy-trading/${address}`)

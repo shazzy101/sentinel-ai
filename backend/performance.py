@@ -132,11 +132,40 @@ def estimate_supplemental_metrics(metrics: dict, on_chain: dict) -> tuple[dict, 
     return m, meta
 
 
+def build_pnl_sparkline_from_trades(trades: list[dict], *, base: float = 100.0) -> tuple[list[dict], float | None]:
+    """Real cumulative P&L index from reconstructed trades (ranker output)."""
+    if not trades:
+        return [], None
+
+    sorted_trades = sorted(trades, key=lambda t: t.get("sell_ts") or 0)
+    cum_pnl = 0.0
+    sparkline = [{"balance": base, "index": 0}]
+    scale = max(abs(sum(t.get("pnl_usd") or 0 for t in sorted_trades)), 1.0)
+
+    for i, t in enumerate(sorted_trades, start=1):
+        cum_pnl += float(t.get("pnl_usd") or 0)
+        # Index moves with cumulative edge; capped for sane chart display
+        pct = (cum_pnl / scale) * 50
+        sparkline.append({"balance": round(base + pct, 2), "index": i})
+
+    est_return = round((sparkline[-1]["balance"] - base) / base * 100, 2) if sparkline else None
+    return sparkline, est_return
+
+
 def build_copy_trader_sparkline(wallet: dict) -> tuple[list[dict], float | None]:
     """
-    Estimated cumulative P&L curve from Dune DEX trade metrics.
-    Used when per-trade P&L history isn't stored in the JSON export.
+    Cumulative P&L curve for copy-trader views.
+    Uses stored ranker sparkline when present; otherwise estimates from Dune metrics.
     """
+    stored = wallet.get("pnl_sparkline")
+    if stored and isinstance(stored, list) and len(stored) >= 2:
+        ret = wallet.get("estimated_return_pct")
+        if ret is None and stored:
+            base = float(stored[0].get("balance") or 100)
+            end = float(stored[-1].get("balance") or base)
+            ret = round((end - base) / base * 100, 2) if base else None
+        return stored, ret
+
     import math
 
     metrics = wallet.get("metrics") or {}

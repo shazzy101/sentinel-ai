@@ -20,7 +20,7 @@ export default function MarketsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
 
-  useEffect(() => { document.title = 'Markets — Hadaleum'; }, []);
+  useEffect(() => { document.title = 'Copy — Hadaleum'; }, []);
 
   useEffect(() => {
     setLoading(true);

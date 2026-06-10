@@ -30,6 +30,7 @@ Output:
 import asyncio
 import json
 import os
+import sys
 import time
 import math
 from collections import defaultdict
@@ -37,6 +38,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import httpx
+
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -590,11 +593,16 @@ async def analyze_wallet(
         if score <= 0:
             return None
 
+        from performance import build_pnl_sparkline_from_trades
+        sparkline, est_ret = build_pnl_sparkline_from_trades(trades)
+
         return {
             "address":               address,
             "label":                 wallet.get("label", ""),
             "source":                wallet.get("source", ""),
             "composite_score":       score,
+            "pnl_sparkline":         sparkline,
+            "estimated_return_pct":  est_ret,
             **m,
         }
     except Exception as e:
@@ -673,22 +681,38 @@ async def main():
         json_path = os.path.join(_data_dir, "copy_trading_top_wallets.json")
         json_output = []
         for rank, row in enumerate(top, start=1):
+            metrics = {
+                "win_rate_pct":          row["win_rate"],
+                "profit_factor":         row["profit_factor"],
+                "max_drawdown_pct":      row["max_drawdown_pct"],
+                "avg_trade_duration_hrs": row["avg_trade_duration_hrs"],
+                "track_record_days":     row["track_record_days"],
+                "trade_count":           row["trade_count"],
+                "net_pnl_usd":           row["net_pnl_usd"],
+                "gross_profit_usd":      row.get("gross_profit_usd"),
+                "gross_loss_usd":        row.get("gross_loss_usd"),
+            }
+            oc = {
+                "total_trades": row["trade_count"],
+                "active_days": int(row["track_record_days"] or 0),
+                "trades_per_day": round(
+                    row["trade_count"] / max(int(row["track_record_days"] or 1), 1), 2
+                ),
+            }
             json_output.append({
-                "address":          row["address"],
-                "label":            row.get("label") or f"Copy Trader #{rank}",
-                "chain":            "ethereum",
-                "tags":             ["ethereum", "copy-trading", "smart-money"],
-                "copy_trading_rank": rank,
-                "composite_score":  row["composite_score"],
-                "metrics": {
-                    "win_rate":              row["win_rate"],
-                    "profit_factor":         row["profit_factor"],
-                    "max_drawdown_pct":      row["max_drawdown_pct"],
-                    "avg_trade_duration_hrs": row["avg_trade_duration_hrs"],
-                    "track_record_days":     row["track_record_days"],
-                    "trade_count":           row["trade_count"],
-                    "net_pnl_usd":           row["net_pnl_usd"],
-                }
+                "rank":                 rank,
+                "address":              row["address"],
+                "label":                row.get("label") or f"Copy Trader #{rank}",
+                "chain":                "ethereum",
+                "tags":                 ["ethereum", "copy-trading", "dex-trader", "smart-money"],
+                "copy_trading_score":   row["composite_score"],
+                "wallet_type":          "DEX Trader",
+                "source":               row.get("source") or "ranker",
+                "metrics":              metrics,
+                "on_chain_data":        oc,
+                "pnl_sparkline":        row.get("pnl_sparkline") or [],
+                "estimated_return_pct": row.get("estimated_return_pct"),
+                "metrics_meta":         {"max_drawdown_pct": "on_chain", "avg_trade_duration_hrs": "on_chain"},
             })
 
         with open(json_path, "w") as f:

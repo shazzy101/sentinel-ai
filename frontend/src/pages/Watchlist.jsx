@@ -74,7 +74,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 export default function WatchlistPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState('copy'); // copy | watchlist
-  const [strictCopyFilter, setStrictCopyFilter] = useState(false);
+  const [strictCopyFilter, setStrictCopyFilter] = useState(true);
   const [copySortBy, setCopySortBy] = useState('copy_score');
   const [trackingId, setTrackingId] = useState(null);
   const { wallets, loading, error, refetch } = useWatchlist({ enabled: true });

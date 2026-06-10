@@ -65,6 +65,27 @@ class Transaction(Base):
     wallet: Mapped[Optional["Wallet"]] = relationship(back_populates="transactions")
 
 
+class CopyTrader(Base):
+    __tablename__ = "copy_traders"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    address: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(Text)
+    chain: Mapped[str] = mapped_column(Text, nullable=False, server_default="ethereum")
+    tags: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text))
+    copy_trading_score: Mapped[float] = mapped_column(Numeric, nullable=False, server_default="0")
+    wallet_type: Mapped[Optional[str]] = mapped_column(Text)
+    source: Mapped[Optional[str]] = mapped_column(Text)
+    metrics: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    on_chain_data: Mapped[Optional[dict]] = mapped_column(JSONB)
+    pnl_sparkline: Mapped[Optional[list]] = mapped_column(JSONB)
+    estimated_return_pct: Mapped[Optional[float]] = mapped_column(Numeric)
+    metrics_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
+    refreshed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Analysis(Base):
     __tablename__ = "analyses"
 

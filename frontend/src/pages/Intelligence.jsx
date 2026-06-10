@@ -131,7 +131,7 @@ function SignalFeed({ whaleSignals, copySignals }) {
         <div className="flex gap-1 p-0.5 rounded-lg bg-bg-elevated border border-border-subtle">
           {[
             { key: 'copy', label: 'Copy Traders', count: copySignals.length },
-            { key: 'whale', label: 'Whale Alerts', count: filteredWhales.length },
+            { key: 'whale', label: 'Whale Research', count: filteredWhales.length },
           ].map(({ key, label, count }) => (
             <button
               key={key}

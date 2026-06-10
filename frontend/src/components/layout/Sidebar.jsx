@@ -18,11 +18,11 @@ import { useTheme } from '@/context/ThemeProvider';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const NAV_ITEMS = [
+  { label: 'Copy', icon: BarChart3, path: '/markets' },
   { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist' },
+  { label: 'Invest', icon: Zap, path: '/invest' },
   { label: 'News Intelligence', icon: Newspaper, path: '/news' },
   { label: 'Intelligence', icon: Sparkles, path: '/intelligence' },
-  { label: 'Markets', icon: BarChart3, path: '/markets' },
-  { label: 'Invest', icon: Zap, path: '/invest' },
   { label: 'Ask AI', icon: MessageSquare, path: '/ask' },
   { label: 'Alerts', icon: Bell, path: '/alerts' },
 ];

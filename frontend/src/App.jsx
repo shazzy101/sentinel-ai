@@ -79,7 +79,7 @@ function AlertsRoute() {
 
 function MarketsRoute() {
   return (
-    <Shell title="Markets" actions={<EthPriceBadge />}>
+    <Shell title="Copy" actions={<EthPriceBadge />}>
       <MarketsPage />
     </Shell>
   );
@@ -139,6 +139,7 @@ function AnimatedRoutes() {
         <Route path="/watchlist" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><WatchlistRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/intelligence" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><IntelligenceRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/markets" element={<MotionPage><AuthGuard><MarketsRoute /></AuthGuard></MotionPage>} />
+        <Route path="/copy" element={<Navigate to="/markets" replace />} />
         <Route path="/invest" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><InvestRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/ask" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AskSentinelRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/news" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><NewsRoute /></Suspense></AuthGuard></MotionPage>} />

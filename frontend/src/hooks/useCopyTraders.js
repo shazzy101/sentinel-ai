@@ -27,7 +27,7 @@ export function useCopyTraders({
   limit = 300,
   sort = 'copy_score',
   qualifiedOnly = true,
-  strict = false,
+  strict = true,
 } = {}) {
   const [wallets, setWallets] = useState([]);
   const [totalQualified, setTotalQualified] = useState(0);

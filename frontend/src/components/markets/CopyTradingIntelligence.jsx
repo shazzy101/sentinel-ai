@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Copy, ExternalLink, TrendingUp } from 'lucide-react';
 import GlassCard from '../primitives/GlassCard';
@@ -149,21 +149,70 @@ function TopCopyTraderRow({ wallet, lastMove, onTrack }) {
   );
 }
 
+function FeaturedTraderCard({ trader, onTrack, onViewMoves }) {
+  const m = trader.metrics || {};
+  const name = traderDisplayName(trader);
+  const ret = trader.estimated_return_pct;
+
+  return (
+    <div className="rounded-2xl border border-green/20 bg-gradient-to-br from-green/10 via-bg-surface to-bg-surface p-4 flex flex-col gap-3 min-h-[168px]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-widest text-green font-semibold mb-1">
+            #{trader.rank} · Elite copy trader
+          </div>
+          <div className="text-[15px] font-semibold text-text-primary truncate">{name}</div>
+        </div>
+        <span className="font-mono text-[20px] font-bold text-green shrink-0">
+          {Math.round(trader.copy_trading_score ?? 0)}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted font-mono">
+        <span className="text-green">{m.win_rate_pct ?? '—'}% WR</span>
+        <span>PF {m.profit_factor != null ? Number(m.profit_factor).toFixed(1) : '—'}</span>
+        <span>{m.track_record_days ?? '—'}d track</span>
+        {m.max_drawdown_pct != null && <span>DD {m.max_drawdown_pct}%</span>}
+        {ret != null && <span className="text-text-secondary">Est. {ret >= 0 ? '+' : ''}{ret}%</span>}
+      </div>
+      <div className="flex gap-2 mt-auto">
+        <button
+          type="button"
+          onClick={() => onTrack(trader)}
+          className="flex-1 text-[11px] font-semibold px-3 py-2 rounded-lg bg-green/20 text-green border border-green/30 hover:bg-green/30 transition-colors"
+        >
+          Track
+        </button>
+        <button
+          type="button"
+          onClick={onViewMoves}
+          className="text-[11px] font-medium px-3 py-2 rounded-lg border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+        >
+          Live moves ↓
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function CopyTradingIntelligence() {
   const navigate = useNavigate();
+  const [featured, setFeatured] = useState([]);
   const [topWallets, setTopWallets] = useState([]);
   const [watchlistTxs, setWatchlistTxs] = useState([]);
   const [copyMoves, setCopyMoves] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const movesRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      api.getCopyTradingTop({ limit: 8, sort: 'copy_score' }),
+      api.getCopyFeatured(),
+      api.getCopyTradingTop({ limit: 8, sort: 'copy_score', strict: true }),
       api.getLatestTransactions(8),
       api.getCopyRecentMoves(12),
-    ]).then(([copyData, txs, moves]) => {
+    ]).then(([featuredTraders, copyData, txs, moves]) => {
       if (cancelled) return;
+      setFeatured(featuredTraders);
       setTopWallets(copyData.wallets || []);
       setWatchlistTxs(txs);
       setCopyMoves(moves);
@@ -211,11 +260,25 @@ export default function CopyTradingIntelligence() {
           <h2 className="font-display text-[16px] font-semibold text-text-primary">Copy Trading</h2>
         </div>
         <p className="text-[12px] text-text-muted max-w-2xl">
-          Live DEX moves from ranked traders with 60%+ win rate and 2.0+ profit factor — filtered to liquid tokens worth copying.
+          Verified DEX traders with 60%+ win rate, 2.0+ profit factor, and 90+ day track records — ranked by Hadaleum score, not wallet balance.
         </p>
       </div>
 
+      {featured.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {featured.map((t) => (
+            <FeaturedTraderCard
+              key={t.address}
+              trader={t}
+              onTrack={handleTrack}
+              onViewMoves={() => movesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Primary feed — copy-worthy moves */}
+      <div ref={movesRef}>
       <GlassCard padding={false}>
         <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between gap-3">
           <div>
@@ -240,13 +303,14 @@ export default function CopyTradingIntelligence() {
           ))
         )}
       </GlassCard>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Top copy traders — compact list */}
         <GlassCard padding={false}>
           <div className="px-4 py-3 border-b border-border-subtle">
             <div className="text-[14px] font-medium text-text-primary">Top Copy Traders</div>
-            <div className="text-[10px] text-text-muted mt-0.5">Real DEX accounts · ranked by Hadaleum score</div>
+            <div className="text-[10px] text-text-muted mt-0.5">Strict-ranked · real DEX metrics · bots filtered</div>
           </div>
           {topWallets.length === 0 ? (
             <div className="px-4 py-8 text-center text-[12px] text-text-muted">No copy traders loaded.</div>
