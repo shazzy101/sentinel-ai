@@ -11,7 +11,7 @@ export default function AnimatedCounter({
 }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-40px' });
-  const spring = useSpring(0, { stiffness: 80, damping: 20 });
+  const spring = useSpring(0, { stiffness: 300, damping: 30, restDelta: 0.5, restSpeed: 0.5 });
   const display = useTransform(spring, (v) =>
     `${prefix}${v.toFixed(decimals)}${suffix}`,
   );
