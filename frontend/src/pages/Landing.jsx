@@ -694,21 +694,11 @@ function Footer() {
 }
 
 export default function LandingPage() {
-  const [walletCount, setWalletCount] = useState(2796);
+  // Hardcoded to full Dune dataset size — consistent with all other copy on the page
+  const walletCount = 2796;
 
   useEffect(() => {
     document.title = 'Hadaleum — Ethereum Whale Intelligence';
-  }, []);
-
-  useEffect(() => {
-    const base = import.meta.env.VITE_API_URL || '';
-    fetch(`${base}/api/watchlist?limit=1`)
-      .then((r) => r.json())
-      .then((d) => {
-        const count = d?.data?.total_in_db ?? d?.data?.count ?? d?.data?.wallets?.length;
-        if (count) setWalletCount(count);
-      })
-      .catch(() => {});
   }, []);
 
   return (
