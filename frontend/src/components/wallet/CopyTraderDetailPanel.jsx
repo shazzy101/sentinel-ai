@@ -7,6 +7,8 @@ import { TextureCard, TextureCardContent } from '../ui/texture-card';
 import { resolveSparklineData, sparklineReturnPct, formatUsd } from '../../lib/chartUtils';
 import { api } from '../../lib/api';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const METRIC_CARDS = [
   { key: 'win_rate_pct', label: 'Win Rate', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
   { key: 'profit_factor', label: 'Profit Factor', fmt: (v) => Number(v).toFixed(1), good: (v) => v >= 2 },
@@ -21,17 +23,38 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
   const m = detail?.metrics || {};
   const oc = detail?.on_chain_data || {};
 
-  const sparkData = useMemo(() => resolveSparklineData(detail), [detail]);
-  const returnPct = sparklineReturnPct(detail);
+  // True on-chain YTD (real ETH balance curve) when this address has been
+  // scanned. Falls back to the estimated P&L curve only when unavailable.
+  const [ytd, setYtd] = useState(null); // { sparkline:[{balance,ts}], pct }
+
+  const estSparkData = useMemo(() => resolveSparklineData(detail), [detail]);
+  const estReturnPct = sparklineReturnPct(detail);
+
+  const hasTrueYtd = ytd?.sparkline?.length >= 2;
+  const sparkData = hasTrueYtd ? ytd.sparkline : estSparkData;
+  const returnPct = hasTrueYtd ? ytd.pct : estReturnPct;
   const up = (returnPct ?? 0) >= 0;
   const trendColor = up ? '#00D992' : '#FF4D4D';
 
   useEffect(() => {
     setDetail(wallet);
+    setYtd(null);
     if (!wallet?.address) return;
     let cancelled = false;
     api.getCopyTrader(wallet.address)
       .then((w) => { if (!cancelled && w) setDetail(w); })
+      .catch(() => {});
+    // Pull the real on-chain YTD balance curve for this address.
+    fetch(`${API_BASE}/api/wallets/${wallet.address}`)
+      .then((r) => r.json())
+      .then((body) => {
+        if (cancelled) return;
+        const w = body?.data?.wallet;
+        const spark = w?.ytd_sparkline;
+        if (Array.isArray(spark) && spark.length >= 2) {
+          setYtd({ sparkline: spark, pct: w.ytd_growth_pct ?? null });
+        }
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [wallet?.address]);
@@ -95,10 +118,12 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
         {sparkData.length >= 2 && (
           <div className="px-5 py-4 border-b border-border-subtle">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase tracking-widest text-text-muted">Estimated P&L Trend</span>
+              <span className="text-[10px] uppercase tracking-widest text-text-muted">
+                {hasTrueYtd ? 'Year-to-Date · On-chain ETH balance' : 'Estimated P&L Trend'}
+              </span>
               {returnPct != null && (
                 <span className={`font-mono text-[13px] font-bold ${up ? 'text-green' : 'text-red'}`}>
-                  {up ? '+' : ''}{returnPct.toFixed(1)}%
+                  {up ? '+' : ''}{returnPct.toFixed(1)}%{hasTrueYtd ? ' YTD' : ''}
                 </span>
               )}
             </div>
@@ -113,12 +138,14 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
                 <Area type="monotone" dataKey="balance" stroke={trendColor} strokeWidth={1.5} fill="url(#copyTraderGrad)" dot={false} />
                 <Tooltip
                   contentStyle={{ background: '#141418', border: '1px solid #28283A', borderRadius: '6px', fontSize: '11px' }}
-                  formatter={(v) => [Number(v).toFixed(1), 'Index']}
+                  formatter={(v) => [hasTrueYtd ? `${Number(v).toFixed(2)} ETH` : Number(v).toFixed(1), hasTrueYtd ? 'Balance' : 'Index']}
                 />
               </AreaChart>
             </ResponsiveContainer>
             <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
-              Curve estimated from win rate, profit factor, and trade volume. Run copy_trading_ranker.py for exact drawdown and duration.
+              {hasTrueYtd
+                ? 'Real on-chain ETH balance since Jan 1, reconstructed from this wallet’s transaction history.'
+                : 'Curve estimated from win rate, profit factor, and trade volume. Track this wallet to fetch its real on-chain balance history.'}
             </p>
           </div>
         )}
