@@ -197,7 +197,10 @@ app = FastAPI(
 _CORS_ORIGINS_DEFAULT = (
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174,"
-    "http://localhost:5176,http://127.0.0.1:5176"
+    "http://localhost:5176,http://127.0.0.1:5176,"
+    "https://sentinel-ai.pages.dev,"
+    "https://hadaleum.com,"
+    "https://www.hadaleum.com"
 )
 _cors_origins = [
     o.strip()
@@ -1859,11 +1862,13 @@ def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
 
 
 def _enrich_copy_trader(wallet: dict) -> dict:
-    """Attach performance sparkline for list/detail views."""
+    """Attach performance sparkline and human-readable label for list/detail views."""
     sparkline, return_pct = build_copy_trader_sparkline(wallet)
     out = {**wallet}
     out["performance_sparkline"] = sparkline
     out["estimated_return_pct"] = return_pct
+    # Replace generic "Dune DEX Trader #0" labels with ranked display names
+    out["label"] = _copy_trader_label(wallet)
     return out
 
 

@@ -21,7 +21,7 @@ export default function MarketsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedToken, setSelectedToken] = useState(null);
 
-  useEffect(() => { document.title = 'Markets — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'Markets — Hadaleum'; }, []);
 
   useEffect(() => {
     setLoading(true);

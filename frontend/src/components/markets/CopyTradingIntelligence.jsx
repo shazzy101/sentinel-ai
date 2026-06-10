@@ -10,7 +10,7 @@ const TOP_STATS = [
   { key: 'win_rate_pct', label: 'Win Rate', fmt: (v) => `${v}%`, suffix: 'of trades profitable' },
   { key: 'profit_factor', label: 'Profit Factor', fmt: (v) => v?.toFixed(1) ?? '—', suffix: 'gains vs losses' },
   { key: 'trades_per_day', label: 'Trades/Day', fmt: (v) => v?.toFixed(1) ?? '—', suffix: 'active frequency' },
-  { key: 'copy_trading_score', label: 'Copy Score', fmt: (v) => v?.toFixed(0) ?? '—', suffix: 'Sentinel rank' },
+  { key: 'copy_trading_score', label: 'Copy Score', fmt: (v) => v?.toFixed(0) ?? '—', suffix: 'Hadaleum rank' },
   { key: 'track_record_days', label: 'Track Record', fmt: (v) => `${v}d`, suffix: 'verified history' },
 ];
 
@@ -226,7 +226,7 @@ export default function CopyTradingIntelligence() {
             <StatWidget label="Avg Win Rate" value={`${aggregate.avgWin.toFixed(1)}%`} sub="top 5 traders" animate={false} />
           </BentoItem>
           <BentoItem>
-            <StatWidget label="Avg Copy Score" value={Math.round(aggregate.avgScore)} sub="Sentinel composite" animate={false} />
+            <StatWidget label="Avg Copy Score" value={Math.round(aggregate.avgScore)} sub="Hadaleum composite" animate={false} />
           </BentoItem>
           <BentoItem>
             <StatWidget label="Combined Volume" value={compact(aggregate.totalVol)} sub="verified on-chain" animate={false} />

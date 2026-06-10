@@ -296,7 +296,7 @@ export default function AlertsPage() {
   const [rules, setRules] = useState(loadRules);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { document.title = 'Alerts — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'Alerts — Hadaleum'; }, []);
 
   // Persist on change
   useEffect(() => { saveRules(rules); }, [rules]);

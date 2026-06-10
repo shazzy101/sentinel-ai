@@ -1,7 +1,36 @@
+import { useState } from 'react';
 import GlassCard from '../primitives/GlassCard';
 import Spinner from '../ui/Spinner';
 import Button from '../ui/Button';
 import CopyTraderRow from './CopyTraderRow';
+
+const TOOLTIPS = {
+  'Win%': 'Percentage of trades closed at a profit. 60%+ is considered strong.',
+  'PF': 'Profit Factor — total gains divided by total losses. 2.0+ means you make $2 for every $1 lost.',
+  'Max DD': 'Maximum Drawdown — largest peak-to-trough loss. Lower is better.',
+  'Duration': 'Average time a position is held. Longer holds can indicate conviction.',
+  'Track': 'Track Record — days of verified on-chain trading history.',
+  'Score': 'Hadaleum composite score (0–100) combining win rate, profit factor, drawdown, and track record.',
+};
+
+function TooltipHeader({ label, tip, align = 'right' }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      className={`relative flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} cursor-default`}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span>{label}</span>
+      <span className="text-[8px] text-text-muted border border-border-subtle rounded-full w-3 h-3 flex items-center justify-center flex-shrink-0">?</span>
+      {show && (
+        <div className="absolute bottom-full right-0 mb-1.5 z-50 w-52 rounded-xl border border-border-default bg-bg-overlay px-3 py-2 shadow-card text-[11px] text-text-secondary leading-relaxed text-left pointer-events-none">
+          {tip}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function HeaderRow() {
   return (
@@ -11,13 +40,13 @@ function HeaderRow() {
     >
       <div>#</div>
       <div>Trader</div>
-      <div className="text-right">Win%</div>
-      <div className="text-right">PF</div>
-      <div className="text-right">Max DD</div>
-      <div className="text-right">Duration</div>
-      <div className="text-right">Track</div>
+      <div className="text-right"><TooltipHeader label="Win%" tip={TOOLTIPS['Win%']} /></div>
+      <div className="text-right"><TooltipHeader label="PF" tip={TOOLTIPS['PF']} /></div>
+      <div className="text-right"><TooltipHeader label="Max DD" tip={TOOLTIPS['Max DD']} /></div>
+      <div className="text-right"><TooltipHeader label="Duration" tip={TOOLTIPS['Duration']} /></div>
+      <div className="text-right"><TooltipHeader label="Track" tip={TOOLTIPS['Track']} /></div>
       <div className="text-right">P&L Trend</div>
-      <div className="text-right">Score</div>
+      <div className="text-right"><TooltipHeader label="Score" tip={TOOLTIPS['Score']} /></div>
     </div>
   );
 }

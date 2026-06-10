@@ -282,7 +282,7 @@ function TopTradersTable({ wallets }) {
     <GlassCard padding={false} className="overflow-hidden">
       <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
         <span className="text-[12px] font-semibold text-text-primary">Top Traders</span>
-        <span className="text-[10px] text-text-muted">YTD sparkline · Sentinel score</span>
+        <span className="text-[10px] text-text-muted">YTD sparkline · Hadaleum score</span>
       </div>
       <div className="overflow-x-auto">
         <div className="grid grid-cols-[1fr_100px_100px_90px_80px] gap-2 px-4 py-2 text-[9px] uppercase tracking-widest text-text-muted border-b border-white/[0.04] min-w-[520px]">

@@ -168,7 +168,7 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
 
-  useEffect(() => { document.title = 'News Intelligence — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'News Intelligence — Hadaleum'; }, []);
 
   const load = useCallback(async () => {
     setLoading(true);

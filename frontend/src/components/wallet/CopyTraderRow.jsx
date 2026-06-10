@@ -1,4 +1,5 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import Sparkline from '../ui/Sparkline';
 import { resolveSparklineData, sparklineReturnPct } from '../../lib/chartUtils';
 
@@ -16,6 +17,15 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
   const oc = wallet.on_chain_data || {};
   const sparkData = useMemo(() => resolveSparklineData(wallet), [wallet]);
   const returnPct = sparklineReturnPct(wallet);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy(e) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(wallet.address || '').then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   return (
     <div
@@ -33,7 +43,7 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-[13px] font-medium text-text-primary truncate">
-            {wallet.label || `DEX Trader #${wallet.rank ?? index + 1}`}
+            {wallet.label || `Trader #${wallet.rank ?? index + 1}`}
           </span>
           {isTracked && (
             <span className="flex-shrink-0 text-[8px] px-1.5 py-0.5 rounded bg-blue/15 text-blue border border-blue/25 uppercase tracking-wide font-semibold">
@@ -41,7 +51,17 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
             </span>
           )}
         </div>
-        <div className="font-mono text-[10px] text-text-muted mt-0.5">{shortAddr(wallet.address)}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="font-mono text-[10px] text-text-muted">{shortAddr(wallet.address)}</span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="text-text-muted hover:text-green transition-colors"
+            title="Copy address"
+          >
+            {copied ? <Check className="h-2.5 w-2.5 text-green" /> : <Copy className="h-2.5 w-2.5" />}
+          </button>
+        </div>
       </div>
 
       <span className={`font-mono text-[12px] font-bold text-right ${

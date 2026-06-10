@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   LayoutGrid, Sparkles, BarChart3, MessageSquare,
-  Bell, ExternalLink, Search, Zap, Newspaper,
+  Bell, ExternalLink, Search, Zap, Newspaper, LogIn, LogOut, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
@@ -11,6 +11,7 @@ import SentinelLogo from '../ui/SentinelLogo';
 import ProWaitlist from '../ui/ProWaitlist';
 import { useWallet } from '@/hooks/useWallet';
 import { formatWalletAddress } from '@/lib/web3';
+import { useAuth } from '@/context/AuthProvider';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -28,13 +29,13 @@ function useAlertBadge() {
   const [count, setCount] = useState(0);
   useEffect(() => {
     const handler = () => setCount((n) => n + 1);
-    window.addEventListener('sentinel-alert-fired', handler);
-    return () => window.removeEventListener('sentinel-alert-fired', handler);
+    window.addEventListener('hadaleum-alert-fired', handler);
+    return () => window.removeEventListener('hadaleum-alert-fired', handler);
   }, []);
   useEffect(() => {
     const clear = () => setCount(0);
-    window.addEventListener('sentinel-alerts-viewed', clear);
-    return () => window.removeEventListener('sentinel-alerts-viewed', clear);
+    window.addEventListener('hadaleum-alerts-viewed', clear);
+    return () => window.removeEventListener('hadaleum-alerts-viewed', clear);
   }, []);
   return count;
 }
@@ -132,7 +133,9 @@ export default function Sidebar({ onOpenCommand }) {
   const alertCount = useAlertBadge();
   const nextScanLabel = useCountdown(nextScan);
   const location = useLocation();
+  const navigate = useNavigate();
   const wallet = useWallet();
+  const auth = useAuth();
 
   return (
     <aside className="relative z-30 flex w-[240px] flex-shrink-0 flex-col p-3">
@@ -162,7 +165,7 @@ export default function Sidebar({ onOpenCommand }) {
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('sentinel-alerts-viewed')) : undefined}
+                onClick={item.label === 'Alerts' ? () => window.dispatchEvent(new Event('hadaleum-alerts-viewed')) : undefined}
               >
                 {({ isActive }) => (
                   <NavItem item={item} isActive={isActive || location.pathname === item.path} badge={badge} />
@@ -199,10 +202,23 @@ export default function Sidebar({ onOpenCommand }) {
           </a>
         </div>
 
-        {/* Upgrade to Pro (waitlist) */}
-        <div className="border-t border-white/[0.06] px-4 py-3">
-          <ProWaitlist variant="sidebar" source="sidebar" />
-        </div>
+        {/* Upgrade to Pro */}
+        {!auth?.isPro && (
+          <div className="border-t border-white/[0.06] px-4 py-3">
+            {auth?.user ? (
+              <button
+                type="button"
+                onClick={() => navigate('/upgrade')}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-green/10 border border-green/20 px-3 py-2 text-[11px] font-semibold text-green hover:bg-green/15 transition-colors"
+              >
+                <Star className="h-3 w-3" />
+                {auth?.isTrialing ? `${auth.trialDaysLeft}d left — Upgrade` : 'Upgrade to Pro'}
+              </button>
+            ) : (
+              <ProWaitlist variant="sidebar" source="sidebar" />
+            )}
+          </div>
+        )}
 
         {/* User + MetaMask */}
         <div className="border-t border-white/[0.06] px-4 py-3 space-y-2">
@@ -234,17 +250,36 @@ export default function Sidebar({ onOpenCommand }) {
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-blue/30 bg-blue/10 text-[11px] font-medium text-blue uppercase">
-              {wallet.isConnected ? wallet.address.slice(2, 4) : 'G'}
+              {auth?.user?.email?.[0]?.toUpperCase() ?? (wallet.isConnected ? wallet.address.slice(2, 4) : 'G')}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-medium text-text-primary font-mono">
-                {wallet.isConnected ? formatWalletAddress(wallet.address) : 'Guest'}
+              <div className="truncate text-[12px] font-medium text-text-primary">
+                {auth?.user?.email ?? (wallet.isConnected ? formatWalletAddress(wallet.address) : 'Guest')}
               </div>
               <div className="text-[10px] text-text-muted">
-                {wallet.isConnected ? 'Connected' : 'Free · Beta'}
+                {auth?.isPro ? 'Pro' : auth?.isTrialing ? `Trial · ${auth.trialDaysLeft}d` : auth?.user ? 'Free' : 'Not signed in'}
               </div>
             </div>
           </div>
+          {auth?.user ? (
+            <button
+              type="button"
+              onClick={() => auth.signOut().then(() => navigate('/login'))}
+              className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-text-secondary transition-colors mt-1"
+            >
+              <LogOut className="h-3 w-3" />
+              Sign out
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="flex items-center gap-1.5 text-[11px] text-green hover:text-green/80 transition-colors mt-1"
+            >
+              <LogIn className="h-3 w-3" />
+              Sign in
+            </button>
+          )}
         </div>
       </div>
     </aside>

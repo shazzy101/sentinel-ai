@@ -24,7 +24,7 @@ function writeCache(key, data) {
 
 export function useCopyTraders({
   enabled = true,
-  limit = 50,
+  limit = 300,
   sort = 'copy_score',
   qualifiedOnly = true,
   strict = false,

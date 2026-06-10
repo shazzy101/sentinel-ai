@@ -160,7 +160,7 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, isTrac
                 {oc.first_trade?.slice(0, 10)} → {oc.last_trade?.slice(0, 10)}
               </p>
               <div className="pt-2 border-t border-border-subtle text-[11px] text-text-muted leading-[1.6]">
-                This wallet passed Sentinel filters: not an MEV bot (&lt;100 trades/day), has measurable DEX history over 90+ days, win rate above 60%, profit factor above 2.0.
+                This wallet passed Hadaleum filters: not an MEV bot (&lt;100 trades/day), has measurable DEX history over 90+ days, win rate above 60%, profit factor above 2.0.
               </div>
             </TextureCardContent>
           </TextureCard>

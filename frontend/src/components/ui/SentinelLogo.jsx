@@ -6,7 +6,7 @@ export default function SentinelLogo({ size = 22, className = '', showWordmark =
     <Link
       to="/"
       className={`group inline-flex items-center gap-2.5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-green/40 ${className}`}
-      aria-label="Sentinel AI — back to home"
+      aria-label="Hadaleum — back to home"
     >
       <motion.span
         className="relative flex shrink-0 items-center justify-center"
@@ -40,10 +40,7 @@ export default function SentinelLogo({ size = 22, className = '', showWordmark =
       {showWordmark && (
         <>
           <span className="font-display text-[15px] font-bold tracking-tight text-text-primary group-hover:text-green transition-colors duration-200">
-            Sentinel
-          </span>
-          <span className="rounded-md bg-green/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-green">
-            AI
+            Hadaleum
           </span>
         </>
       )}

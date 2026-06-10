@@ -78,7 +78,7 @@ function AssistantMessage({ text, wallets }) {
     <div className="flex flex-col items-start mb-4 gap-1.5">
       <div className="flex items-center gap-1.5">
         <HexIcon size={16} />
-        <span className="text-[12px] text-text-muted font-medium">Sentinel AI</span>
+        <span className="text-[12px] text-text-muted font-medium">Hadaleum</span>
       </div>
       <div className="mr-auto max-w-[80%] bg-bg-surface border border-border-default rounded-2xl rounded-tl-sm px-4 py-3 text-[14px] text-text-secondary leading-relaxed whitespace-pre-wrap">
         {text}
@@ -97,7 +97,7 @@ function LoadingDots() {
     <div className="flex flex-col items-start mb-4 gap-1.5">
       <div className="flex items-center gap-1.5">
         <HexIcon size={16} />
-        <span className="text-[12px] text-text-muted font-medium">Sentinel AI</span>
+        <span className="text-[12px] text-text-muted font-medium">Hadaleum</span>
       </div>
       <div className="bg-bg-surface border border-border-default rounded-2xl rounded-tl-sm px-4 py-3">
         <div className="flex gap-1">
@@ -122,7 +122,7 @@ export default function AskSentinelPage() {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    document.title = 'Ask AI — Sentinel AI';
+    document.title = 'Ask AI — Hadaleum';
   }, []);
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function AskSentinelPage() {
         setMessages((prev) => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.', wallets: null }]);
       }
     } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Could not reach Sentinel backend. Please check your connection.', wallets: null }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Could not reach Hadaleum backend. Please check your connection.', wallets: null }]);
     } finally {
       setLoading(false);
     }

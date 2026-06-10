@@ -69,7 +69,9 @@ function LiveWhaleMovesFeed({ wallets, onCopyTrade, selectedAddress }) {
                 <div className="text-[9px] uppercase tracking-widest text-green mb-1">Whale move detected</div>
                 <div className="font-display text-[15px] font-bold text-text-primary truncate">{w.label || 'Whale'}</div>
                 <div className="font-mono text-[12px] text-text-secondary mt-1">
-                  Sent {Number(ethAmt).toFixed(2)} ETH · {formatTimeAgo(tx?.timestamp || w.last_scanned)}
+                  Sent {Number(ethAmt).toFixed(2)} ETH
+                  {ethAmt > 0 ? <span className="text-text-muted ml-1">(~${(Number(ethAmt) * (window.__ethPrice__ || 3800)).toLocaleString(undefined, { maximumFractionDigits: 0 })})</span> : null}
+                  {' '}· {formatTimeAgo(tx?.timestamp || w.last_scanned)}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-[11px] text-text-muted">
                   Signal: <SignalPill signal={w.signal} />
@@ -160,7 +162,7 @@ export default function InvestPage() {
     isMainnet: wallet.isMainnet,
   }), [amount, fromToken, tokenBalance, wallet.isConnected, wallet.isMainnet]);
 
-  useEffect(() => { document.title = 'Invest — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'Copy Trading — Hadaleum'; }, []);
 
   useEffect(() => {
     const from = searchParams.get('from');
@@ -500,7 +502,10 @@ export default function InvestPage() {
                     <div className="space-y-3">
                       <div className="rounded-xl border border-amber/20 bg-amber/5 p-3 text-[11px] text-amber leading-relaxed flex gap-2">
                         <Shield className="h-4 w-4 shrink-0 mt-0.5" strokeWidth={1.75} />
-                        This trade executes on Ethereum mainnet via your MetaMask wallet. Sentinel AI never holds your funds or accesses your private keys.
+                        <div className="space-y-1">
+                          <p>This trade executes on Ethereum mainnet via your MetaMask wallet. Hadaleum never holds your funds or accesses your private keys.</p>
+                          <p className="text-amber/70">This is not financial advice. Smart contract interactions carry risk of loss. You are in full control of your wallet at all times.</p>
+                        </div>
                       </div>
                       <Button variant="primary" fullWidth onClick={handleExecute}>Confirm in MetaMask →</Button>
                       <button type="button" onClick={() => setStep('quote')} className="w-full text-xs text-text-muted hover:text-text-secondary py-1">← Back</button>

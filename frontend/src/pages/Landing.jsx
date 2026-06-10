@@ -82,7 +82,7 @@ function ProductMockup() {
         <span className="w-3 h-3 rounded-full bg-amber/70" />
         <span className="w-3 h-3 rounded-full bg-green/70" />
         <div className="flex-1 mx-4 bg-bg-elevated rounded px-3 py-1 text-[11px] text-text-muted font-mono text-center select-none">
-          sentinel-ai-905.pages.dev/watchlist
+          hadaleum.com/watchlist
         </div>
       </div>
 
@@ -362,15 +362,15 @@ function Navbar() {
           ))}
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <button type="button" onClick={() => navigate('/watchlist')} className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
+          <button type="button" onClick={() => navigate('/login')} className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
             Sign in
           </button>
           <MagneticButton
             type="button"
-            onClick={() => navigate('/watchlist')}
+            onClick={() => navigate('/signup')}
             className="text-sm font-semibold bg-green text-text-inverse px-4 py-2 rounded-xl shadow-glow hover:bg-green-bright transition-colors"
           >
-            Launch App →
+            Start Free Trial →
           </MagneticButton>
         </div>
       </div>
@@ -398,12 +398,12 @@ function HeroSection({ walletCount }) {
           <span className="text-xs font-medium tracking-wide text-green">{walletCount} wallets tracked live</span>
         </div>
         <h1 className="font-display font-bold text-4xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-text-primary mb-6">
-          Know what smart money
+          Copy smart money.
           <br />
-          <span className="gradient-text-accent">does before you do.</span>
+          <span className="gradient-text-accent">Keep your keys.</span>
         </h1>
         <p className="text-lg text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
-          Enterprise-grade Ethereum whale intelligence. AI signals, live scoring, and instant alerts — built for analysts who need conviction, not noise.
+          Hadaleum tracks 2,796 elite Ethereum wallets from the depths no one else reaches. AI signals. Non-custodial copy trading. Your keys, always.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
           <MagneticButton
@@ -411,14 +411,14 @@ function HeroSection({ walletCount }) {
             onClick={() => navigate('/watchlist')}
             className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
           >
-            Launch App →
+            Start Free Trial →
           </MagneticButton>
           <button
             type="button"
             onClick={() => navigate('/intelligence')}
             className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
           >
-            See Intelligence
+            See Live Signals
           </button>
         </div>
         <div className="flex flex-col items-center mt-6 animate-bounce">
@@ -507,7 +507,7 @@ function FeaturesSection() {
     {
       tag: 'Invest & Copy',
       title: 'Mirror whale moves. Execute via MetaMask.',
-      body: 'When a tracked whale makes a significant move, copy the trade at your size. Best-rate routing across all DEXs via DefiLlama — Sentinel never holds your keys.',
+      body: 'When a tracked whale makes a significant move, copy the trade at your size. Best-rate routing across all DEXs via DefiLlama — Hadaleum never holds your keys.',
       cta: 'Start Investing →',
       ctaPath: '/invest',
       Visual: InvestVisual,
@@ -554,13 +554,13 @@ function FeaturesSection() {
 function ComparisonSection() {
   return (
     <section className="py-24 px-8 max-w-4xl mx-auto text-center">
-      <h2 className="font-display text-[36px] font-bold text-text-primary mb-4">How Sentinel compares.</h2>
+      <h2 className="font-display text-[36px] font-bold text-text-primary mb-4">How Hadaleum compares.</h2>
       <p className="text-text-muted text-[16px] mb-16">We built what Nansen should have been.</p>
       <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden text-left">
         {/* Header */}
         <div className="grid grid-cols-3 bg-bg-overlay px-6 py-3 border-b border-border-subtle">
           <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted">Feature</div>
-          <div className="text-[11px] uppercase tracking-[1.2px] text-green font-bold text-center">Sentinel AI</div>
+          <div className="text-[11px] uppercase tracking-[1.2px] text-green font-bold text-center">Hadaleum</div>
           <div className="text-[11px] uppercase tracking-[1.2px] text-text-muted text-center">Nansen AI</div>
         </div>
         {COMPARISON_ROWS.map((row, i) => (
@@ -592,22 +592,105 @@ function TrustStrip() {
   );
 }
 
+function SocialProofBar() {
+  return (
+    <div className="py-5 border-y border-border-subtle bg-bg-base">
+      <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 px-6 text-center">
+        {[
+          { val: '2,796', label: 'whale wallets tracked' },
+          { val: '$0', label: 'in user funds ever held' },
+          { val: 'Claude AI', label: 'signal intelligence' },
+        ].map(({ val, label }) => (
+          <div key={label} className="flex items-center gap-2">
+            <span className="font-display font-bold text-text-primary text-sm">{val}</span>
+            <span className="text-text-muted text-sm">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PricingSection() {
+  const navigate = useNavigate();
+  const FREE_FEATURES = ['Top 10 whale watchlist', '1 AI signal per day', 'ETH Markets', 'News Intelligence'];
+  const PRO_FEATURES = ['Full 2,796 wallet watchlist', 'Unlimited AI signals', 'Non-custodial copy trading', 'Signal history & accuracy', 'Email alerts on signal flips'];
+
+  return (
+    <section id="pricing" className="py-24 px-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Pricing</div>
+          <h2 className="font-display text-[36px] font-bold text-text-primary mb-3">Simple, transparent pricing.</h2>
+          <p className="text-text-muted text-[15px]">Start free. Upgrade when you need the edge.</p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          {/* Free */}
+          <div className="rounded-2xl border border-border-default bg-bg-surface p-6">
+            <h3 className="font-display text-xl font-bold text-text-primary mb-1">Free</h3>
+            <div className="mb-4"><span className="text-3xl font-bold text-text-primary">$0</span><span className="text-text-muted text-sm">/forever</span></div>
+            <ul className="space-y-2.5 mb-6">
+              {FREE_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                  <span className="text-green text-xs">✓</span>{f}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="w-full rounded-xl border border-border-default px-4 py-2.5 text-sm text-text-secondary hover:bg-bg-elevated transition-colors"
+            >
+              Get started free
+            </button>
+          </div>
+          {/* Pro */}
+          <div className="rounded-2xl border-2 border-green/40 bg-bg-surface p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-green text-text-inverse text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl-xl">Pro</div>
+            <h3 className="font-display text-xl font-bold text-text-primary mb-1">Pro</h3>
+            <div className="mb-4">
+              <span className="text-3xl font-bold text-text-primary">$19</span>
+              <span className="text-text-muted text-sm">/month</span>
+              <span className="ml-2 text-[11px] text-green">or $190/year</span>
+            </div>
+            <ul className="space-y-2.5 mb-6">
+              {PRO_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
+                  <span className="text-green text-xs">✓</span>{f}
+                </li>
+              ))}
+            </ul>
+            <MagneticButton
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="w-full rounded-xl bg-green px-4 py-3 text-sm font-semibold text-text-inverse shadow-glow hover:bg-green-bright transition-colors"
+            >
+              Start 7-day free trial
+            </MagneticButton>
+            <p className="text-center text-[11px] text-text-muted mt-2">No credit card required</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Footer() {
   return (
     <footer className="border-t border-border-subtle py-10 px-8">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-2">
           <HexLogo size={20} />
-          <span className="font-display font-bold text-[14px]">SENTINEL AI</span>
-          <span className="text-[12px] text-text-muted ml-4">© 2026 · Built by Shazaib Amlani</span>
+          <span className="font-display font-bold text-[14px]">HADALEUM</span>
+          <span className="text-[12px] text-text-muted ml-4">© 2026 Hadaleum · Not financial advice.</span>
         </div>
         <div className="flex flex-wrap items-center gap-6 text-[13px] text-text-muted">
           <Link to="/watchlist" className="hover:text-text-secondary">Watchlist</Link>
           <Link to="/intelligence" className="hover:text-text-secondary">Intelligence</Link>
           <Link to="/markets" className="hover:text-text-secondary">Markets</Link>
-          <span className="text-[11px] text-text-muted border border-border-subtle rounded px-2 py-0.5">
-            Not financial advice
-          </span>
+          <Link to="/privacy" className="hover:text-text-secondary">Privacy</Link>
+          <Link to="/terms" className="hover:text-text-secondary">Terms</Link>
+          <Link to="/about" className="hover:text-text-secondary">About</Link>
         </div>
       </div>
     </footer>
@@ -618,7 +701,7 @@ export default function LandingPage() {
   const [walletCount, setWalletCount] = useState(94);
 
   useEffect(() => {
-    document.title = 'Sentinel AI — Ethereum Whale Intelligence';
+    document.title = 'Hadaleum — Ethereum Whale Intelligence';
   }, []);
 
   useEffect(() => {
@@ -638,21 +721,22 @@ export default function LandingPage() {
       <ScrollWhalePaths />
       <Navbar />
       <HeroSection walletCount={walletCount} />
-      <TrustStrip />
+      <SocialProofBar />
       <InvestShowcase />
       <ProductPreviewSection />
       <FeaturesSection />
       <ComparisonSection />
+      <PricingSection />
 
       {/* Final CTA — Pro early access */}
       <section className="py-24 px-6 text-center">
         <div className="max-w-2xl mx-auto rounded-3xl border border-green/20 bg-green/[0.04] px-8 py-14">
           <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Coming soon</div>
           <h2 className="font-display text-[34px] md:text-[40px] font-bold text-text-primary leading-tight mb-4">
-            Be first to Sentinel Pro.
+            Be first to Hadaleum Pro.
           </h2>
           <p className="text-[15px] text-text-secondary leading-relaxed max-w-lg mx-auto mb-8">
-            Real-time signals on 800+ whales, unlimited copy-trading, and instant alerts.
+            Full watchlist, unlimited AI signals, non-custodial copy trading, and instant alerts.
             Join the waitlist for launch pricing — no card required.
           </p>
           <ProWaitlist variant="hero" source="landing" />

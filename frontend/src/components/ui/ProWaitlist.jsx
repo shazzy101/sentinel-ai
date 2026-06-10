@@ -69,7 +69,7 @@ function WaitlistModal({ source, onClose, joined, onJoined }) {
             </div>
             <h3 className="font-display text-[18px] font-bold text-text-primary">You're on the list 🎉</h3>
             <p className="text-[13px] text-text-secondary mt-2 leading-relaxed">
-              We'll email you the moment Sentinel Pro opens. Early members get launch pricing.
+              We'll email you the moment Hadaleum Pro opens. Early members get launch pricing.
             </p>
             <button type="button" onClick={onClose}
               className="mt-6 text-[12px] text-text-muted hover:text-text-secondary">Close</button>
@@ -78,7 +78,7 @@ function WaitlistModal({ source, onClose, joined, onJoined }) {
           <div className="px-6 py-6">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-4 w-4 text-green" />
-              <span className="text-[11px] uppercase tracking-[1.5px] text-green font-semibold">Sentinel Pro</span>
+              <span className="text-[11px] uppercase tracking-[1.5px] text-green font-semibold">Hadaleum Pro</span>
             </div>
             <h3 className="font-display text-[20px] font-bold text-text-primary leading-tight">
               Get early access to Pro

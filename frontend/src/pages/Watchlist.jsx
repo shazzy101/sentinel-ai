@@ -87,14 +87,14 @@ export default function WatchlistPage() {
     refetch: refetchCopy,
   } = useCopyTraders({
     enabled: viewMode === 'copy',
-    limit: 50,
+    limit: 300,
     sort: copySortBy,
     strict: strictCopyFilter,
   });
   const { scan, loading: isScanning, activeAddress, stage } = useScanWallet();
   useAlertEngine(wallets);
 
-  useEffect(() => { document.title = 'Watchlist — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'Watchlist — Hadaleum'; }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [signalFilter, setSignalFilter] = useState('all');
@@ -311,9 +311,9 @@ export default function WatchlistPage() {
   return (
     <div className="h-full min-h-0 flex flex-col">
 
-      {/* Filter bar */}
-      <div className="flex-shrink-0 px-4 py-3 md:px-5">
-        <div className="glass-surface flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2.5 shadow-card">
+      {/* Filter bar — z-40 so sort dropdown sits above stat cards */}
+      <div className="flex-shrink-0 px-4 py-3 md:px-5 relative z-40">
+        <div className="glass-surface flex flex-wrap items-center gap-3 rounded-2xl px-4 py-2.5 shadow-card overflow-visible">
         {/* View mode tabs */}
         <div className="flex gap-1 p-0.5 rounded-lg bg-bg-elevated border border-border-subtle">
           {[
@@ -440,7 +440,7 @@ export default function WatchlistPage() {
             </svg>
           </button>
           {sortOpen ? (
-            <div className="absolute top-9 right-0 bg-bg-overlay border border-border-default rounded-lg text-[12px] text-text-secondary min-w-[130px] z-20 shadow-xl overflow-hidden">
+            <div className="absolute top-full mt-1 right-0 bg-bg-overlay border border-border-default rounded-lg text-[12px] text-text-secondary min-w-[160px] z-50 shadow-2xl overflow-hidden">
               {Object.entries(viewMode === 'copy' ? COPY_SORT_LABEL : SORT_LABEL).map(([key, lbl]) => (
                 <button
                   key={key}
@@ -548,7 +548,7 @@ export default function WatchlistPage() {
 
       {/* Quick stats */}
       {viewMode === 'copy' && copyTraders.length > 0 && (
-        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04]">
+        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04] relative z-0">
           <BentoGrid cols={4} className="gap-2">
             <BentoItem delay={0}>
               <StatWidget label="Qualified" value={totalQualified} sub="DEX traders" icon={Users} />
@@ -576,7 +576,7 @@ export default function WatchlistPage() {
         </div>
       )}
       {viewMode === 'watchlist' && wallets.length > 0 && (
-        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04]">
+        <div className="flex-shrink-0 px-5 py-3 border-b border-white/[0.04] relative z-0">
           <BentoGrid cols={4} className="gap-2">
             <BentoItem delay={0}>
               <StatWidget

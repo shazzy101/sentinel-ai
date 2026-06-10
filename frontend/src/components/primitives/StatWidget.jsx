@@ -17,7 +17,7 @@ export default function StatWidget({
   const trendColor = trend > 0 ? 'text-green' : trend < 0 ? 'text-red' : 'text-text-muted';
 
   return (
-    <GlassCard padding={false} className={cn('h-full', className)}>
+    <GlassCard padding={false} hover={false} className={cn('h-full', className)}>
       <div className="p-4 flex flex-col h-full min-h-[88px]">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">

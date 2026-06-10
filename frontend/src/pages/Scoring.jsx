@@ -170,7 +170,7 @@ export default function ScoringPage() {
   const { scan } = useScanWallet();
   const [selectedWallet, setSelectedWallet] = useState(null);
 
-  useEffect(() => { document.title = 'Scoring — Sentinel AI'; }, []);
+  useEffect(() => { document.title = 'Scoring — Hadaleum'; }, []);
 
   const handleScan = useCallback(async (wallet) => {
     if (!wallet?.address) return;

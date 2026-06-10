@@ -8,6 +8,9 @@ import ScoreRing from '../components/ui/ScoreRing';
 import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
 import TextShimmer from '../components/ui/text-shimmer';
 import { apiFetch } from '../lib/apiClient';
+import SignalAccuracyWidget from '../components/intelligence/SignalAccuracyWidget';
+import { supabase } from '../lib/supabase';
+import { TableSkeleton } from '../components/primitives/DataState';
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -109,26 +112,26 @@ function SignalRow({ item }) {
 
 function LoadingState() {
   return (
-    <div className="max-w-3xl mx-auto px-5 py-6 flex flex-col gap-5">
-      <div className="bg-bg-card border border-border-default rounded-xl p-5">
-        <div className="skeleton h-3 w-24 rounded mb-3" />
-        <div className="skeleton h-6 w-2/3 rounded mb-3" />
-        <div className="skeleton h-3 w-40 rounded ml-auto" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-bg-card border border-border-default rounded-xl p-4">
-          <div className="skeleton h-3 w-16 rounded mb-3" />
-          <div className="skeleton h-4 w-full rounded" />
-        </div>
-        <div className="bg-bg-card border border-border-default rounded-xl p-4">
-          <div className="skeleton h-3 w-16 rounded mb-3" />
-          <div className="skeleton h-4 w-full rounded" />
-        </div>
-      </div>
-      <div className="text-[13px] text-text-muted flex items-center gap-2">
+    <div className="max-w-4xl mx-auto px-5 py-6 space-y-5">
+      <div className="flex items-center gap-3 text-sm text-text-muted">
         <Spinner size="sm" />
-        Generating intelligence...
+        <span>Generating Hadaleum intelligence…</span>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border border-border-default bg-bg-surface p-4 space-y-3">
+            <div className="animate-pulse h-2 w-16 rounded bg-white/[0.06]" />
+            <div className="animate-pulse h-7 w-12 rounded bg-white/[0.06]" />
+            <div className="animate-pulse h-2 w-20 rounded bg-white/[0.06]" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-border-default bg-bg-surface p-5 space-y-3">
+        <div className="animate-pulse h-3 w-24 rounded bg-white/[0.06]" />
+        <div className="animate-pulse h-16 w-full rounded bg-white/[0.06]" />
+        <div className="animate-pulse h-3 w-3/4 rounded bg-white/[0.06]" />
+      </div>
+      <TableSkeleton rows={6} cols={4} />
     </div>
   );
 }
@@ -144,7 +147,7 @@ export default function IntelligencePage() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    document.title = 'Intelligence — Sentinel AI';
+    document.title = 'AI Signals — Hadaleum';
   }, []);
 
   const load = useCallback(async (refresh = false) => {
@@ -157,7 +160,8 @@ export default function IntelligencePage() {
         apiFetch('/api/intelligence/signals', { timeoutMs: 20000 }),
       ]);
       if (!summaryBody.success) throw new Error(summaryBody.error?.message || 'Failed to load intelligence');
-      setSummary(summaryBody.data?.summary || null);
+      const summaryData = summaryBody.data?.summary || null;
+      setSummary(summaryData);
       setMeta({
         whale_count: summaryBody.data?.whale_count || 0,
         copy_trader_count: summaryBody.data?.copy_trader_count || 0,
@@ -165,6 +169,25 @@ export default function IntelligencePage() {
       if (signalsBody.success) {
         setWhaleSignals(signalsBody.data?.whale_signals || []);
         setCopySignals(signalsBody.data?.copy_trader_signals || []);
+      }
+      // Log signal to Supabase for accuracy tracking (fire-and-forget)
+      if (summaryData?.signal && supabase) {
+        // Fetch ETH price for logging
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+          .then((r) => r.json())
+          .then((priceData) => {
+            const ethPrice = priceData?.ethereum?.usd;
+            supabase.from('signals').insert({
+              signal_type: summaryData.signal,
+              reasoning: summaryData.summary || summaryData.reasoning || '',
+              eth_price_at_signal: ethPrice || null,
+              whale_trigger_address: signalsBody.data?.whale_signals?.[0]?.wallet_address || null,
+              outcome_24h: 'PENDING',
+              outcome_48h: 'PENDING',
+              outcome_7d: 'PENDING',
+            }).then(() => {}).catch(() => {});
+          })
+          .catch(() => {});
       }
     } catch (err) {
       setError(err.message);
@@ -217,12 +240,15 @@ export default function IntelligencePage() {
         </div>
       ))}
     </div>
-    <div className="max-w-3xl mx-auto px-5 py-6 flex flex-col gap-5">
+    <div className="max-w-4xl mx-auto px-4 md:px-5 py-6 flex flex-col gap-5">
       {error ? (
         <div className="bg-bg-card border border-red-border rounded-xl p-4 text-red text-[13px]">
           {error}
         </div>
       ) : null}
+
+      {/* Signal Accuracy Widget — top of page */}
+      <SignalAccuracyWidget />
 
       <motion.section
         initial={{ opacity: 0, y: 12 }}
@@ -347,7 +373,7 @@ export default function IntelligencePage() {
       <div className="bg-bg-surface border border-green/20 rounded-xl p-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-[14px] text-text-primary font-medium">Have a question about today's signals?</p>
-          <p className="text-[13px] text-text-muted mt-1">Ask Sentinel AI for a deeper analysis.</p>
+          <p className="text-[13px] text-text-muted mt-1">Ask Hadaleum AI for a deeper analysis.</p>
         </div>
         <Button variant="primary" onClick={() => navigate('/ask')}>
           Ask Sentinel →

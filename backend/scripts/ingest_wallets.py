@@ -25,21 +25,34 @@ from datetime import datetime, timezone
 from chains.ethereum import get_eth_balance, get_eth_transactions_since
 from scoring.engine import score_wallet
 from db.supabase import supabase_client
-from data.wallets import SMART_MONEY_WALLETS
 
 DEBUG_LOG_PATH = "/Users/shazaibamlani/Sentinel/.cursor/debug-10b0bc.log"
 TX_HISTORY_DAYS = 90
 
-# Use verified smart money wallets — convert to standard format
-SEED_WALLETS = [
-    {
-        "label": w["label"],
-        "address": w["address"],
-        "chain": "ethereum",
-        "tags": w.get("tags", ["ethereum", "smart-money"]),
-    }
-    for w in SMART_MONEY_WALLETS
-]
+SEED_FILE = Path(__file__).resolve().parent.parent / "data" / "world_whales.json"
+
+
+def load_seed_wallets() -> list[dict]:
+    if SEED_FILE.exists():
+        with SEED_FILE.open("r", encoding="utf-8") as f:
+            rows = json.load(f)
+        wallets = [
+            {
+                "label": row["label"],
+                "address": row["address"],
+                "chain": "ethereum",
+                "tags": row.get("tags", ["ethereum", "smart-money"]),
+            }
+            for row in rows
+        ]
+        if wallets:
+            return wallets
+    return [
+        {"label": "Smart Money - DeFi Whale", "address": "0x28C6c06298d514Db089934071355E5743bf21d60", "chain": "ethereum", "tags": ["ethereum", "smart-money"]},
+    ]
+
+
+SEED_WALLETS = load_seed_wallets()
 
 stats = {
     "wallets_processed": 0,
