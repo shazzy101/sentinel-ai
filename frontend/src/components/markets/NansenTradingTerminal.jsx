@@ -100,6 +100,7 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
   const total = bullish + bearish || 1;
   const bullishPct = Math.round((bullish / total) * 100);
   const bearishPct = 100 - bullishPct;
+  const hasSentiment = (bullish + bearish) > 0;
 
   useEffect(() => {
     if (!wallet.address) { setTokenBal(null); return; }
@@ -245,14 +246,20 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
 
         <div className="mt-auto pt-3 border-t border-white/[0.06]">
           <div className="text-[9px] uppercase tracking-widest text-text-muted mb-2">Whale Sentiment</div>
-          <div className="flex h-2 rounded-full overflow-hidden w-full">
-            <div className="bg-green transition-all" style={{ width: `${bullishPct}%` }} />
-            <div className="bg-red transition-all" style={{ width: `${bearishPct}%` }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[11px] text-green">{bullishPct}% Bullish</span>
-            <span className="text-[11px] text-red">{bearishPct}% Bearish</span>
-          </div>
+          {hasSentiment ? (
+            <>
+              <div className="flex h-2 rounded-full overflow-hidden w-full">
+                <div className="bg-green transition-all" style={{ width: `${bullishPct}%` }} />
+                <div className="bg-red transition-all" style={{ width: `${bearishPct}%` }} />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[11px] text-green">{bullishPct}% Bullish</span>
+                <span className="text-[11px] text-red">{bearishPct}% Bearish</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-[11px] text-text-muted py-2">Track wallets to see their sentiment</div>
+          )}
         </div>
       </div>
     </GlassCard>

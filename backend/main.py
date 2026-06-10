@@ -630,8 +630,8 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
 
 
 @app.get("/api/scan/{address}")
-async def scan_wallet_get(address: str, label: Optional[str] = None):
-    return await scan_wallet(WalletScanRequest(address=address, label=label))
+async def scan_wallet_get(request: Request, address: str, label: Optional[str] = None):
+    return await scan_wallet(request, WalletScanRequest(address=address, label=label))
 
 
 @app.post("/api/scan/{address}/refresh")

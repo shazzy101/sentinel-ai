@@ -231,6 +231,18 @@ export default function CopyTradingIntelligence() {
     return () => { cancelled = true; };
   }, []);
 
+  const deduplicatedMoves = useMemo(() => {
+    return copyMoves.reduce((acc, move) => {
+      const key = `${move.trader_address}-${move.sold}-${move.bought}`;
+      const existing = acc.find(m =>
+        `${m.trader_address}-${m.sold}-${m.bought}` === key &&
+        Math.abs(new Date(m.time) - new Date(move.time)) < 10 * 60 * 1000
+      );
+      if (!existing) acc.push(move);
+      return acc;
+    }, []);
+  }, [copyMoves]);
+
   const lastMoveByTrader = useMemo(() => {
     const map = {};
     for (const m of copyMoves) {
@@ -260,7 +272,7 @@ export default function CopyTradingIntelligence() {
   }
 
   const hasWatchlistActivity = watchlistTxs.length > 0;
-  const hasCopyActivity = copyMoves.length > 0;
+  const hasCopyActivity = deduplicatedMoves.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -308,7 +320,7 @@ export default function CopyTradingIntelligence() {
             No recent swaps from top copy traders yet. The feed refreshes every few minutes from on-chain token transfers.
           </div>
         ) : (
-          copyMoves.map((m) => (
+          deduplicatedMoves.map((m) => (
             <MoveRow key={m.tx_hash} move={m} onCopy={handleCopyMove} />
           ))
         )}
