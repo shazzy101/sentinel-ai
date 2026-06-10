@@ -5,10 +5,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Syne', 'Geist Variable', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
-        body: ['Geist Variable', 'Inter', 'sans-serif'],
-        sans: ['Geist Variable', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Bricolage Grotesque', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],

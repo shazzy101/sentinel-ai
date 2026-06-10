@@ -1,5 +1,4 @@
 @import "tw-animate-css";
-@import "@fontsource-variable/geist";
 
 @tailwind base;
 @tailwind components;
@@ -17,8 +16,8 @@
   }
 
   html {
-    font-family: 'Geist Variable', 'Inter', system-ui, sans-serif;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'ss02';
     text-rendering: optimizeLegibility;
   }
 
@@ -96,25 +95,25 @@
     --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.48), 0 8px 16px rgba(0, 0, 0, 0.24);
     --shadow-glow: 0 0 0 1px rgba(0, 217, 146, 0.12), 0 8px 32px rgba(0, 217, 146, 0.08);
 
-    /* ── Semantic colors (refined contrast) ── */
-    --background: #070708;
-    --foreground: #F4F4F5;
-    --card: #0E0E11;
-    --card-foreground: #F4F4F5;
-    --popover: #121216;
-    --popover-foreground: #F4F4F5;
+    /* ── Semantic colors (deep ocean dark) ── */
+    --background: #050509;
+    --foreground: #EEEEF4;
+    --card: #0C0C16;
+    --card-foreground: #EEEEF4;
+    --popover: #0F0F1A;
+    --popover-foreground: #EEEEF4;
     --primary: #00D992;
     --primary-foreground: #041510;
-    --secondary: #16161A;
-    --secondary-foreground: #F4F4F5;
-    --muted: #16161A;
-    --muted-foreground: #71717A;
-    --accent: #1A1A1F;
-    --accent-foreground: #F4F4F5;
+    --secondary: #0F0F1A;
+    --secondary-foreground: #EEEEF4;
+    --muted: #0F0F1A;
+    --muted-foreground: #606070;
+    --accent: #131322;
+    --accent-foreground: #EEEEF4;
     --destructive: #EF4444;
-    --destructive-foreground: #F4F4F5;
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.08);
+    --destructive-foreground: #EEEEF4;
+    --border: rgba(130, 130, 200, 0.09);
+    --input: rgba(130, 130, 200, 0.09);
     --ring: #00D992;
     --chart-1: #00D992;
     --chart-2: #627EEA;
@@ -123,61 +122,61 @@
     --chart-5: #EF4444;
 
     /* ── Structural surface/text/border tokens (theme-aware) ── */
-    /* Dark theme (default) */
-    --bg-base: #070708;
-    --bg-surface: #0C0C0F;
-    --bg-card: #0E0E11;
-    --bg-elevated: #141418;
-    --bg-overlay: #121216;
-    --text-primary: #F4F4F5;
-    --text-secondary: #A1A1AA;
-    --text-muted: #71717A;
-    --text-inverse: #070708;
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
-    --glass-bg: rgba(14, 14, 17, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-inset: rgba(255, 255, 255, 0.04);
-    --surface-hover: rgba(255, 255, 255, 0.04);
+    /* Dark theme (default) — deep navy-black "hadal zone" */
+    --bg-base: #050509;
+    --bg-surface: #08080F;
+    --bg-card: #0C0C16;
+    --bg-elevated: #11111E;
+    --bg-overlay: #0F0F1A;
+    --text-primary: #EEEEF4;
+    --text-secondary: #9898A8;
+    --text-muted: #606070;
+    --text-inverse: #050509;
+    --border-subtle: rgba(130, 130, 200, 0.05);
+    --border-default: rgba(130, 130, 200, 0.09);
+    --border-strong: rgba(130, 130, 200, 0.16);
+    --glass-bg: rgba(8, 8, 15, 0.76);
+    --glass-border: rgba(130, 130, 200, 0.08);
+    --glass-inset: rgba(130, 130, 200, 0.04);
+    --surface-hover: rgba(130, 130, 200, 0.04);
     color-scheme: dark;
   }
 
   /* ── Force-dark scope (marketing/landing keeps its dark design in any theme) ── */
   .force-dark {
-    --background: #070708;
-    --foreground: #F4F4F5;
-    --card: #0E0E11;
-    --card-foreground: #F4F4F5;
-    --popover: #121216;
-    --popover-foreground: #F4F4F5;
+    --background: #050509;
+    --foreground: #EEEEF4;
+    --card: #0C0C16;
+    --card-foreground: #EEEEF4;
+    --popover: #0F0F1A;
+    --popover-foreground: #EEEEF4;
     --primary: #00D992;
     --primary-foreground: #041510;
-    --secondary: #16161A;
-    --secondary-foreground: #F4F4F5;
-    --muted: #16161A;
-    --muted-foreground: #71717A;
-    --accent: #1A1A1F;
-    --accent-foreground: #F4F4F5;
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.08);
+    --secondary: #0F0F1A;
+    --secondary-foreground: #EEEEF4;
+    --muted: #0F0F1A;
+    --muted-foreground: #606070;
+    --accent: #131322;
+    --accent-foreground: #EEEEF4;
+    --border: rgba(130, 130, 200, 0.09);
+    --input: rgba(130, 130, 200, 0.09);
     --ring: #00D992;
-    --bg-base: #070708;
-    --bg-surface: #0C0C0F;
-    --bg-card: #0E0E11;
-    --bg-elevated: #141418;
-    --bg-overlay: #121216;
-    --text-primary: #F4F4F5;
-    --text-secondary: #A1A1AA;
-    --text-muted: #71717A;
-    --text-inverse: #070708;
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border-default: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
-    --glass-bg: rgba(14, 14, 17, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-inset: rgba(255, 255, 255, 0.04);
-    --surface-hover: rgba(255, 255, 255, 0.04);
+    --bg-base: #050509;
+    --bg-surface: #08080F;
+    --bg-card: #0C0C16;
+    --bg-elevated: #11111E;
+    --bg-overlay: #0F0F1A;
+    --text-primary: #EEEEF4;
+    --text-secondary: #9898A8;
+    --text-muted: #606070;
+    --text-inverse: #050509;
+    --border-subtle: rgba(130, 130, 200, 0.05);
+    --border-default: rgba(130, 130, 200, 0.09);
+    --border-strong: rgba(130, 130, 200, 0.16);
+    --glass-bg: rgba(8, 8, 15, 0.76);
+    --glass-border: rgba(130, 130, 200, 0.08);
+    --glass-inset: rgba(130, 130, 200, 0.04);
+    --surface-hover: rgba(130, 130, 200, 0.04);
     color-scheme: dark;
     background: var(--bg-base);
     color: var(--text-primary);
@@ -223,6 +222,12 @@
     --surface-hover: rgba(0, 0, 0, 0.04);
     color-scheme: light;
   }
+}
+
+/* ── Whale ticker scroll ── */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* ── Noise texture overlay ── */

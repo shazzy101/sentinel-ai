@@ -134,6 +134,53 @@ function ProductMockup() {
   );
 }
 
+/* ─── Animated whale ticker ──────────────────────────── */
+const TICKER_WHALES = [
+  { name: 'Wintermute',   addr: '0x3f5c…d60', score: 89, signal: 'BULLISH' },
+  { name: 'Paradigm',     addr: '0xd551…4ff', score: 82, signal: 'BULLISH' },
+  { name: 'Jump Trading', addr: '0x28c6…a28', score: 76, signal: 'BULLISH' },
+  { name: 'a16z Crypto',  addr: '0x4e9c…a67', score: 71, signal: 'NEUTRAL' },
+  { name: 'Dragonfly',    addr: '0x564…ced',  score: 63, signal: 'BEARISH' },
+  { name: 'Vitalik.eth',  addr: '0xd8dA…4955', score: 91, signal: 'BULLISH' },
+];
+
+function WhaleTicker() {
+  const doubled = [...TICKER_WHALES, ...TICKER_WHALES];
+  const sigCls = {
+    BULLISH: { chip: 'bg-green-dim border-green-border text-green', dot: 'bg-green' },
+    BEARISH: { chip: 'bg-red-dim border-red-border text-red', dot: 'bg-red' },
+    NEUTRAL: { chip: 'bg-amber-dim border-amber-border text-amber', dot: 'bg-amber' },
+  };
+  const scoreColor = { BULLISH: 'text-green', BEARISH: 'text-red', NEUTRAL: 'text-amber' };
+
+  return (
+    <div className="py-6 border-y border-border-subtle overflow-hidden">
+      <div className="text-[9px] uppercase tracking-[2px] text-green/60 text-center mb-4 font-mono">
+        Live whale intelligence · Tracking now
+      </div>
+      <div className="relative">
+        <div className="flex gap-3" style={{ animation: 'ticker-scroll 30s linear infinite', width: 'max-content' }}>
+          {doubled.map((w, i) => (
+            <div key={i} className="flex-shrink-0 bg-bg-card border border-border-subtle rounded-xl px-4 py-3 min-w-[162px]">
+              <div className="text-[11px] font-medium text-text-secondary mb-0.5">{w.name}</div>
+              <div className="text-[9px] text-text-muted font-mono mb-2.5">{w.addr}</div>
+              <div className="flex items-center justify-between">
+                <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${sigCls[w.signal].chip}`}>
+                  <span className={`w-1 h-1 rounded-full ${sigCls[w.signal].dot}`} />
+                  {w.signal}
+                </span>
+                <span className={`text-[11px] font-mono font-bold ${scoreColor[w.signal]}`}>{w.score}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-bg-base to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-bg-base to-transparent pointer-events-none z-10" />
+      </div>
+    </div>
+  );
+}
+
 /* ─── Feature block visuals ───────────────────────────── */
 function WatchlistVisual() {
   const [loaded, setLoaded] = useState(false);
@@ -834,6 +881,7 @@ export default function LandingPage() {
       <ScrollWhalePaths />
       <Navbar />
       <HeroSection walletCount={walletCount} />
+      <WhaleTicker />
       <SocialProofBar />
       <InvestShowcase />
       <ProductPreviewSection />
