@@ -1,18 +1,23 @@
 /**
  * Merge dataset metrics with live on-chain values.
- * Only fills max_drawdown + avg_duration when the dataset left them null —
- * never overwrite win rate, profit factor, or track record with live zeros.
+ * Live values replace nulls or backend estimates for drawdown/duration only —
+ * never overwrite win rate, profit factor, or track record.
  */
-export function mergeCopyTraderMetrics(baseMetrics, liveMetrics) {
+export function mergeCopyTraderMetrics(baseMetrics, liveMetrics, metricsMeta = {}) {
   const base = baseMetrics || {};
-  if (!liveMetrics) return base;
+  const meta = { ...(metricsMeta || {}) };
+  if (!liveMetrics) return { metrics: base, metricsMeta: meta };
+
   const merged = { ...base };
   for (const key of ['max_drawdown_pct', 'avg_trade_duration_hrs']) {
-    if (base[key] == null && liveMetrics[key] != null) {
+    if (liveMetrics[key] == null) continue;
+    const estimated = meta[key] === 'estimated';
+    if (base[key] == null || estimated) {
       merged[key] = liveMetrics[key];
+      meta[key] = 'on_chain';
     }
   }
-  return merged;
+  return { metrics: merged, metricsMeta: meta };
 }
 
 /**

@@ -21,7 +21,12 @@ from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transact
 from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
 from integrations import dune
 from responses import error, success
-from performance import build_copy_trader_sparkline, compute_ytd_growth, downsample_sparkline
+from performance import (
+    build_copy_trader_sparkline,
+    compute_ytd_growth,
+    downsample_sparkline,
+    estimate_supplemental_metrics,
+)
 from scoring.engine import score_wallet
 
 
@@ -1872,9 +1877,15 @@ def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
 def _enrich_copy_trader(wallet: dict) -> dict:
     """Attach performance sparkline and human-readable label for list/detail views."""
     sparkline, return_pct = build_copy_trader_sparkline(wallet)
-    out = {**wallet}
+    metrics, metrics_meta = estimate_supplemental_metrics(
+        wallet.get("metrics") or {},
+        wallet.get("on_chain_data") or {},
+    )
+    out = {**wallet, "metrics": metrics}
     out["performance_sparkline"] = sparkline
     out["estimated_return_pct"] = return_pct
+    if metrics_meta:
+        out["metrics_meta"] = metrics_meta
     # Replace generic "Dune DEX Trader #0" labels with ranked display names
     out["label"] = _copy_trader_label(wallet)
     return out

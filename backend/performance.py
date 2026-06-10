@@ -100,6 +100,38 @@ def downsample_sparkline(sparkline: list[dict], max_points: int = 20) -> list[di
     return sampled
 
 
+def estimate_supplemental_metrics(metrics: dict, on_chain: dict) -> tuple[dict, dict]:
+    """
+    Fill max_drawdown_pct and avg_trade_duration_hrs when the Dune export left them null.
+    Uses win rate, profit factor, and trades/day — same signals as the offline ranker.
+    """
+    import math
+
+    m = dict(metrics or {})
+    oc = on_chain or {}
+    meta: dict[str, str] = {}
+
+    if m.get("max_drawdown_pct") is None:
+        wr = float(m.get("win_rate_pct") or 0) / 100
+        pf = min(float(m.get("profit_factor") or 1), 15)
+        if wr > 0:
+            dd = 30 - wr * 22 - math.log1p(pf) * 2.2
+            m["max_drawdown_pct"] = round(max(3.0, min(35.0, dd)), 1)
+            meta["max_drawdown_pct"] = "estimated"
+
+    if m.get("avg_trade_duration_hrs") is None:
+        tpd = float(oc.get("trades_per_day") or 0)
+        if tpd > 0:
+            dur = min(168.0, max(2.0, (24 / tpd) * 1.2))
+            m["avg_trade_duration_hrs"] = round(dur, 1)
+            meta["avg_trade_duration_hrs"] = "estimated"
+        elif m.get("track_record_days"):
+            m["avg_trade_duration_hrs"] = 24.0
+            meta["avg_trade_duration_hrs"] = "estimated"
+
+    return m, meta
+
+
 def build_copy_trader_sparkline(wallet: dict) -> tuple[list[dict], float | None]:
     """
     Estimated cumulative P&L curve from Dune DEX trade metrics.

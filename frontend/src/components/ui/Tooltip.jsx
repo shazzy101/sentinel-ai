@@ -1,20 +1,77 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-export default function Tooltip({ content, children }) {
-  const [open, setOpen] = useState(false);
+export default function Tooltip({ content, children, placement = 'top' }) {
+  const triggerRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  const updatePosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const gap = 6;
+    if (placement === 'bottom') {
+      setPos({
+        top: r.bottom + gap,
+        left: r.left + r.width / 2,
+        transform: 'translate(-50%, 0)',
+      });
+    } else {
+      setPos({
+        top: r.top - gap,
+        left: r.left + r.width / 2,
+        transform: 'translate(-50%, -100%)',
+      });
+    }
+  }, [placement]);
+
+  const show = () => {
+    updatePosition();
+    setVisible(true);
+  };
+
+  const hide = () => setVisible(false);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    const onScroll = () => hide();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', hide);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', hide);
+    };
+  }, [visible]);
 
   return (
-    <span
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {children}
-      {open ? (
-        <span className="absolute -top-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none whitespace-nowrap bg-bg-overlay border border-border-default rounded px-2 py-1 text-[11px] text-text-secondary">
+    <>
+      <span
+        ref={triggerRef}
+        className="inline-flex max-w-full"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+      >
+        {children}
+      </span>
+      {visible && pos && createPortal(
+        <span
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            transform: pos.transform,
+            zIndex: 9999,
+          }}
+          className="pointer-events-none max-w-xs rounded-lg border border-border-default bg-bg-overlay px-2.5 py-1.5 text-[11px] text-text-secondary shadow-card whitespace-normal break-words"
+        >
           {content}
-        </span>
-      ) : null}
-    </span>
+        </span>,
+        document.body,
+      )}
+    </>
   );
 }

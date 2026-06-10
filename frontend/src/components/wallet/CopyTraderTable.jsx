@@ -1,36 +1,19 @@
-import { useState } from 'react';
 import GlassCard from '../primitives/GlassCard';
 import Spinner from '../ui/Spinner';
 import Button from '../ui/Button';
+import ColumnTooltip from '../ui/ColumnTooltip';
 import CopyTraderRow from './CopyTraderRow';
 
 const TOOLTIPS = {
-  'Win%': 'Percentage of trades closed at a profit. 60%+ is considered strong.',
-  'PF': 'Profit Factor — total gains divided by total losses. 2.0+ means you make $2 for every $1 lost.',
-  'Max DD': 'Maximum Drawdown — largest peak-to-trough loss. Lower is better.',
-  'Duration': 'Average time a position is held. Longer holds can indicate conviction.',
-  'Track': 'Track Record — days of verified on-chain trading history.',
-  'Score': 'Hadaleum composite score (0–100) combining win rate, profit factor, drawdown, and track record.',
+  Trader: 'Ranked DEX wallet. ENS name when resolved; otherwise a shortened address. Click a row for full metrics and chart.',
+  'Win%': 'Share of closed DEX trades that were profitable (on-chain history). 60%+ is strong; 80%+ is elite.',
+  PF: 'Profit factor — gross wins ÷ gross losses. 2.0+ means $2 gained for every $1 lost. Very high values often mean selective, low-frequency trading.',
+  'Max DD': 'Maximum drawdown — largest peak-to-trough decline in cumulative P&L. Under 15% is ideal for copy-trading. Shown as ~ when estimated from win rate and profit factor.',
+  Duration: 'Average hours each position is held before closing. Longer holds (8h+) suggest conviction; very short holds may indicate scalping. Shown as ~ when estimated from trade frequency.',
+  Track: 'Days of verified on-chain DEX activity between first and last trade. 90+ days filters out one-hit wonders.',
+  'P&L Trend': 'Backtested year-to-date return from win rate and profit factor, plus a dashed 90-day forward outlook. Modelled — not a guarantee of future results.',
+  Score: 'Hadaleum copy-trading score (0–100) weighting win rate, profit factor, drawdown, average hold time, and track record.',
 };
-
-function TooltipHeader({ label, tip, align = 'right' }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div
-      className={`relative flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''} cursor-default`}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      <span>{label}</span>
-      <span className="text-[8px] text-text-muted border border-border-subtle rounded-full w-3 h-3 flex items-center justify-center flex-shrink-0">?</span>
-      {show && (
-        <div className="absolute bottom-full right-0 mb-1.5 z-50 w-52 rounded-xl border border-border-default bg-bg-overlay px-3 py-2 shadow-card text-[11px] text-text-secondary leading-relaxed text-left pointer-events-none">
-          {tip}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function HeaderRow() {
   return (
@@ -39,14 +22,14 @@ function HeaderRow() {
       style={{ gridTemplateColumns: '36px minmax(140px,1.2fr) 72px 80px 80px 80px 88px 100px 90px' }}
     >
       <div>#</div>
-      <div>Trader</div>
-      <div className="text-right"><TooltipHeader label="Win%" tip={TOOLTIPS['Win%']} /></div>
-      <div className="text-right"><TooltipHeader label="PF" tip={TOOLTIPS['PF']} /></div>
-      <div className="text-right"><TooltipHeader label="Max DD" tip={TOOLTIPS['Max DD']} /></div>
-      <div className="text-right"><TooltipHeader label="Duration" tip={TOOLTIPS['Duration']} /></div>
-      <div className="text-right"><TooltipHeader label="Track" tip={TOOLTIPS['Track']} /></div>
-      <div className="text-right">P&L Trend</div>
-      <div className="text-right"><TooltipHeader label="Score" tip={TOOLTIPS['Score']} /></div>
+      <div><ColumnTooltip label="Trader" tip={TOOLTIPS.Trader} align="left" /></div>
+      <div className="text-right"><ColumnTooltip label="Win%" tip={TOOLTIPS['Win%']} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="PF" tip={TOOLTIPS.PF} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="Max DD" tip={TOOLTIPS['Max DD']} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="Duration" tip={TOOLTIPS.Duration} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="Track" tip={TOOLTIPS.Track} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="P&L Trend" tip={TOOLTIPS['P&L Trend']} align="right" /></div>
+      <div className="text-right"><ColumnTooltip label="Score" tip={TOOLTIPS.Score} align="right" /></div>
     </div>
   );
 }

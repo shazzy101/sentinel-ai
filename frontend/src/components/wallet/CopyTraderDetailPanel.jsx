@@ -29,9 +29,9 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
   const [liveMetrics, setLiveMetrics] = useState(null);
   const [liveState, setLiveState] = useState('idle'); // idle | loading | done | unavailable
 
-  const m = useMemo(
-    () => mergeCopyTraderMetrics(detail?.metrics, liveMetrics),
-    [detail?.metrics, liveMetrics],
+  const { metrics: m, metricsMeta } = useMemo(
+    () => mergeCopyTraderMetrics(detail?.metrics, liveMetrics, detail?.metrics_meta),
+    [detail?.metrics, detail?.metrics_meta, liveMetrics],
   );
   const oc = detail?.on_chain_data || {};
 
@@ -41,7 +41,8 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
   const up = (outlook.ytdReturnPct ?? 0) >= 0;
 
   const needsLiveMetrics =
-    (detail?.metrics?.max_drawdown_pct == null || detail?.metrics?.avg_trade_duration_hrs == null);
+    detail?.metrics_meta?.max_drawdown_pct === 'estimated'
+    || detail?.metrics_meta?.avg_trade_duration_hrs === 'estimated';
 
   useEffect(() => {
     setDetail(wallet);
@@ -138,13 +139,25 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
               const isLiveKey = key === 'max_drawdown_pct' || key === 'avg_trade_duration_hrs';
               const isComputing = val == null && isLiveKey && liveState === 'loading';
               const isGood = val != null && good(val);
+              const source = metricsMeta?.[key];
               return (
                 <div key={key} className="rounded-xl border border-border-subtle bg-bg-elevated/50 px-3 py-2.5">
                   <div className="text-[9px] uppercase tracking-widest text-text-muted">{label}</div>
                   <div className={`font-mono text-[15px] font-bold mt-0.5 ${
                     val == null ? 'text-text-muted' : isGood ? 'text-green' : 'text-text-primary'
                   }`}>
-                    {val != null ? fmt(val) : isComputing ? 'Computing…' : '—'}
+                    {val != null ? (
+                      <>
+                        {source === 'estimated' && <span className="text-text-muted font-normal">~</span>}
+                        {fmt(val)}
+                        {source === 'estimated' && (
+                          <span className="text-[9px] font-normal text-text-muted ml-1">est.</span>
+                        )}
+                        {source === 'on_chain' && isLiveKey && (
+                          <span className="text-[9px] font-normal text-text-muted ml-1">on-chain</span>
+                        )}
+                      </>
+                    ) : isComputing ? 'Computing…' : '—'}
                   </div>
                 </div>
               );
@@ -152,7 +165,7 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
           </div>
           {liveState === 'unavailable' && needsLiveMetrics && (
             <p className="text-[10px] text-text-muted mt-2 leading-relaxed">
-              Drawdown & duration need a longer on-chain trade history than this wallet currently exposes.
+              On-chain drawdown and duration could not be computed — showing estimates from win rate and trade frequency.
             </p>
           )}
         </div>

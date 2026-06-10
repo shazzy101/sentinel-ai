@@ -11,6 +11,7 @@ function fmtMetric(v, suffix = '') {
 
 function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
   const m = wallet.metrics || {};
+  const meta = wallet.metrics_meta || {};
   const oc = wallet.on_chain_data || {};
   const sparkData = useMemo(() => resolveSparklineData(wallet), [wallet]);
   const returnPct = sparklineReturnPct(wallet);
@@ -79,13 +80,21 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
       </span>
 
       <span className="font-mono text-[12px] text-text-secondary text-right">
-        {m.max_drawdown_pct != null ? `${m.max_drawdown_pct}%` : '—'}
+        {m.max_drawdown_pct != null ? (
+          <>
+            {meta.max_drawdown_pct === 'estimated' && <span className="text-text-muted">~</span>}
+            {m.max_drawdown_pct}%
+          </>
+        ) : '—'}
       </span>
 
       <span className="font-mono text-[12px] text-text-secondary text-right">
-        {m.avg_trade_duration_hrs != null
-          ? `${Number(m.avg_trade_duration_hrs).toFixed(0)}h`
-          : '—'}
+        {m.avg_trade_duration_hrs != null ? (
+          <>
+            {meta.avg_trade_duration_hrs === 'estimated' && <span className="text-text-muted">~</span>}
+            {Number(m.avg_trade_duration_hrs).toFixed(0)}h
+          </>
+        ) : '—'}
       </span>
 
       <span className="font-mono text-[12px] text-text-secondary text-right">
