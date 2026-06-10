@@ -17,13 +17,7 @@ export default function AuthGuard({ children }) {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7399/ingest/432bc0e8-623d-4115-8a69-0cd7624710ad',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'40c5c6'},body:JSON.stringify({sessionId:'40c5c6',location:'AuthGuard.jsx:effect',message:'auth state',data:{loading,hasSession:!!session,path:location.pathname},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
     if (supabase && !loading && !session) {
-      // #region agent log
-      fetch('http://127.0.0.1:7399/ingest/432bc0e8-623d-4115-8a69-0cd7624710ad',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'40c5c6'},body:JSON.stringify({sessionId:'40c5c6',location:'AuthGuard.jsx:navigate',message:'redirecting to login',data:{from:location.pathname},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       navigate(`/login?next=${encodeURIComponent(location.pathname)}`, { replace: true })
     }
   }, [loading, session]) // eslint-disable-line react-hooks/exhaustive-deps
