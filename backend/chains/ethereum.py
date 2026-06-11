@@ -289,6 +289,7 @@ async def get_eth_token_transfers(address: str, limit: int = 20) -> list[dict]:
                     "hash": tx.get("hash"),
                     "token_name": tx.get("tokenName"),
                     "token_symbol": tx.get("tokenSymbol"),
+                    "contract_address": (tx.get("contractAddress") or "").lower() or None,
                     "value": value,
                     "from_addr": tx.get("from"),
                     "to_addr": tx.get("to"),

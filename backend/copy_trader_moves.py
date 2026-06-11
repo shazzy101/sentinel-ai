@@ -89,6 +89,8 @@ def _swaps_from_transfers(address: str, transfers: list[dict], eth_usd: float = 
             "tx_hash": tx_hash,
             "sold": sold,
             "bought": bought,
+            "sold_address": sold_leg.get("contract_address"),
+            "bought_address": bought_leg.get("contract_address"),
             "sold_amount": round(sold_amt, 6),
             "bought_amount": round(bought_amt, 6),
             "amount_usd": round(amount_usd, 2) if amount_usd is not None else None,

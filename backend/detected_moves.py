@@ -81,24 +81,66 @@ async def _fetch_prices(coin_ids: list[str]) -> dict[str, float]:
         return {}
 
 
-def _token_to_track(action: str, bought: str | None, sold: str | None) -> str | None:
-    action = (action or "").lower()
-    bought = (bought or "").upper()
-    sold = (sold or "").upper()
-    if action == "take_profit" and sold and sold not in ("USDC", "USDT", "DAI"):
-        return sold
-    if bought and bought not in ("USDC", "USDT", "DAI"):
-        return bought
-    return sold if sold and sold not in ("USDC", "USDT", "DAI") else None
+# Base/quote assets — never the "bet". The alt on the other side is what we score.
+_BASE_TOKENS = frozenset({
+    "USDC", "USDT", "DAI", "BUSD", "FRAX", "TUSD", "USDP", "LUSD", "GHO", "PYUSD", "FDUSD",
+    "WETH", "ETH",
+})
 
 
-def _classify_outcome(action: str, return_pct: float) -> str:
-    if action == "take_profit":
-        if return_pct >= WIN_THRESHOLD_PCT:
-            return "WIN"
-        if return_pct <= LOSS_THRESHOLD_PCT:
-            return "LOSS"
-        return "NEUTRAL"
+def _tracked(move: dict) -> tuple[str | None, str | None]:
+    """The alt token a trade bet on (symbol, contract_address).
+
+    If the trader bought an alt → track that (betting up). If they sold an alt
+    into a base → track the alt (its move after exit, sign-adjusted at scoring).
+    Base↔base swaps (e.g. WETH↔USDC) aren't a directional bet → skip.
+    """
+    bought = (move.get("bought") or "").upper()
+    sold = (move.get("sold") or "").upper()
+    if bought and bought not in _BASE_TOKENS:
+        return bought, move.get("bought_address")
+    if sold and sold not in _BASE_TOKENS:
+        return sold, move.get("sold_address")
+    return None, None
+
+
+async def _fetch_prices_by_contract(addresses: list[str]) -> dict[str, float]:
+    """USD prices for arbitrary ERC-20s via CoinGecko token_price (keyed by addr)."""
+    addrs = list(dict.fromkeys([a.lower() for a in addresses if a]))
+    if not addrs:
+        return {}
+    out: dict[str, float] = {}
+    for i in range(0, len(addrs), 100):
+        chunk = addrs[i : i + 100]
+        url = (
+            "https://api.coingecko.com/api/v3/simple/token_price/ethereum"
+            f"?contract_addresses={','.join(chunk)}&vs_currencies=usd"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                res = await client.get(url)
+                res.raise_for_status()
+                data = res.json()
+            for a in chunk:
+                if a in data and data[a].get("usd"):
+                    out[a] = float(data[a]["usd"])
+        except Exception as e:
+            log_error("coingecko_token_price_failed", error=str(e)[:160])
+    return out
+
+
+def _price_of(symbol: str | None, address: str | None,
+              id_prices: dict[str, float], addr_prices: dict[str, float]) -> float | None:
+    """Resolve a token's USD price — major-symbol id first, else contract address."""
+    cid = TOKEN_COINGECKO.get((symbol or "").upper())
+    if cid and id_prices.get(cid):
+        return id_prices[cid]
+    if address and addr_prices.get(address.lower()):
+        return addr_prices[address.lower()]
+    return None
+
+
+def _classify_outcome(return_pct: float) -> str:
     if return_pct >= WIN_THRESHOLD_PCT:
         return "WIN"
     if return_pct <= LOSS_THRESHOLD_PCT:
@@ -106,13 +148,18 @@ def _classify_outcome(action: str, return_pct: float) -> str:
     return "NEUTRAL"
 
 
-def _return_pct(action: str, price_at: float, price_after: float) -> float:
+def _return_pct(sign: int, price_at: float, price_after: float) -> float:
+    """Signed return: +1 = bought the alt (win if up), -1 = sold/exited (win if down)."""
     if not price_at or price_at <= 0:
         return 0.0
     raw = ((price_after - price_at) / price_at) * 100
-    if action == "take_profit":
-        return -raw
-    return raw
+    return raw * (sign if sign else 1)
+
+
+def _track_sign(row: dict) -> int:
+    """+1 if the tracked token was bought, -1 if it was sold (exited)."""
+    tracked = (row.get("token_tracked") or "").upper()
+    return 1 if tracked and tracked == (row.get("token_bought") or "").upper() else -1
 
 
 def _trader_display_label(move: dict) -> str | None:
@@ -127,8 +174,9 @@ def _trader_display_label(move: dict) -> str | None:
 
 def _move_row(move: dict, *, price_at: float | None = None) -> dict:
     detected = _parse_ts(move.get("time")) or datetime.now(timezone.utc)
-    token_tracked = _token_to_track(move.get("action", ""), move.get("bought"), move.get("sold"))
+    token_tracked, tracked_address = _tracked(move)
     return {
+        "token_tracked_address": tracked_address,
         "detected_at": detected.isoformat(),
         "tx_hash": move["tx_hash"],
         "trader_address": (move.get("trader_address") or "").lower(),
@@ -165,21 +213,27 @@ async def ingest_detected_moves(
         eth_usd=eth_usd,
     )
 
-    symbols = []
+    # Price the tracked alt either by major-symbol id or by contract address,
+    # so small-caps (the actual bets) get a detection price and can be scored.
+    symbol_ids: list[str] = []
+    contract_addrs: list[str] = []
     for m in moves:
-        tok = _token_to_track(m.get("action", ""), m.get("bought"), m.get("sold"))
-        if tok and tok in TOKEN_COINGECKO:
-            symbols.append(TOKEN_COINGECKO[tok])
-    prices = await _fetch_prices(symbols)
+        sym, addr = _tracked(m)
+        cid = TOKEN_COINGECKO.get((sym or "").upper())
+        if cid:
+            symbol_ids.append(cid)
+        elif addr:
+            contract_addrs.append(addr)
+    id_prices = await _fetch_prices(symbol_ids)
+    addr_prices = await _fetch_prices_by_contract(contract_addrs)
 
     inserted = 0
     skipped = 0
     for move in moves:
         if not move.get("tx_hash"):
             continue
-        tok = _token_to_track(move.get("action", ""), move.get("bought"), move.get("sold"))
-        cid = TOKEN_COINGECKO.get(tok or "")
-        price_at = prices.get(cid) if cid else None
+        sym, addr = _tracked(move)
+        price_at = _price_of(sym, addr, id_prices, addr_prices)
         row = _move_row(move, price_at=price_at)
         try:
             supabase_client.table("detected_moves").upsert(
@@ -215,19 +269,26 @@ async def score_pending_moves(*, batch_size: int = 50) -> dict:
     if not rows:
         return {"scored": 0, "pending": 0}
 
-    coin_ids = []
+    symbol_ids = []
+    contract_addrs = []
     for row in rows:
-        tok = (row.get("token_tracked") or "").upper()
-        if tok in TOKEN_COINGECKO:
-            coin_ids.append(TOKEN_COINGECKO[tok])
-    prices_now = await _fetch_prices(coin_ids)
+        sym = (row.get("token_tracked") or "").upper()
+        cid = TOKEN_COINGECKO.get(sym)
+        if cid:
+            symbol_ids.append(cid)
+        elif row.get("token_tracked_address"):
+            contract_addrs.append(row["token_tracked_address"])
+    id_prices = await _fetch_prices(symbol_ids)
+    addr_prices = await _fetch_prices_by_contract(contract_addrs)
 
     scored = 0
     wins = 0
     for row in rows:
-        tok = (row.get("token_tracked") or "").upper()
-        cid = TOKEN_COINGECKO.get(tok)
-        if not cid:
+        price_after = _price_of(row.get("token_tracked"), row.get("token_tracked_address"), id_prices, addr_prices)
+        price_at = float(row.get("price_at_detection") or 0)
+        if not price_after or not price_at:
+            # Still unpriceable after 24h (no CoinGecko coverage) → mark NEUTRAL so
+            # it leaves the pending queue instead of being retried forever.
             supabase_client.table("detected_moves").update({
                 "outcome_status": "NEUTRAL",
                 "outcome_scored_at": datetime.now(timezone.utc).isoformat(),
@@ -235,14 +296,8 @@ async def score_pending_moves(*, batch_size: int = 50) -> dict:
             scored += 1
             continue
 
-        price_after = prices_now.get(cid)
-        price_at = float(row.get("price_at_detection") or 0)
-        if not price_after or not price_at:
-            continue
-
-        action = row.get("action") or "buy"
-        ret = round(_return_pct(action, price_at, price_after), 2)
-        outcome = _classify_outcome(action, ret)
+        ret = round(_return_pct(_track_sign(row), price_at, price_after), 2)
+        outcome = _classify_outcome(ret)
         hypo_pnl = round(NOTIONAL_USD * ret / 100, 2)
 
         supabase_client.table("detected_moves").update({
@@ -349,20 +404,23 @@ async def get_pending_preview(*, limit: int = 40) -> dict[str, Any]:
         log_error("pending_preview_fetch_failed", error=str(e)[:200])
         return {"moves": [], "on_track_count": 0, "updated_at": now.isoformat()}
 
-    coin_ids = []
+    symbol_ids = []
+    contract_addrs = []
     for row in rows:
-        tok = (row.get("token_tracked") or "").upper()
-        if tok in TOKEN_COINGECKO:
-            coin_ids.append(TOKEN_COINGECKO[tok])
-    prices_now = await _fetch_prices(coin_ids)
+        sym = (row.get("token_tracked") or "").upper()
+        cid = TOKEN_COINGECKO.get(sym)
+        if cid:
+            symbol_ids.append(cid)
+        elif row.get("token_tracked_address"):
+            contract_addrs.append(row["token_tracked_address"])
+    id_prices = await _fetch_prices(symbol_ids)
+    addr_prices = await _fetch_prices_by_contract(contract_addrs)
 
     preview = []
     on_track = 0
     for row in rows:
-        tok = (row.get("token_tracked") or "").upper()
-        cid = TOKEN_COINGECKO.get(tok)
         price_at = float(row.get("price_at_detection") or 0)
-        price_now = prices_now.get(cid) if cid else None
+        price_now = _price_of(row.get("token_tracked"), row.get("token_tracked_address"), id_prices, addr_prices)
         detected = _parse_ts(row.get("detected_at"))
         hours_elapsed = round((now - detected).total_seconds() / 3600, 1) if detected else None
         hours_until_score = (
@@ -373,8 +431,8 @@ async def get_pending_preview(*, limit: int = 40) -> dict[str, Any]:
         live_return = None
         projected_outcome = None
         if price_now and price_at:
-            live_return = round(_return_pct(row.get("action") or "buy", price_at, price_now), 2)
-            projected_outcome = _classify_outcome(row.get("action") or "buy", live_return)
+            live_return = round(_return_pct(_track_sign(row), price_at, price_now), 2)
+            projected_outcome = _classify_outcome(live_return)
             if projected_outcome == "WIN":
                 on_track += 1
 
