@@ -172,7 +172,7 @@ function WhaleTicker() {
           {doubled.map((w, i) => (
             <div
               key={i}
-              className="flex-shrink-0 bg-bg-card border border-border-default rounded-xl px-5 py-4 min-w-[200px] hover:border-border-strong transition-colors"
+              className="flex-shrink-0 bg-bg-card border border-border-default rounded-xl px-5 py-4 min-w-[200px] glow-card transition-all duration-300"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[12px] font-semibold text-text-primary">{w.name}</div>
@@ -411,7 +411,16 @@ function Navbar() {
   const navigate = useNavigate();
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-4 pt-4 md:px-6">
-      <div className="glass-surface mx-auto flex h-14 max-w-6xl items-center rounded-2xl px-5 shadow-card">
+      <div
+        className="mx-auto flex h-14 max-w-6xl items-center rounded-2xl px-5"
+        style={{
+          background: 'rgba(8,8,15,0.72)',
+          backdropFilter: 'blur(24px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+          border: '1px solid rgba(130,130,200,0.10)',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.4)',
+        }}
+      >
         <SentinelLogo size={24} showWordmark />
         <div className="hidden md:flex items-center gap-8 mx-auto">
           {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
@@ -450,6 +459,51 @@ function HeroSection({ walletCount }) {
   const navigate = useNavigate();
   return (
     <section className="min-h-[100dvh] flex flex-col justify-center relative overflow-hidden px-6 pt-28 pb-16 md:px-10 lg:px-12">
+
+      {/* ── ShaderGradient-style mesh blobs (mix-blend-mode: screen) ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ isolation: 'isolate' }}>
+        {/* Blob A — green, top-left */}
+        <div
+          className="mesh-a absolute rounded-full"
+          style={{
+            width: '90%', height: '70%',
+            top: '-25%', left: '-15%',
+            background: 'radial-gradient(ellipse at 40% 40%, rgba(0,217,146,0.32) 0%, transparent 60%)',
+            filter: 'blur(70px)',
+            mixBlendMode: 'screen',
+          }}
+        />
+        {/* Blob B — indigo/violet, right */}
+        <div
+          className="mesh-b absolute rounded-full"
+          style={{
+            width: '80%', height: '80%',
+            top: '10%', right: '-25%',
+            background: 'radial-gradient(ellipse at 60% 50%, rgba(99,102,241,0.28) 0%, transparent 60%)',
+            filter: 'blur(80px)',
+            mixBlendMode: 'screen',
+          }}
+        />
+        {/* Blob C — teal, bottom center */}
+        <div
+          className="mesh-c absolute rounded-full"
+          style={{
+            width: '70%', height: '60%',
+            bottom: '-15%', left: '15%',
+            background: 'radial-gradient(ellipse at 50% 60%, rgba(0,210,240,0.18) 0%, transparent 60%)',
+            filter: 'blur(90px)',
+            mixBlendMode: 'screen',
+          }}
+        />
+        {/* Dark vignette — keeps text readable, edges dark */}
+        <div
+          className="absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 100% 100% at 50% 50%, transparent 30%, rgba(5,5,9,0.75) 80%)' }}
+        />
+        {/* Grain for depth */}
+        <div className="noise-overlay absolute inset-0 opacity-[0.035]" />
+      </div>
+
       <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_480px] gap-12 xl:gap-20 items-center">
 
         {/* ── Left: editorial text ── */}
@@ -459,7 +513,8 @@ function HeroSection({ walletCount }) {
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           className="relative z-10"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.07] px-3.5 py-1.5 mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.08] px-3.5 py-1.5 mb-10"
+               style={{ backdropFilter: 'blur(12px)', boxShadow: '0 0 0 1px rgba(0,217,146,0.08) inset' }}>
             <span className="relative h-1.5 w-1.5 flex-shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
@@ -472,7 +527,7 @@ function HeroSection({ walletCount }) {
             style={{ fontSize: 'clamp(54px, 8.5vw, 116px)' }}
           >
             Copy smart<br />
-            <span className="gradient-text-accent">money.</span>
+            <span className="gradient-text-accent glow-text-accent">money.</span>
           </h1>
 
           <p className="text-[17px] text-text-secondary leading-relaxed max-w-[480px] mb-2">
@@ -486,14 +541,21 @@ function HeroSection({ walletCount }) {
             <MagneticButton
               type="button"
               onClick={() => navigate('/watchlist')}
-              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-[15px] px-8 py-4 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
+              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-[15px] px-8 py-4 rounded-2xl hover:bg-green-bright transition-colors"
+              style={{ boxShadow: '0 0 0 1px rgba(0,217,146,0.3), 0 4px 24px rgba(0,217,146,0.25), 0 1px 0 rgba(255,255,255,0.15) inset' }}
             >
               Track Whales Free →
             </MagneticButton>
             <button
               type="button"
               onClick={() => navigate('/intelligence')}
-              className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-4 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
+              className="w-full sm:w-auto text-text-secondary text-[15px] px-8 py-4 rounded-xl hover:text-text-primary transition-all"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(130,130,200,0.12)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
             >
               See Today's Signals
             </button>
@@ -593,7 +655,7 @@ function BentoCard({ tag, title, body, cta, ctaPath, Visual, className = '', del
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className={`group relative rounded-2xl border border-border-default bg-bg-surface overflow-hidden p-6 flex flex-col gap-4 hover:border-border-strong transition-all duration-300 ${className}`}
+      className={`group relative rounded-2xl border border-border-default bg-bg-surface overflow-hidden p-6 flex flex-col gap-4 glow-card transition-all duration-300 ${className}`}
     >
       {/* subtle inset glow on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"

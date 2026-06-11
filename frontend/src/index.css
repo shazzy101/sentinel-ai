@@ -230,24 +230,56 @@
   100% { transform: translateX(-50%); }
 }
 
-/* ── Aurora orb drifts ── */
+/* ── Aurora orb drifts (AppBackground — app variant) ── */
 @keyframes aurora-a {
-  0%,100% { transform: translate(0,0) scale(1); opacity: 0.12; }
-  33%      { transform: translate(60px,-40px) scale(1.08); opacity: 0.18; }
-  66%      { transform: translate(-30px,50px) scale(0.95); opacity: 0.10; }
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%      { transform: translate(60px,-40px) scale(1.08); }
+  66%      { transform: translate(-30px,50px) scale(0.95); }
 }
 @keyframes aurora-b {
-  0%,100% { transform: translate(0,0) scale(1); opacity: 0.08; }
-  40%      { transform: translate(-80px,30px) scale(1.1); opacity: 0.13; }
-  70%      { transform: translate(40px,-60px) scale(0.92); opacity: 0.06; }
+  0%,100% { transform: translate(0,0) scale(1); }
+  40%      { transform: translate(-80px,30px) scale(1.1); }
+  70%      { transform: translate(40px,-60px) scale(0.92); }
 }
 @keyframes aurora-c {
-  0%,100% { transform: translate(0,0) scale(1); opacity: 0.06; }
-  50%      { transform: translate(50px,70px) scale(1.05); opacity: 0.10; }
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%      { transform: translate(50px,70px) scale(1.05); }
 }
 .aurora-a { animation: aurora-a 18s ease-in-out infinite; }
 .aurora-b { animation: aurora-b 24s ease-in-out infinite; }
 .aurora-c { animation: aurora-c 30s ease-in-out infinite; }
+
+/* ── Shader-gradient mesh blobs (landing hero) ── */
+@keyframes mesh-a {
+  0%,100% { transform: translate(0,0) scale(1) rotate(0deg); }
+  25%      { transform: translate(8%,-6%) scale(1.12) rotate(15deg); }
+  50%      { transform: translate(-5%,10%) scale(0.92) rotate(-8deg); }
+  75%      { transform: translate(12%,4%) scale(1.05) rotate(22deg); }
+}
+@keyframes mesh-b {
+  0%,100% { transform: translate(0,0) scale(1) rotate(0deg); }
+  30%      { transform: translate(-10%,8%) scale(1.1) rotate(-18deg); }
+  60%      { transform: translate(6%,-12%) scale(0.94) rotate(10deg); }
+  85%      { transform: translate(-4%,5%) scale(1.08) rotate(-25deg); }
+}
+@keyframes mesh-c {
+  0%,100% { transform: translate(0,0) scale(1); }
+  40%      { transform: translate(14%,-5%) scale(1.06); }
+  70%      { transform: translate(-8%,8%) scale(0.96); }
+}
+.mesh-a { animation: mesh-a 22s ease-in-out infinite; }
+.mesh-b { animation: mesh-b 28s ease-in-out infinite; }
+.mesh-c { animation: mesh-c 35s ease-in-out infinite; }
+
+/* ── Text glow for accent headline ── */
+.glow-text-accent {
+  text-shadow: 0 0 60px rgba(0,217,146,0.35), 0 0 120px rgba(0,217,146,0.15);
+}
+/* ── Glow border card (dark.design hover) ── */
+.glow-card:hover {
+  box-shadow: 0 0 0 1px rgba(0,217,146,0.18), 0 8px 32px rgba(0,0,0,0.4), 0 0 40px rgba(0,217,146,0.06);
+  border-color: rgba(0,217,146,0.18);
+}
 
 /* ── Noise texture overlay ── */
 .noise-overlay {
