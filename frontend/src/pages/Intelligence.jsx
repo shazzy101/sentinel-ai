@@ -153,7 +153,7 @@ function SignalFeed({ whaleSignals, copySignals, isPro, isTrialing }) {
         </div>
         <ChainBadge chain="ethereum" />
       </div>
-      <div className="px-5 pb-2">
+      <div className="px-5 pb-2" aria-live="polite" aria-busy={copySignals.length === 0 && whaleSignals.length === 0}>
         {tab === 'copy' ? (
           copySignals.length === 0 ? (
             <div className="py-8 text-center text-[12px] text-text-muted leading-relaxed">
@@ -289,6 +289,10 @@ export default function IntelligencePage() {
       }
     } catch (err) {
       setError(err.message);
+      // Clear stale data so the error state isn't shown over outdated signals.
+      setSummary(null);
+      setWhaleSignals([]);
+      setCopySignals([]);
     } finally {
       setLoading(false);
     }

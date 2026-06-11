@@ -399,8 +399,10 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
               <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-2">Your Labels</div>
               <div className="flex gap-1.5 flex-wrap mb-2">
                 {userTags.map((tag) => (
-                  <span
+                  <button
                     key={tag}
+                    type="button"
+                    aria-label={`Remove label ${tag}`}
                     className="flex items-center gap-1 bg-bg-elevated border border-border-default rounded-full px-2 py-0.5 text-[10px] text-text-secondary cursor-pointer hover:border-red/50 hover:text-red transition-colors"
                     onClick={() => {
                       const next = userTags.filter((t) => t !== tag);
@@ -409,7 +411,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                     }}
                   >
                     {tag} ×
-                  </span>
+                  </button>
                 ))}
               </div>
               <form

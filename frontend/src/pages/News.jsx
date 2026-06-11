@@ -170,18 +170,24 @@ export default function NewsPage() {
 
   useEffect(() => { document.title = 'News Intelligence — Hadaleum'; }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     setLoading(true);
     const [p, a] = await Promise.all([
       api.getNewsPulse().catch(() => ({ available: false })),
       api.getNews({ category: category === 'All News' ? undefined : category, sort, limit: 50 }).catch(() => []),
     ]);
+    // Don't update state if the component unmounted (or deps changed) mid-flight.
+    if (signal?.cancelled) return;
     setPulse(p?.available ? p : null);
     setArticles(a || []);
     setLoading(false);
   }, [category, sort]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const signal = { cancelled: false };
+    load(signal);
+    return () => { signal.cancelled = true; };
+  }, [load]);
 
   // Background refresh every 3 min
   useEffect(() => {
@@ -231,7 +237,7 @@ export default function NewsPage() {
           )}
 
           {/* Filters */}
-          <div className="flex items-center gap-2 flex-wrap sticky top-0 z-10 py-1">
+          <div className="flex items-center gap-2 flex-wrap sticky top-0 z-10 py-2 bg-bg-base">
             <div className="flex items-center gap-1.5 flex-wrap flex-1">
               {CATEGORIES.map((c) => (
                 <button key={c} type="button" onClick={() => setCategory(c)}

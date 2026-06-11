@@ -6,6 +6,7 @@ import NansenTradingTerminal from '../components/markets/NansenTradingTerminal';
 import CopyTradingIntelligence from '../components/markets/CopyTradingIntelligence';
 import TrustPulse from '../components/trust/TrustPulse';
 import EthYtdChart from '../components/charts/EthYtdChart';
+import { useEthPrice } from '../hooks/useEthPrice';
 
 function fmt(n, dec = 2) {
   return Number(n ?? 0).toLocaleString('en-US', {
@@ -16,30 +17,26 @@ function fmt(n, dec = 2) {
 
 export default function MarketsPage() {
   const { wallets } = useWatchlist();
-  const [ethData, setEthData] = useState(null);
+  const ethData = useEthPrice(); // shared poller — dedupes CoinGecko requests
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedToken, setSelectedToken] = useState(null);
 
   useEffect(() => { document.title = 'Copy — Hadaleum'; }, []);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      api.getEthPrice(),
-      api.getTopEthTokens(),
-    ]).then(([price, tks]) => {
-      setEthData(price.ethereum);
-      setTokens(Array.isArray(tks) ? tks : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      api.getEthPrice().then((d) => setEthData(d.ethereum)).catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
+    setError(null);
+    api.getTopEthTokens()
+      .then((tks) => {
+        setTokens(Array.isArray(tks) ? tks : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Couldn't load market data. Check your connection and retry.");
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -47,6 +44,24 @@ export default function MarketsPage() {
       <div className="h-full flex items-center justify-center">
         <div className="flex items-center gap-3 text-text-muted text-[13px]">
           <Spinner size="md" /> Loading market data...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center px-6">
+        <div className="text-center max-w-sm">
+          <div className="font-display text-[16px] font-bold text-text-primary mb-2">Market data unavailable</div>
+          <p className="text-[13px] text-text-muted mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-green px-5 py-2.5 text-[13px] font-semibold text-text-inverse hover:bg-green-bright transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -150,15 +165,7 @@ export default function MarketsPage() {
 }
 
 export function EthPriceBadge() {
-  const [ethData, setEthData] = useState(null);
-
-  useEffect(() => {
-    api.getEthPrice().then((d) => setEthData(d.ethereum)).catch(() => {});
-    const iv = setInterval(() => {
-      api.getEthPrice().then((d) => setEthData(d.ethereum)).catch(() => {});
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
+  const ethData = useEthPrice();
 
   if (!ethData) return null;
   const change = ethData.usd_24h_change ?? 0;

@@ -1,7 +1,7 @@
 import { Menu } from 'lucide-react';
 import CommandPalette, { CommandTrigger } from '../primitives/CommandPalette';
 
-export default function Topbar({ title, actions = null, onOpenCommand, onOpenMobileSidebar }) {
+export default function Topbar({ title, actions = null, onOpenCommand, onOpenMobileSidebar, mobileSidebarOpen = false }) {
   return (
     <header className="relative z-20 flex-shrink-0 px-3 py-3 md:px-5">
       <div className="glass-surface flex h-12 items-center gap-3 rounded-2xl px-3 md:px-4 shadow-card">
@@ -11,6 +11,8 @@ export default function Topbar({ title, actions = null, onOpenCommand, onOpenMob
           onClick={onOpenMobileSidebar}
           className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-colors"
           aria-label="Open menu"
+          aria-expanded={mobileSidebarOpen}
+          aria-controls="mobile-sidebar"
         >
           <Menu className="h-4 w-4" />
         </button>

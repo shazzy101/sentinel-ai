@@ -11,6 +11,7 @@ import Spinner from '../components/ui/Spinner';
 import { useWallet } from '../hooks/useWallet';
 import { useTransaction, useTradeHistory } from '../hooks/useTrade';
 import { useAuth } from '../context/AuthProvider';
+import { useEthPrice } from '../hooks/useEthPrice';
 import { api } from '../lib/api';
 import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
 import {
@@ -121,7 +122,7 @@ export default function InvestPage() {
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [ethPrice, setEthPrice] = useState(null);
+  const ethPrice = useEthPrice()?.usd ?? null;
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [selectedTradeId, setSelectedTradeId] = useState(null);
   const [tokenBalance, setTokenBalance] = useState(null);
@@ -153,13 +154,6 @@ export default function InvestPage() {
     if (to && TO_TOKENS.includes(to)) setToToken(to);
   }, [searchParams]);
 
-  useEffect(() => {
-    api.getEthPrice().then((d) => setEthPrice(d.ethereum?.usd)).catch(() => {});
-    const iv = setInterval(() => {
-      api.getEthPrice().then((d) => setEthPrice(d.ethereum?.usd)).catch(() => {});
-    }, 30_000);
-    return () => clearInterval(iv);
-  }, []);
 
   const usdEstimate = useMemo(() => {
     const n = parseFloat(amount);
