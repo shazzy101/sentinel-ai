@@ -84,7 +84,9 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
       <span className={`font-mono text-[12px] font-bold text-right ${
         (m.profit_factor ?? 0) >= 2 ? 'text-green' : 'text-text-secondary'
       }`}>
-        {m.profit_factor != null ? Number(m.profit_factor).toFixed(1) : '—'}
+        {m.profit_factor != null
+          ? `${Number(m.profit_factor).toFixed(1)}${meta.profit_factor === 'capped' ? '+' : ''}`
+          : '—'}
       </span>
 
       <span className="font-mono text-[12px] text-text-secondary text-right">

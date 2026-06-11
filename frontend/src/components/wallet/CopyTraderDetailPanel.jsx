@@ -180,6 +180,7 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
                       <>
                         {source === 'estimated' && <span className="text-text-muted font-normal">~</span>}
                         {fmt(val)}
+                        {source === 'capped' && <span className="text-text-muted font-normal">+</span>}
                         {source === 'estimated' && (
                           <span className="text-[9px] font-normal text-text-muted ml-1">est.</span>
                         )}
