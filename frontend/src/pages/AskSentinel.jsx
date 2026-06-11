@@ -113,6 +113,10 @@ export default function AskSentinelPage() {
     document.title = 'Ask AI — Hadaleum';
   }, []);
 
+  // Abort any in-flight stream when the page unmounts so the reader/connection
+  // is released and no state updates fire after teardown.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   useEffect(() => {
     api.getQuota().then(setQuota).catch(() => {});
   }, []);

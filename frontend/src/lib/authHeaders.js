@@ -67,25 +67,31 @@ export async function streamAskAi({ message, history, onDelta, onDone, onError, 
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split('\n\n');
-    buffer = parts.pop() || '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
 
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line.startsWith('data:')) continue;
-      let evt;
-      try {
-        evt = JSON.parse(line.slice(5).trim());
-      } catch {
-        continue;
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        let evt;
+        try {
+          evt = JSON.parse(line.slice(5).trim());
+        } catch {
+          continue;
+        }
+        if (evt.type === 'delta' && evt.text) onDelta?.(evt.text);
+        if (evt.type === 'done') onDone?.(evt);
+        if (evt.type === 'error') onError?.(evt.message || 'Stream error');
       }
-      if (evt.type === 'delta' && evt.text) onDelta?.(evt.text);
-      if (evt.type === 'done') onDone?.(evt);
-      if (evt.type === 'error') onError?.(evt.message || 'Stream error');
     }
+  } finally {
+    // Release the network stream on normal completion, error, or abort so it
+    // never leaks an open connection.
+    try { await reader.cancel(); } catch { /* already closed */ }
   }
 }

@@ -1,34 +1,44 @@
-import { apiFetch } from './apiClient';
-import { apiUrl } from './apiBase';
+import { apiFetch, apiGet } from './apiClient';
+
+/**
+ * Wrapper for third-party APIs (CoinGecko, DefiLlama). Adds an AbortController
+ * timeout, checks res.ok, and returns parsed JSON or throws a structured error —
+ * so a hung or failing external service never leaves the UI spinning forever.
+ */
+async function externalJson(url, { timeoutMs = 10000, label = 'service' } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) {
+      const err = new Error(`${label} request failed (${res.status})`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error(`${label} timed out — please retry.`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const CG = 'https://api.coingecko.com/api/v3';
 
 export const api = {
+  // ── Third-party (CoinGecko / DefiLlama) — timeout + ok-checked ──
   getEthPrice: () =>
-    fetch(
-      'https://api.coingecko.com/api/v3/simple/price' +
-      '?ids=ethereum&vs_currencies=usd' +
-      '&include_24hr_change=true' +
-      '&include_market_cap=true'
-    ).then((r) => r.json()),
+    externalJson(`${CG}/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`, { label: 'CoinGecko' }),
 
   getEthChart: (days = 365) =>
-    fetch(
-      `https://api.coingecko.com/api/v3/coins/ethereum` +
-      `/market_chart?vs_currency=usd&days=${days}`
-    ).then((r) => r.json()),
+    externalJson(`${CG}/coins/ethereum/market_chart?vs_currency=usd&days=${days}`, { label: 'CoinGecko' }),
 
   getTopEthTokens: () =>
-    fetch(
-      'https://api.coingecko.com/api/v3/coins/markets' +
-      '?vs_currency=usd&category=ethereum-ecosystem' +
-      '&order=market_cap_desc&per_page=20&page=1' +
-      '&price_change_percentage=24h,7d'
-    ).then((r) => r.json()),
+    externalJson(`${CG}/coins/markets?vs_currency=usd&category=ethereum-ecosystem&order=market_cap_desc&per_page=20&page=1&price_change_percentage=24h,7d`, { label: 'CoinGecko' }),
 
   getTokenChart: (coinId, days = 7) =>
-    fetch(
-      `https://api.coingecko.com/api/v3/coins/${coinId}` +
-      `/market_chart?vs_currency=usd&days=${days}`
-    ).then((r) => r.json()),
+    externalJson(`${CG}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`, { label: 'CoinGecko' }),
 
   getSwapQuote: (fromToken, toToken, amount, from) => {
     const params = new URLSearchParams({
@@ -42,107 +52,82 @@ export const api = {
       params.set('from', from);
       params.set('userAddress', from);
     }
-    return fetch(`https://api.swap.defillama.com/v2/quote?${params.toString()}`).then((r) => r.json());
+    return externalJson(`https://api.swap.defillama.com/v2/quote?${params.toString()}`, { label: 'DefiLlama', timeoutMs: 15000 });
   },
 
+  // ── Internal backend (apiFetch/apiGet: timeout + consistent errors) ──
   getWhaleTrades: () =>
-    fetch(apiUrl('/api/invest/whale-trades'))
-      .then((r) => r.json())
-      .then((body) => (body.success ? body.data?.trades : body.trades) || []),
+    apiGet('/api/invest/whale-trades').then((d) => d?.trades || []).catch(() => []),
 
   getNetworkPulse: () =>
-    fetch(apiUrl('/api/network/pulse'))
-      .then((r) => r.json())
-      .then((body) => body.data || { available: false }),
+    apiGet('/api/network/pulse').then((d) => d || { available: false }).catch(() => ({ available: false })),
 
   getNetworkTopTokens: () =>
-    fetch(apiUrl('/api/network/top-tokens'))
-      .then((r) => r.json())
-      .then((body) => body.data?.tokens || []),
+    apiGet('/api/network/top-tokens').then((d) => d?.tokens || []).catch(() => []),
 
   getNetworkLargeTrades: () =>
-    fetch(apiUrl('/api/network/large-trades'))
-      .then((r) => r.json())
-      .then((body) => body.data?.trades || []),
+    apiGet('/api/network/large-trades').then((d) => d?.trades || []).catch(() => []),
 
   getCopyTradingTop: (opts = {}) => {
-    const {
-      limit = 50,
-      sort = 'copy_score',
-      qualifiedOnly = true,
-      strict = true,
-    } = opts;
+    const { limit = 50, sort = 'copy_score', qualifiedOnly = true, strict = true } = opts;
     const params = new URLSearchParams({
       limit: String(limit),
       sort,
       qualified_only: String(qualifiedOnly),
       strict: String(strict),
     });
-    return fetch(apiUrl(`/api/copy-trading/top?${params}`))
-      .then((r) => r.json())
-      .then((body) => body.data || { wallets: [], count: 0 });
+    return apiGet(`/api/copy-trading/top?${params}`)
+      .then((d) => d || { wallets: [], count: 0 })
+      .catch(() => ({ wallets: [], count: 0 }));
   },
 
   getCopyFeatured: () =>
-    fetch(apiUrl('/api/copy-trading/featured'))
-      .then((r) => r.json())
-      .then((body) => body.data?.traders || []),
+    apiGet('/api/copy-trading/featured').then((d) => d?.traders || []).catch(() => []),
 
   getCopyTrader: (address) =>
-    fetch(apiUrl(`/api/copy-trading/${encodeURIComponent(address)}`))
-      .then((r) => r.json())
-      .then((body) => (body.success ? body.data?.wallet : null)),
+    apiGet(`/api/copy-trading/${encodeURIComponent(address)}`).then((d) => d?.wallet || null).catch(() => null),
 
   trackCopyTrader: (address) =>
-    apiFetch(`/api/copy-trading/${encodeURIComponent(address)}/track`, { method: 'POST', timeoutMs: 20000 }),
+    apiFetch(`/api/copy-trading/${encodeURIComponent(address)}/track`, { method: 'POST', timeoutMs: 20000, auth: true }),
 
   getQuota: () =>
     apiFetch('/api/quota', { auth: true }).then((b) => b.data),
 
   getCopyTraderMetrics: (address) =>
-    fetch(apiUrl(`/api/copy-trading/${encodeURIComponent(address)}/metrics`))
-      .then((r) => r.json())
-      .then((body) => (body.success ? body.data : { metrics: null, available: false })),
+    apiGet(`/api/copy-trading/${encodeURIComponent(address)}/metrics`)
+      .then((d) => d || { metrics: null, available: false })
+      .catch(() => ({ metrics: null, available: false })),
 
   untrackWallet: (address) =>
-    apiFetch(`/api/watchlist/${encodeURIComponent(address)}`, { method: 'DELETE', timeoutMs: 15000 }),
+    apiFetch(`/api/watchlist/${encodeURIComponent(address)}`, { method: 'DELETE', timeoutMs: 15000, auth: true }),
 
   getCopyRecentMoves: (limit = 12) =>
-    fetch(apiUrl(`/api/copy-trading/recent-moves?limit=${limit}`))
-      .then((r) => r.json())
-      .then((body) => body.data?.moves || []),
+    apiGet(`/api/copy-trading/recent-moves?limit=${limit}`).then((d) => d?.moves || []).catch(() => []),
 
   getLatestTransactions: (limit = 12) =>
-    fetch(apiUrl(`/api/transactions/latest?limit=${limit}`))
-      .then((r) => r.json())
-      .then((body) => body.data?.transactions || []),
+    apiGet(`/api/transactions/latest?limit=${limit}`).then((d) => d?.transactions || []).catch(() => []),
 
   joinWaitlist: (email, source) =>
-    fetch(apiUrl('/api/waitlist'), {
+    apiFetch('/api/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, source }),
-    }).then((r) => r.json()),
+      timeoutMs: 15000,
+    }),
 
   getNews: (opts = {}) => {
     const { category, source, sort = 'recent', limit = 40 } = opts;
     const params = new URLSearchParams({ sort, limit: String(limit) });
     if (category) params.set('category', category);
     if (source) params.set('source', source);
-    return fetch(apiUrl(`/api/news?${params}`))
-      .then((r) => r.json())
-      .then((b) => b.data?.articles || []);
+    return apiGet(`/api/news?${params}`).then((d) => d?.articles || []).catch(() => []);
   },
 
   getNewsPulse: () =>
-    fetch(apiUrl('/api/news/pulse'))
-      .then((r) => r.json())
-      .then((b) => b.data || { available: false }),
+    apiGet('/api/news/pulse').then((d) => d || { available: false }).catch(() => ({ available: false })),
 
   getNewsArticle: (id) =>
-    fetch(apiUrl(`/api/news/${id}`))
-      .then((r) => r.json())
-      .then((b) => b.data || null),
+    apiGet(`/api/news/${id}`).then((d) => d || null).catch(() => null),
 };
 
 export { getApiBase, apiUrl } from './apiBase';

@@ -20,6 +20,16 @@ export function WalletProvider({ children }) {
   const [chainId, setChainId] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
+  // Tracked as state (not captured at memo time) so it flips to true when an
+  // EIP-6963 provider announces itself shortly after page load.
+  const [isInstalled, setIsInstalled] = useState(() => isMetaMaskInstalled());
+
+  useEffect(() => {
+    const update = () => setIsInstalled(isMetaMaskInstalled());
+    window.addEventListener('eip6963:announceProvider', update);
+    const t = setTimeout(update, 700); // providers may announce async after load
+    return () => { window.removeEventListener('eip6963:announceProvider', update); clearTimeout(t); };
+  }, []);
 
   const refreshBalance = useCallback(async (addr) => {
     if (!addr || !isMetaMaskInstalled()) {
@@ -67,7 +77,7 @@ export function WalletProvider({ children }) {
       },
       onChain: () => {
         refreshChain();
-        getExistingWallet().then((addr) => refreshBalance(addr));
+        getExistingWallet().then((addr) => { if (!cancelled) refreshBalance(addr); });
       },
     });
 
@@ -135,7 +145,7 @@ export function WalletProvider({ children }) {
     chainId,
     isMainnet: chainId === CHAIN_ID_MAINNET,
     isConnected: Boolean(address),
-    isInstalled: isMetaMaskInstalled(),
+    isInstalled,
     connecting,
     error,
     connectWallet,
@@ -143,7 +153,7 @@ export function WalletProvider({ children }) {
     clearError,
     clearLocalWallet,
     refreshBalance: () => refreshBalance(address),
-  }), [address, balance, chainId, connecting, error, connectWallet, switchToMainnet, clearError, clearLocalWallet, refreshBalance]);
+  }), [address, balance, chainId, isInstalled, connecting, error, connectWallet, switchToMainnet, clearError, clearLocalWallet, refreshBalance]);
 
   return (
     <WalletContext.Provider value={value}>

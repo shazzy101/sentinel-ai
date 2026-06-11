@@ -21,13 +21,16 @@ export async function apiFetch(path, options = {}) {
 
   try {
     const res = await fetch(url, { ...fetchOpts, headers, signal: controller.signal });
-    clearTimeout(timer);
 
+    // Keep the abort timer running until the body is fully read — a slow/stalled
+    // response stream should still time out, not just slow headers.
     let body;
     try {
       body = await res.json();
     } catch {
       throw new Error(`Invalid JSON from ${path} (${res.status})`);
+    } finally {
+      clearTimeout(timer);
     }
 
     if (!res.ok || body.success === false) {
@@ -54,9 +57,7 @@ export async function apiFetch(path, options = {}) {
 }
 
 export async function apiGet(path, timeoutMs = 15000) {
+  // apiFetch already throws on body.success === false, so no re-check is needed.
   const body = await apiFetch(path, { timeoutMs });
-  if (body.success === false) {
-    throw new Error(body.error?.message || 'Request failed');
-  }
   return body.data ?? body;
 }

@@ -5,6 +5,7 @@ import Shell from './components/layout/Shell';
 import Button from './components/ui/Button';
 import MotionPage from './components/primitives/MotionPage';
 import AuthGuard from './components/auth/AuthGuard';
+import ErrorBoundary from './components/ErrorBoundary';
 import { SkeletonBlock } from './components/primitives/DataState';
 
 // Eagerly loaded (critical path)
@@ -126,6 +127,9 @@ function AnimatedRoutes() {
 
   return (
     <AnimatePresence mode="wait">
+      {/* Keyed by path so a crash in one route shows the fallback and recovers
+          automatically when the user navigates elsewhere. */}
+      <ErrorBoundary key={location.pathname}>
       <Routes location={location} key={location.pathname}>
         {/* Public routes */}
         <Route path="/" element={<MotionPage><LandingPage /></MotionPage>} />
@@ -155,6 +159,7 @@ function AnimatedRoutes() {
         <Route path="/settings" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><SettingsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
       </Routes>
+      </ErrorBoundary>
     </AnimatePresence>
   );
 }
