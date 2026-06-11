@@ -124,16 +124,29 @@ def _load_from_supabase() -> list[dict] | None:
     try:
         from db.supabase import supabase_client
 
-        res = (
-            supabase_client.table("copy_traders")
-            .select("*")
-            .order("rank", desc=False)
-            .limit(10000)
-            .execute()
-        )
-        rows = res.data or []
+        # Supabase/PostgREST caps each response at ~1000 rows regardless of
+        # .limit(), so page through with .range() until a short page is returned.
+        page_size = 1000
+        max_rows = 10000  # safety ceiling
+        rows: list[dict] = []
+        start = 0
+        while start < max_rows:
+            res = (
+                supabase_client.table("copy_traders")
+                .select("*")
+                .order("rank", desc=False)
+                .range(start, start + page_size - 1)
+                .execute()
+            )
+            page = res.data or []
+            rows.extend(page)
+            if len(page) < page_size:
+                break  # last page
+            start += page_size
+
         if not rows:
             return None
+        log_info("copy_traders_loaded", source="supabase", count=len(rows))
         return [normalize_copy_trader(row) for row in rows]
     except Exception as e:
         log_error("copy_traders_supabase_load_failed", error=str(e)[:200])
