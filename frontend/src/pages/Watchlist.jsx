@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useWatchlist, useScanWallet } from '../hooks/useWatchlist';
 import { useCopyTraders } from '../hooks/useCopyTraders';
 import { useAlertEngine } from './Alerts';
@@ -15,7 +15,7 @@ import AddWalletModal from '../components/wallet/AddWalletModal';
 import TradeModal from '../components/wallet/TradeModal';
 import { BentoGrid, BentoItem } from '../components/primitives/BentoGrid';
 import StatWidget from '../components/primitives/StatWidget';
-import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet, Lock } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
 import { api } from '../lib/api';
 import { useAuth } from '@/context/AuthProvider';
@@ -656,7 +656,35 @@ export default function WatchlistPage() {
               onOpenAddModal={() => setIsAddModalOpen(true)}
             />
             {!isPro && !isTrialing ? (
-              <PaywallGate feature="Full 2,796 Wallet Watchlist" blur={false} />
+              <div className="relative border-t border-border-subtle">
+                {/* Blurred teaser rows hinting at locked wallets */}
+                <div className="pointer-events-none select-none blur-[5px] opacity-40" aria-hidden="true">
+                  {[92, 88, 85].map((score, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
+                      <span className="text-[11px] text-text-muted font-mono w-5">{11 + i}</span>
+                      <div className="flex-1 h-3 rounded bg-bg-elevated" style={{ maxWidth: `${60 - i * 8}%` }} />
+                      <span className="text-[12px] font-mono font-bold text-green">{score}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 bg-gradient-to-b from-transparent via-bg-base/80 to-bg-base">
+                  <Lock className="h-5 w-5 text-green mb-2" strokeWidth={1.75} />
+                  <div className="font-display text-[15px] font-bold text-text-primary">
+                    {Math.max(0, (filteredWallets.length || 2796) - 10).toLocaleString()} more ranked wallets locked
+                  </div>
+                  <p className="text-[12px] text-text-muted mt-1 mb-3 max-w-xs">
+                    You're seeing the top 10. Pro unlocks every elite wallet, sorted by intelligence score.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/upgrade')}
+                    className="rounded-xl bg-green px-5 py-2.5 text-[13px] font-semibold text-text-inverse hover:bg-green-bright transition-colors"
+                    style={{ boxShadow: '0 0 0 1px rgba(0,217,146,0.3), 0 4px 20px rgba(0,217,146,0.2)' }}
+                  >
+                    Unlock all wallets — Free for 7 days →
+                  </button>
+                </div>
+              </div>
             ) : (
               !showAll && filteredWallets.length > 50 && (
                 <button
