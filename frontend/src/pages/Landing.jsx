@@ -8,6 +8,7 @@ import MagneticButton from '../components/primitives/MagneticButton';
 import AnimatedCounter from '../components/primitives/AnimatedCounter';
 import SentinelLogo from '../components/ui/SentinelLogo';
 import ProWaitlist from '../components/ui/ProWaitlist';
+import TrustPulse from '../components/trust/TrustPulse';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
@@ -584,6 +585,7 @@ function HeroSection({ walletCount }) {
               </motion.div>
             ))}
           </div>
+          <TrustPulse variant="compact" />
         </motion.div>
 
         {/* ── Right: 3D tilted product mockup ── */}
@@ -780,7 +782,12 @@ function ComparisonSection() {
           </div>
         ))}
       </div>
-      <p className="text-center text-[12px] text-text-muted mt-4">View our <a href="/signals/performance" className="text-green hover:underline">live signal accuracy dashboard →</a></p>
+      <p className="text-center text-[12px] text-text-muted mt-4">
+        View our{' '}
+        <a href="/wins" className="text-green hover:underline">live detected wins ledger →</a>
+        {' '}·{' '}
+        <a href="/signals/performance" className="text-green hover:underline">signal accuracy dashboard →</a>
+      </p>
     </section>
   );
 }
@@ -1007,6 +1014,7 @@ function Footer() {
           <span className="text-[12px] text-text-muted ml-4">© 2026 Hadaleum · Not financial advice.</span>
         </div>
         <div className="flex flex-wrap items-center gap-6 text-[13px] text-text-muted">
+          <Link to="/wins" className="hover:text-text-secondary">Detected Wins</Link>
           <Link to="/watchlist" className="hover:text-text-secondary">Watchlist</Link>
           <Link to="/intelligence" className="hover:text-text-secondary">Intelligence</Link>
           <Link to="/markets" className="hover:text-text-secondary">Markets</Link>

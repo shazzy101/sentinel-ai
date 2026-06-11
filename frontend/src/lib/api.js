@@ -104,6 +104,15 @@ export const api = {
   getCopyRecentMoves: (limit = 12) =>
     apiGet(`/api/copy-trading/recent-moves?limit=${limit}`).then((d) => d?.moves || []).catch(() => []),
 
+  getTrustPulse: () =>
+    apiGet('/api/trust-pulse').then((d) => d || { available: false }).catch(() => ({ available: false })),
+
+  getTrustMarketing: () =>
+    apiGet('/api/trust-pulse/marketing').then((d) => d || {}).catch(() => ({})),
+
+  getDetectedWins: (limit = 20) =>
+    apiGet(`/api/detected-wins?limit=${limit}`).then((d) => d || { wins: [] }).catch(() => ({ wins: [] })),
+
   getLatestTransactions: (limit = 12) =>
     apiGet(`/api/transactions/latest?limit=${limit}`).then((d) => d?.transactions || []).catch(() => []),
 

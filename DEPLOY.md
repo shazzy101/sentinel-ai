@@ -146,6 +146,24 @@ curl https://backend-production-250bf.up.railway.app/health
 # → {"success":true,"data":{"status":"healthy",...}}
 ```
 
+## Trust Pulse (detected wins ledger)
+
+Public flex page: **https://hadaleum.com/wins**
+
+```bash
+# Public stats + marketing copy
+curl https://backend-production-250bf.up.railway.app/api/trust-pulse/marketing
+
+# Manual ingest + score (requires X-Admin-Key matching Railway ADMIN_API_KEY)
+curl -X POST https://backend-production-250bf.up.railway.app/api/admin/run-trust-pipeline \
+  -H "X-Admin-Key: YOUR_ADMIN_API_KEY"
+
+# Or run locally against production Supabase (uses backend/.env)
+cd backend && python scripts/run_trust_pipeline.py
+```
+
+Cron ingests copy-trader swaps every 30 minutes; wins score 24h after detection.
+
 ---
 
 ## Local Development

@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import Spinner from '../components/ui/Spinner';
 import NansenTradingTerminal from '../components/markets/NansenTradingTerminal';
 import CopyTradingIntelligence from '../components/markets/CopyTradingIntelligence';
+import TrustPulse from '../components/trust/TrustPulse';
 import EthYtdChart from '../components/charts/EthYtdChart';
 
 function fmt(n, dec = 2) {
@@ -56,6 +57,8 @@ export default function MarketsPage() {
       <div className="p-5 flex flex-col gap-6 max-w-[1200px] mx-auto">
         {/* Primary: copy trading feed + top traders */}
         <CopyTradingIntelligence />
+
+        <TrustPulse variant="full" />
 
         {/* ETH chart — secondary context */}
         <EthYtdChart />

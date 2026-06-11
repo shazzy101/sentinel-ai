@@ -46,6 +46,12 @@ from copy_traders_store import (
     sync_copy_traders_to_db,
 )
 from copy_trader_moves import fetch_recent_copy_moves
+from detected_moves import (
+    get_marketing_snapshot,
+    get_pending_preview,
+    get_trust_pulse,
+    run_trust_pipeline,
+)
 from scoring.engine import score_wallet
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -238,6 +244,35 @@ async def _startup_copy_traders():
         pass
 
 
+async def _run_trust_pipeline_once() -> None:
+    pool = _sort_copy_traders(
+        _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True),
+        "copy_score",
+    )
+    enriched = [_enrich_copy_trader(w) for w in pool[:50]]
+    await run_trust_pipeline(enriched, limit=50)
+
+
+async def _startup_trust_pipeline():
+    """First ingest ~90s after boot so wins ledger fills without waiting for cron."""
+    await asyncio.sleep(90)
+    try:
+        await _run_trust_pipeline_once()
+    except Exception:
+        pass
+
+
+async def _cron_trust_pipeline():
+    """Every 30 min: ingest copy-trader swaps + score 24h outcomes for trust ledger."""
+    await asyncio.sleep(5 * 60)
+    while True:
+        try:
+            await _run_trust_pipeline_once()
+        except Exception:
+            pass
+        await asyncio.sleep(30 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
@@ -246,8 +281,10 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_ai_top())
     asyncio.create_task(_startup_balance_sync())
     asyncio.create_task(_startup_copy_traders())
+    asyncio.create_task(_startup_trust_pipeline())
     asyncio.create_task(_cron_dune_refresh())
     asyncio.create_task(_cron_news())
+    asyncio.create_task(_cron_trust_pipeline())
     yield
 
 
@@ -2376,6 +2413,62 @@ def _enrich_copy_trader(wallet: dict) -> dict:
     out["last_trade"] = (wallet.get("on_chain_data") or {}).get("last_trade")
     out["is_recently_active"] = last_active is not None and last_active <= 14
     return out
+
+
+# ─────────────────────────────────────────
+# ROUTES — TRUST PULSE (detected wins ledger)
+# ─────────────────────────────────────────
+
+@limiter.limit("60/minute")
+@app.get("/api/trust-pulse")
+async def trust_pulse(request: Request):
+    """Public stats: on-chain moves detected + 24h scored wins."""
+    data = await get_trust_pulse()
+    return success(data)
+
+
+@limiter.limit("60/minute")
+@app.get("/api/detected-wins")
+async def detected_wins(request: Request, limit: int = 20):
+    """Recent scored WIN moves from the detected_moves ledger."""
+    pulse = await get_trust_pulse()
+    wins = (pulse.get("recent_wins") or [])[: min(limit, 50)]
+    return success({
+        "wins": wins,
+        "last_24h": pulse.get("last_24h"),
+        "last_7d": pulse.get("last_7d"),
+        "methodology": pulse.get("methodology"),
+        "updated_at": pulse.get("updated_at"),
+    })
+
+
+@limiter.limit("60/minute")
+@app.get("/api/trust-pulse/pending")
+async def trust_pulse_pending(request: Request, limit: int = 40):
+    """Live preview of PENDING moves — current return vs detection price."""
+    data = await get_pending_preview(limit=min(limit, 50))
+    return success(data)
+
+
+@limiter.limit("60/minute")
+@app.get("/api/trust-pulse/marketing")
+async def trust_pulse_marketing(request: Request):
+    """Polished stats + tweet hooks for GTM / customer demos."""
+    data = await get_marketing_snapshot()
+    return success(data)
+
+
+@app.post("/api/admin/run-trust-pipeline", dependencies=[Depends(require_admin)])
+async def admin_run_trust_pipeline():
+    """Ingest copy-trader swaps + score pending 24h outcomes (manual trigger)."""
+    await _run_trust_pipeline_once()
+    pulse = await get_trust_pulse()
+    pending = await get_pending_preview()
+    return success({
+        "pulse": pulse,
+        "pending_preview": pending,
+        "marketing": await get_marketing_snapshot(),
+    })
 
 
 @app.get("/api/copy-trading/top")

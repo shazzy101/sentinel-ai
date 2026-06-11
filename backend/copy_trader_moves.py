@@ -166,6 +166,7 @@ async def fetch_recent_copy_moves(
                 **s,
                 "trader_address": addr,
                 "trader_label": trader.get("label"),
+                "rank": trader.get("rank"),
                 "copy_score": trader.get("copy_trading_score"),
                 "win_rate_pct": metrics.get("win_rate_pct"),
                 "profit_factor": metrics.get("profit_factor"),

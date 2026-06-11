@@ -42,29 +42,27 @@ function useAlertBadge() {
   return count;
 }
 
-function useSidebarStats() {
-  const [stats, setStats] = useState({ count: null, lastScanned: null, nextScan: null });
+function useSidebarStats(enabled = true) {
+  const [stats, setStats] = useState({ count: null, lastScanned: null });
 
   useEffect(() => {
+    if (!enabled) return undefined; // don't poll for signed-out users
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`${API_BASE}/api/stats`);
-        if (!res.ok) return;
-        const body = await res.json();
+        const body = await apiFetch('/api/stats', { auth: true });
         if (cancelled || !body.success) return;
         const { count, last_scanned } = body.data || {};
         setStats({
           count: count ?? null,
           lastScanned: last_scanned ? new Date(last_scanned) : null,
-          nextScan: null,
         });
       } catch { /* ignore */ }
     }
     load();
     const interval = setInterval(load, 120_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+  }, [enabled]);
 
   return stats;
 }

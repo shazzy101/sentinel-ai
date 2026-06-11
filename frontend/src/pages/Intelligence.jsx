@@ -9,6 +9,7 @@ import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
 import TextShimmer from '../components/ui/text-shimmer';
 import { apiFetch } from '../lib/apiClient';
 import SignalAccuracyWidget from '../components/intelligence/SignalAccuracyWidget';
+import TrustPulse from '../components/trust/TrustPulse';
 import { supabase } from '../lib/supabase';
 import { TableSkeleton } from '../components/primitives/DataState';
 import { useAuth } from '@/context/AuthProvider';
@@ -346,6 +347,8 @@ export default function IntelligencePage() {
 
       {/* Signal Accuracy Widget — top of page */}
       <SignalAccuracyWidget />
+
+      <TrustPulse variant="full" />
 
       <motion.section
         initial={{ opacity: 0, y: 12 }}
