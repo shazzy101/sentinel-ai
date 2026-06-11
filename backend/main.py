@@ -249,8 +249,9 @@ async def _run_trust_pipeline_once() -> None:
         _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True),
         "copy_score",
     )
-    enriched = [_enrich_copy_trader(w) for w in pool[:50]]
-    await run_trust_pipeline(enriched, limit=50)
+    # Broader scan = more detections = the wins ledger fills faster.
+    enriched = [_enrich_copy_trader(w) for w in pool[:120]]
+    await run_trust_pipeline(enriched, limit=120)
 
 
 async def _startup_trust_pipeline():
@@ -263,14 +264,14 @@ async def _startup_trust_pipeline():
 
 
 async def _cron_trust_pipeline():
-    """Every 30 min: ingest copy-trader swaps + score 24h outcomes for trust ledger."""
+    """Every 15 min: ingest copy-trader swaps + score 24h outcomes for trust ledger."""
     await asyncio.sleep(5 * 60)
     while True:
         try:
             await _run_trust_pipeline_once()
         except Exception:
             pass
-        await asyncio.sleep(30 * 60)
+        await asyncio.sleep(15 * 60)
 
 
 @asynccontextmanager

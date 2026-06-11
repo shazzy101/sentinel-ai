@@ -202,14 +202,14 @@ def _move_row(move: dict, *, price_at: float | None = None) -> dict:
 async def ingest_detected_moves(
     enriched_pool: list[dict],
     *,
-    limit: int = 40,
+    limit: int = 80,
     eth_usd: float = 3500.0,
 ) -> dict:
     moves = await fetch_recent_copy_moves(
         enriched_pool,
         limit=limit,
-        traders_to_scan=35,
-        transfer_limit=30,
+        traders_to_scan=100,
+        transfer_limit=40,
         eth_usd=eth_usd,
     )
 
