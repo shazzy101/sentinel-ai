@@ -253,24 +253,38 @@ export default function IntelligencePage() {
         setWhaleSignals(signalsBody.data?.whale_signals || []);
         setCopySignals(signalsBody.data?.copy_trader_signals || []);
       }
-      // Log signal to Supabase for accuracy tracking (fire-and-forget)
+      // Log signal to Supabase for accuracy tracking (fire-and-forget, de-duplicated)
       if (summaryData?.signal && supabase) {
-        // Fetch ETH price for logging
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
-          .then((r) => r.json())
-          .then((priceData) => {
-            const ethPrice = priceData?.ethereum?.usd;
-            supabase.from('signals').insert({
+        const triggerAddr = signalsBody.data?.whale_signals?.[0]?.wallet_address || null;
+        (async () => {
+          try {
+            // Skip if an identical signal (same type + trigger) was logged within the last hour.
+            const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
+            let dupQuery = supabase
+              .from('signals')
+              .select('id')
+              .eq('signal_type', summaryData.signal)
+              .gte('created_at', oneHourAgo)
+              .limit(1);
+            dupQuery = triggerAddr
+              ? dupQuery.eq('whale_trigger_address', triggerAddr)
+              : dupQuery.is('whale_trigger_address', null);
+            const { data: existing } = await dupQuery;
+            if (existing && existing.length > 0) return;
+
+            const priceRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+            const priceData = await priceRes.json().catch(() => null);
+            await supabase.from('signals').insert({
               signal_type: summaryData.signal,
               reasoning: summaryData.summary || summaryData.reasoning || '',
-              eth_price_at_signal: ethPrice || null,
-              whale_trigger_address: signalsBody.data?.whale_signals?.[0]?.wallet_address || null,
+              eth_price_at_signal: priceData?.ethereum?.usd || null,
+              whale_trigger_address: triggerAddr,
               outcome_24h: 'PENDING',
               outcome_48h: 'PENDING',
               outcome_7d: 'PENDING',
-            }).then(() => {}).catch(() => {});
-          })
-          .catch(() => {});
+            });
+          } catch { /* non-critical telemetry */ }
+        })();
       }
     } catch (err) {
       setError(err.message);

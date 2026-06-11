@@ -201,10 +201,12 @@ def check_ask_quota(user: AuthUser | None, ip: str, estimated_tokens: int = 2000
 
 
 def consume_ask_quota(user: AuthUser | None, ip: str) -> None:
+    # Consumes ONLY the per-user ask bucket. The shared global Claude budget is
+    # consumed once at the route level (see /api/ask in main.py) so a single
+    # request never decrements it twice.
     key = _user_key(user, ip)
     now = time.monotonic()
     _user_ask_calls[key].append(now)
-    consume_global_budget()
 
 
 def check_scan_quota(user: AuthUser | None, ip: str) -> QuotaStatus:
@@ -229,3 +231,32 @@ def consume_scan_quota(user: AuthUser | None, ip: str) -> None:
     key = _user_key(user, ip)
     now = time.monotonic()
     _user_scan_calls[key].append(now)
+
+
+# ── Atomic check-and-consume (PHASE 1.4) ────────────────────────────────
+# The check_*_quota then consume_*_quota two-step had a TOCTOU race: two
+# concurrent requests could both pass the check before either consumed, letting
+# a user exceed the limit. These functions check and consume with no `await`
+# between them. Since the event loop is single-threaded and never yields inside
+# the function body, the read-modify-write is effectively atomic.
+
+def try_consume_ask_quota(
+    user: AuthUser | None, ip: str, estimated_tokens: int = 2000
+) -> tuple[bool, QuotaStatus]:
+    """Atomically gate + reserve one Ask AI call. Returns (allowed, status)."""
+    status = check_ask_quota(user, ip, estimated_tokens)
+    if not status.allowed:
+        return False, status
+    key = _user_key(user, ip)
+    _user_ask_calls[key].append(time.monotonic())
+    return True, status
+
+
+def try_consume_scan_quota(user: AuthUser | None, ip: str) -> tuple[bool, QuotaStatus]:
+    """Atomically gate + reserve one wallet scan. Returns (allowed, status)."""
+    status = check_scan_quota(user, ip)
+    if not status.allowed:
+        return False, status
+    key = _user_key(user, ip)
+    _user_scan_calls[key].append(time.monotonic())
+    return True, status

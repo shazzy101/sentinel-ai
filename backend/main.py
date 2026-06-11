@@ -23,11 +23,11 @@ from auth_context import resolve_user
 from observability import bind_request_context, log_error, log_info, new_request_id, setup_logging
 from quota import (
     check_ask_quota,
-    check_scan_quota,
-    consume_ask_quota,
-    consume_scan_quota,
+    consume_global_budget,
     get_quota_status,
     record_token_usage,
+    try_consume_ask_quota,
+    try_consume_scan_quota,
 )
 from rate_limits import rate_limit_key, rate_limit_message
 from responses import error, quota_error, success
@@ -667,9 +667,6 @@ async def get_stats():
 async def scan_wallet(request: Request, body: WalletScanRequest):
     user = getattr(request.state, "auth_user", None)
     ip = get_remote_address(request)
-    scan_quota = check_scan_quota(user, ip)
-    if not scan_quota.allowed:
-        return quota_error(scan_quota)
 
     address = body.address.strip()
     try:
@@ -678,7 +675,12 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
         return error("INVALID_ADDRESS", str(e), status_code=400)
 
     label = body.label or f"{chain[:3].upper()}:{address[:8]}..."
-    consume_scan_quota(user, ip)
+
+    # Atomic gate + reserve (no TOCTOU window). Done after input validation so an
+    # invalid address doesn't burn a scan from the user's hourly quota.
+    allowed, scan_quota = try_consume_scan_quota(user, ip)
+    if not allowed:
+        return quota_error(scan_quota)
 
     try:
         # Fetch balance, transactions, and token transfers concurrently
@@ -1550,12 +1552,17 @@ async def ask_sentinel(request: Request, body: AskRequest):
     """
     user = getattr(request.state, "auth_user", None)
     ip = get_remote_address(request)
-    quota = check_ask_quota(user, ip)
-    if not quota.allowed:
-        return quota_error(quota)
 
     if not body.message.strip():
         return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
+
+    # Atomically reserve the per-user ask slot up front (no TOCTOU window), then
+    # consume the shared global Claude budget here at the route level.
+    allowed, quota = try_consume_ask_quota(user, ip)
+    if not allowed:
+        return quota_error(quota)
+    if not consume_global_budget():
+        return quota_error(check_ask_quota(user, ip))
 
     try:
         from ai.analyst import get_client
@@ -1576,7 +1583,7 @@ async def ask_sentinel(request: Request, body: AskRequest):
 
         usage = response.usage
         tokens = (getattr(usage, "input_tokens", 0) or 0) + (getattr(usage, "output_tokens", 0) or 0)
-        consume_ask_quota(user, ip)
+        # Ask slot + global budget already reserved at the gate; only record tokens.
         record_token_usage(user, ip, tokens)
 
         return success({
@@ -1603,12 +1610,16 @@ async def ask_sentinel_stream(request: Request, body: AskRequest):
     """Stream Claude response as Server-Sent Events (token deltas)."""
     user = getattr(request.state, "auth_user", None)
     ip = get_remote_address(request)
-    quota = check_ask_quota(user, ip)
-    if not quota.allowed:
-        return quota_error(quota)
 
     if not body.message.strip():
         return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
+
+    # Atomically reserve the ask slot + global budget before streaming begins.
+    allowed, quota = try_consume_ask_quota(user, ip)
+    if not allowed:
+        return quota_error(quota)
+    if not consume_global_budget():
+        return quota_error(check_ask_quota(user, ip))
 
     wallets = await fetch_ask_wallets(supabase_client)
     system_prompt = build_ask_system_prompt(wallets)
@@ -1636,7 +1647,7 @@ async def ask_sentinel_stream(request: Request, body: AskRequest):
                     yield f"data: {json.dumps({'type': 'error', 'message': payload})}\n\n"
                     return
 
-            consume_ask_quota(user, ip)
+            # Ask slot + global budget already reserved at the gate; record tokens only.
             record_token_usage(user, ip, tokens_used)
             remaining = get_quota_status(user, ip)
             yield f"data: {json.dumps({'type': 'done', 'tokens_used': tokens_used, 'text': ''.join(full_text), 'quota': {'ask_remaining': remaining.user_ask_remaining, 'tokens_remaining': remaining.user_tokens_remaining, 'plan': remaining.plan}})}\n\n"

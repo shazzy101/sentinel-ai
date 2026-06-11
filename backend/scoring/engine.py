@@ -20,6 +20,29 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
+_SUCCESS_STATUSES = ("success", "Success", "1", "finalized", "confirmed")
+
+
+def _tx_succeeded(t: dict) -> bool:
+    """Whether a single transaction succeeded.
+
+    The canonical normalized boolean `is_error` is authoritative. Only fall back
+    to raw Etherscan fields when it's absent, and treat fully unknown status as
+    success (don't penalize pending/unlabeled data). Each tx is evaluated once,
+    so there's no OR-chain or global fallback double-counting.
+    """
+    is_error = t.get("is_error")
+    if isinstance(is_error, bool):
+        return not is_error
+    raw = t.get("isError")
+    if raw is not None:
+        return str(raw) == "0"
+    status = t.get("status")
+    if status is not None:
+        return status in _SUCCESS_STATUSES
+    return True  # no status info → assume success
+
+
 # Known exchange hot wallet addresses (lowercase) — address-based detection
 _EXCHANGE_ADDRESSES = {
     "0x28c6c06298d514db089934071355e5743bf21d60",  # Binance 14
@@ -180,14 +203,10 @@ def score_wallet(
     defi_score = round(min(engage_points, 25))
 
     # ── SUCCESS RATE (0-15) ──────────────────────────────────────────
-    successful = sum(
-        1 for t in transactions
-        if t.get("status") in ("success", "Success", "1", "finalized", "confirmed")
-        or t.get("is_error") is False
-        or t.get("isError") == "0"
-    )
-    if successful == 0 and all(t.get("status") is None for t in transactions):
-        successful = tx_count  # no status data → assume success
+    # Decide success per-transaction. The canonical normalized flag `is_error`
+    # is authoritative; only fall back to raw Etherscan fields when it's absent.
+    # Each tx is counted at most once (no OR-chain / global fallback double-count).
+    successful = sum(1 for t in transactions if _tx_succeeded(t))
     success_rate = successful / tx_count if tx_count else 0
     success_score = round(success_rate * 15)
 

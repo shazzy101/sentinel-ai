@@ -128,7 +128,10 @@ async def fetch_recent_copy_moves(
     Pull recent swaps from top-ranked copy traders via Etherscan.
     `traders` should already be enriched dicts with address, label, metrics, etc.
     """
-    scan = traders[:traders_to_scan]
+    # Filter to traders with an address BEFORE building tasks, so the task list
+    # and `scan` stay index-aligned — otherwise zip() misattributes swaps to the
+    # wrong trader whenever an input trader is missing an address.
+    scan = [t for t in traders[:traders_to_scan] if t.get("address")]
     sem = asyncio.Semaphore(4)
     tasks = [
         _fetch_trader_swaps(
@@ -137,7 +140,6 @@ async def fetch_recent_copy_moves(
             sem=sem,
         )
         for t in scan
-        if t.get("address")
     ]
     results = await asyncio.gather(*tasks)
 

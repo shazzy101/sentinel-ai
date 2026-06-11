@@ -13,7 +13,7 @@ from typing import Optional
 import anthropic
 
 from observability import log_info, log_warning
-from quota import consume_global_budget, global_calls_remaining, peek_global_budget
+from quota import consume_global_budget, global_calls_remaining
 
 _client: Optional[anthropic.Anthropic] = None
 
@@ -126,21 +126,9 @@ Return JSON only, no other text:
   "tags": ["2-3 tags max"]
 }}"""
 
-    if not peek_global_budget():
-        log_warning("global_claude_budget_exhausted", wallet=wallet_name)
-        return {
-            "signal": "NEUTRAL",
-            "signal_reason": "Analysis paused — hourly API budget reached. Will resume automatically.",
-            "activity_summary": "Rate limit active.",
-            "key_insight": "Check back in a few minutes.",
-            "risk_level": "MEDIUM",
-            "risk_reason": "Cannot assess while rate-limited.",
-            "tags": ["rate-limited"],
-            "rate_limited": True,
-        }
-
+    # Single atomic consume gates the call — no redundant peek beforehand.
     if not consume_global_budget():
-        log_warning("global_claude_budget_race", wallet=wallet_name)
+        log_warning("global_claude_budget_exhausted", wallet=wallet_name)
         return {
             "signal": "NEUTRAL",
             "signal_reason": "Analysis paused — hourly API budget reached.",
@@ -250,18 +238,7 @@ Mention copy-trader quality (win rate, profit factor) when relevant — users co
 
 Return ONLY valid JSON."""
 
-    if not peek_global_budget():
-        if cache["data"]:
-            return cache["data"]
-        return {
-            "headline": "Intelligence paused — hourly API budget reached.",
-            "ethereum_outlook": "Check back shortly.",
-            "flow_state": "NEUTRAL",
-            "top_signal": "NEUTRAL",
-            "key_themes": [],
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        }
-
+    # Single atomic consume gates the call — no redundant peek beforehand.
     if not consume_global_budget():
         if cache["data"]:
             return cache["data"]
