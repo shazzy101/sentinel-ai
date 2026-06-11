@@ -12,7 +12,7 @@ from typing import Optional
 
 import anthropic
 
-from observability import log_info, log_warning
+from observability import log_error, log_info, log_warning
 from quota import consume_global_budget, global_calls_remaining
 
 _client: Optional[anthropic.Anthropic] = None
@@ -257,7 +257,10 @@ Return ONLY valid JSON."""
         log_info("market_summary_complete", model="sonnet")
     except RuntimeError:
         raise
-    except Exception:
+    except Exception as e:
+        # Surface the actual Anthropic error (auth / model / billing) instead of
+        # silently showing "check API keys".
+        log_error("market_summary_failed", error=f"{type(e).__name__}: {str(e)[:240]}")
         result = {
             "headline": "Intelligence unavailable — check API keys.",
             "ethereum_outlook": "N/A",
