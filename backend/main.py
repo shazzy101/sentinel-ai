@@ -1041,7 +1041,7 @@ async def get_wallet_detail(address: str):
     try:
         wallet_row = (
             supabase_client.table("wallets")
-            .select("*")
+            .select("id, address, label, chain, tags, score, score_breakdown, balance, last_scanned, created_at")
             .eq("address", address)
             .execute()
         )
@@ -1060,7 +1060,7 @@ async def get_wallet_detail(address: str):
         # Latest analysis
         analysis_row = (
             supabase_client.table("analyses")
-            .select("*")
+            .select("signal, signal_reason, activity_summary, key_insight, risk_level, tags, generated_at")
             .eq("wallet_id", wallet_id)
             .order("generated_at", desc=True)
             .limit(1)
@@ -1863,7 +1863,10 @@ async def list_news(
         order_col = "importance_score" if sort == "importance" else "published_at"
         q = (
             supabase_client.table("news")
-            .select("*")
+            .select(
+                "id, title, summary, source, url, published_at, category, sentiment, "
+                "bull_score, importance_score, ethereum_relevance, affected_tokens"
+            )
             .order(order_col, desc=True)
             .limit(min(max(limit, 1), 100))
         )
