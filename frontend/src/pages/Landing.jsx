@@ -75,19 +75,20 @@ function ProductMockup() {
   }));
 
   return (
-    <div className="max-w-5xl mx-auto bg-bg-surface border border-border-default rounded-2xl overflow-hidden">
-      {/* Browser bar */}
-      <div className="h-10 bg-bg-overlay border-b border-border-subtle flex items-center px-4 gap-2">
-        <span className="w-3 h-3 rounded-full bg-red/70" />
-        <span className="w-3 h-3 rounded-full bg-amber/70" />
-        <span className="w-3 h-3 rounded-full bg-green/70" />
-        <div className="flex-1 mx-4 bg-bg-elevated rounded px-3 py-1 text-[11px] text-text-muted font-mono text-center select-none">
+    <div className="bg-bg-surface border border-border-default rounded-2xl overflow-hidden">
+      {/* Browser chrome */}
+      <div className="h-11 bg-bg-overlay border-b border-border-subtle flex items-center px-4 gap-2.5">
+        <span className="w-3 h-3 rounded-full bg-red/60 flex-shrink-0" />
+        <span className="w-3 h-3 rounded-full bg-amber/60 flex-shrink-0" />
+        <span className="w-3 h-3 rounded-full bg-green/60 flex-shrink-0" />
+        <div className="flex-1 mx-4 bg-bg-card border border-border-subtle rounded-md px-3 py-1 text-[10px] text-text-muted font-mono text-center select-none flex items-center justify-center gap-1.5">
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M6 3v3.5l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           hadaleum.com/watchlist
         </div>
       </div>
 
       {/* Table header */}
-      <div className="grid grid-cols-[28px_1fr_64px_88px_110px] gap-x-3 px-4 py-2 bg-bg-surface border-b border-border-default text-[9px] uppercase tracking-[1.2px] text-text-muted">
+      <div className="grid grid-cols-[28px_1fr_70px_96px_118px] gap-x-3 px-5 py-2.5 bg-bg-card border-b border-border-default text-[9px] uppercase tracking-[1.4px] text-text-muted font-medium">
         <div>#</div><div>Wallet</div><div>Score</div><div>Signal</div><div>Balance</div>
       </div>
 
@@ -95,39 +96,42 @@ function ProductMockup() {
       {rows.map((row, i) => (
         <div
           key={row.name}
-          className={`grid grid-cols-[28px_1fr_64px_88px_110px] gap-x-3 px-4 py-2.5 border-b border-border-subtle last:border-0 transition-all duration-300 ${
-            scanningRow === i ? 'border-l-2 border-l-green bg-green/5' : 'border-l-2 border-l-transparent'
+          className={`grid grid-cols-[28px_1fr_70px_96px_118px] gap-x-3 px-5 py-3 border-b border-border-subtle last:border-0 transition-all duration-300 ${
+            scanningRow === i ? 'border-l-2 border-l-green bg-green/[0.04]' : 'border-l-2 border-l-transparent'
           }`}
         >
-          <div className="text-[10px] text-text-muted font-mono self-center">{i + 1}</div>
+          <div className="text-[10px] text-text-muted font-mono self-center tabular-nums">{i + 1}</div>
           <div className="self-center min-w-0">
-            <div className="text-[12px] font-medium text-text-primary truncate">{row.name}</div>
-            <div className="text-[9px] text-text-muted font-mono">{row.addr}</div>
+            <div className="text-[12px] font-semibold text-text-primary truncate">{row.name}</div>
+            <div className="text-[9px] text-text-muted font-mono mt-0.5">{row.addr}</div>
           </div>
           <div className="self-center">
-            <div className="h-[2px] bg-bg-elevated rounded-full mb-1 overflow-hidden">
+            <div className="h-[2px] bg-bg-elevated rounded-full mb-1.5 overflow-hidden">
               <div
                 className={row.score >= 80 ? 'h-full bg-green rounded-full' : row.score >= 60 ? 'h-full bg-amber rounded-full' : 'h-full bg-red rounded-full'}
-                style={{ width: loaded ? `${row.score}%` : '0%', transition: `width 0.9s ease ${i * 0.15}s` }}
+                style={{ width: loaded ? `${row.score}%` : '0%', transition: `width 1s ease ${i * 0.15}s` }}
               />
             </div>
-            <span className={`text-[11px] font-mono font-bold ${row.score >= 80 ? 'text-green' : row.score >= 60 ? 'text-amber' : 'text-red'}`}>
+            <span className={`text-[11px] font-mono font-bold tabular-nums ${row.score >= 80 ? 'text-green' : row.score >= 60 ? 'text-amber' : 'text-red'}`}>
               {row.score}
             </span>
           </div>
           <div className="self-center">
             <SignalChip signal={row.signal} />
           </div>
-          <div className="self-center text-[10px] font-mono text-text-secondary">
+          <div className="self-center text-[10px] font-mono text-text-secondary tabular-nums">
             {[1247.52, 856.14, 3120, 2450, 445.22][i].toLocaleString(undefined, { minimumFractionDigits: 2 })} ETH
           </div>
         </div>
       ))}
 
-      <div className="px-4 py-2 bg-bg-overlay flex items-center gap-2 overflow-hidden">
-        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse flex-shrink-0" />
-        <span className="text-[10px] text-text-muted font-mono truncate max-w-[180px] text-green">
-          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}...` : 'live • wallets tracked'}
+      <div className="px-5 py-2.5 bg-bg-overlay flex items-center gap-2">
+        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
+        </span>
+        <span className="text-[10px] text-green font-mono">
+          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}…` : 'live · wallets tracked'}
         </span>
       </div>
     </div>
@@ -155,28 +159,35 @@ function WhaleTicker() {
   const scoreColor = { BULLISH: 'text-green', BEARISH: 'text-red', NEUTRAL: 'text-amber' };
 
   return (
-    <div className="py-6 border-y border-border-subtle overflow-hidden">
-      <div className="text-[9px] uppercase tracking-[2px] text-green/60 text-center mb-4 font-mono">
-        Live whale intelligence · Tracking now
+    <div className="py-8 border-y border-border-subtle overflow-hidden">
+      <div className="flex items-center justify-center gap-2 mb-5">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
+        </span>
+        <span className="text-[9px] uppercase tracking-[2.5px] text-green/70 font-mono">Live whale intelligence · Tracking now</span>
       </div>
       <div className="relative">
-        <div className="flex gap-3" style={{ animation: 'ticker-scroll 30s linear infinite', width: 'max-content' }}>
+        <div className="flex gap-4" style={{ animation: 'ticker-scroll 36s linear infinite', width: 'max-content' }}>
           {doubled.map((w, i) => (
-            <div key={i} className="flex-shrink-0 bg-bg-card border border-border-subtle rounded-xl px-4 py-3 min-w-[162px]">
-              <div className="text-[11px] font-medium text-text-secondary mb-0.5">{w.name}</div>
-              <div className="text-[9px] text-text-muted font-mono mb-2.5">{w.addr}</div>
-              <div className="flex items-center justify-between">
-                <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${sigCls[w.signal].chip}`}>
-                  <span className={`w-1 h-1 rounded-full ${sigCls[w.signal].dot}`} />
-                  {w.signal}
-                </span>
-                <span className={`text-[11px] font-mono font-bold ${scoreColor[w.signal]}`}>{w.score}</span>
+            <div
+              key={i}
+              className="flex-shrink-0 bg-bg-card border border-border-default rounded-xl px-5 py-4 min-w-[200px] hover:border-border-strong transition-colors"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[12px] font-semibold text-text-primary">{w.name}</div>
+                <span className={`text-[13px] font-mono font-bold tabular-nums ${scoreColor[w.signal]}`}>{w.score}</span>
               </div>
+              <div className="text-[9px] text-text-muted font-mono mb-3">{w.addr}</div>
+              <span className={`inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${sigCls[w.signal].chip}`}>
+                <span className={`w-1 h-1 rounded-full ${sigCls[w.signal].dot}`} />
+                {w.signal}
+              </span>
             </div>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-bg-base to-transparent pointer-events-none z-10" />
-        <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-bg-base to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-bg-base to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-bg-base to-transparent pointer-events-none z-10" />
       </div>
     </div>
   );
@@ -438,77 +449,115 @@ function Navbar() {
 function HeroSection({ walletCount }) {
   const navigate = useNavigate();
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-6 pt-28 pb-16 md:px-8">
-      <div className="hero-grid absolute inset-0 pointer-events-none opacity-60" />
-      <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[480px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(0,217,146,0.14) 0%, transparent 65%)' }}
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 text-center max-w-4xl"
-      >
-        <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/10 px-3.5 py-1.5 mb-8">
-          <span className="relative h-1.5 w-1.5 rounded-full bg-green pulse-dot" />
-          <span className="text-xs font-medium tracking-wide text-green">{walletCount} wallets tracked live</span>
-        </div>
-        <h1 className="font-display font-bold text-4xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-text-primary mb-6">
-          Copy smart money.
-          <br />
-          <span className="gradient-text-accent">Keep your keys.</span>
-        </h1>
-        <p className="text-lg text-text-secondary leading-relaxed max-w-2xl mx-auto mb-10">
-          Hadaleum tracks 2,796 elite Ethereum wallets from the depths no one else reaches. AI signals. Non-custodial copy trading. Your keys, always.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <MagneticButton
-            type="button"
-            onClick={() => navigate('/watchlist')}
-            className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
+    <section className="min-h-[100dvh] flex flex-col justify-center relative overflow-hidden px-6 pt-28 pb-16 md:px-10 lg:px-12">
+      <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_480px] gap-12 xl:gap-20 items-center">
+
+        {/* ── Left: editorial text ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10"
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.07] px-3.5 py-1.5 mb-10">
+            <span className="relative h-1.5 w-1.5 flex-shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
+            </span>
+            <span className="text-xs font-medium tracking-wide text-green">{walletCount.toLocaleString()} wallets tracked live</span>
+          </div>
+
+          <h1
+            className="font-display font-bold leading-[0.92] tracking-tight text-text-primary mb-8"
+            style={{ fontSize: 'clamp(54px, 8.5vw, 116px)' }}
           >
-            Track Whales Free →
-          </MagneticButton>
-          <button
-            type="button"
-            onClick={() => navigate('/intelligence')}
-            className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-3.5 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
-          >
-            See Today's Signals
-          </button>
-        </div>
-        <p className="text-[12px] text-text-muted mt-3 mb-16">No credit card · 2,796 wallets tracked · Cancel anytime</p>
-        <div className="flex flex-col items-center mt-6 animate-bounce">
-          <svg className="w-5 h-5 text-text-muted" viewBox="0 0 20 20" fill="none">
-            <path d="M10 4v12M6 12l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 pt-10 border-t border-white/[0.06] max-w-3xl mx-auto">
-          {[
-            { val: walletCount, lbl: 'Wallets Tracked', suffix: '' },
-            { val: 6, lbl: 'Hour Scan Cycle', suffix: 'hr' },
-            { val: 100, lbl: 'Ethereum Focus', suffix: '%' },
-            { val: 19, lbl: 'Pro Plan / Month', prefix: '$' },
-          ].map(({ val, lbl, suffix, prefix }, i) => (
-            <motion.div
-              key={lbl}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + i * 0.08, duration: 0.4 }}
-              className="flex flex-col items-center gap-1"
+            Copy smart<br />
+            <span className="gradient-text-accent">money.</span>
+          </h1>
+
+          <p className="text-[17px] text-text-secondary leading-relaxed max-w-[480px] mb-2">
+            Hadaleum tracks <strong className="text-text-primary font-semibold">2,796 elite Ethereum wallets</strong> from the depths no one else reaches.
+          </p>
+          <p className="text-[15px] text-text-muted max-w-[480px] mb-10">
+            AI signals · Non-custodial copy trading · Your keys, always.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-start gap-3 mb-3">
+            <MagneticButton
+              type="button"
+              onClick={() => navigate('/watchlist')}
+              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-[15px] px-8 py-4 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
             >
-              <span className="font-display font-bold text-3xl text-text-primary">
-                <>
-                    {prefix}
-                    <AnimatedCounter value={val} decimals={0} />
-                    {suffix}
-                  </>
-              </span>
-              <span className="text-2xs text-text-muted uppercase tracking-widest">{lbl}</span>
-            </motion.div>
-          ))}
-        </div>
+              Track Whales Free →
+            </MagneticButton>
+            <button
+              type="button"
+              onClick={() => navigate('/intelligence')}
+              className="w-full sm:w-auto border border-border-default text-text-secondary text-[15px] px-8 py-4 rounded-xl hover:bg-bg-elevated hover:text-text-primary hover:border-border-strong transition-all"
+            >
+              See Today's Signals
+            </button>
+          </div>
+          <p className="text-[12px] text-text-muted mb-14">No credit card · Cancel anytime</p>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pt-8 border-t border-white/[0.06]">
+            {[
+              { val: walletCount, lbl: 'Wallets Tracked', suffix: '' },
+              { val: 6, lbl: 'Hour Scan Cycle', suffix: 'hr' },
+              { val: 100, lbl: 'Ethereum Focus', suffix: '%' },
+              { val: 19, lbl: 'Pro Plan / Month', prefix: '$' },
+            ].map(({ val, lbl, suffix, prefix }, i) => (
+              <motion.div
+                key={lbl}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.08, duration: 0.4 }}
+                className="flex flex-col gap-1"
+              >
+                <span className="font-display font-bold text-3xl text-text-primary tabular-nums">
+                  {prefix}<AnimatedCounter value={val} decimals={0} />{suffix}
+                </span>
+                <span className="text-2xs text-text-muted uppercase tracking-widest">{lbl}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── Right: 3D tilted product mockup ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.85, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="hidden lg:block relative"
+          style={{ perspective: '1200px' }}
+        >
+          <div
+            className="relative rounded-2xl overflow-hidden"
+            style={{
+              transform: 'rotateY(-7deg) rotateX(3deg)',
+              transformStyle: 'preserve-3d',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.06)',
+            }}
+          >
+            <ProductMockup />
+          </div>
+          {/* Soft glow underneath the mockup */}
+          <div
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-2/3 h-10 blur-3xl opacity-25 rounded-full pointer-events-none"
+            style={{ background: 'rgba(0,217,146,0.5)' }}
+          />
+        </motion.div>
+      </div>
+
+      {/* Mobile product mockup (shows below text, no 3D) */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="lg:hidden max-w-lg mx-auto w-full mt-12"
+      >
+        <ProductMockup />
       </motion.div>
     </section>
   );
@@ -516,90 +565,127 @@ function HeroSection({ walletCount }) {
 
 function ProductPreviewSection() {
   return (
-    <section className="py-24 px-8 bg-bg-base">
-      <div className="text-center mb-12">
-        <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">The Product</div>
-        <h2 className="font-display text-[40px] font-bold text-text-primary">
-          Everything you need to follow smart money.
-        </h2>
+    <section className="py-24 px-6 md:px-10 bg-bg-base">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-3 font-mono">The Product</div>
+          <h2 className="font-display text-[36px] md:text-[48px] font-bold text-text-primary leading-[1.05]">
+            Everything you need to<br className="hidden md:block" /> follow smart money.
+          </h2>
+        </div>
+        {/* Full-width mockup with depth */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)' }}
+        >
+          <ProductMockup />
+        </div>
       </div>
-      <ProductMockup />
     </section>
   );
 }
 
-function FeaturesSection() {
+function BentoCard({ tag, title, body, cta, ctaPath, Visual, className = '', delay = 0 }) {
   const navigate = useNavigate();
-  const blocks = [
-    {
-      tag: 'Whale Watchlist',
-      title: '2,796 wallets. Ranked by intelligence, not balance.',
-      body: 'Every major Ethereum whale scored 0–100 using our proprietary methodology: activity, success rate, recency, and balance weight. Exchange hot wallets automatically filtered out.',
-      cta: 'View Watchlist →',
-      ctaPath: '/watchlist',
-      Visual: WatchlistVisual,
-      flip: false,
-    },
-    {
-      tag: 'AI Intelligence',
-      title: "Claude reads the chain so you don't have to.",
-      body: 'Every wallet analyzed by Claude AI. Get a structured signal (BULLISH/BEARISH/NEUTRAL), activity summary, key insight, and risk level — updated automatically every 6 hours.',
-      cta: 'See Intelligence →',
-      ctaPath: '/intelligence',
-      Visual: IntelligenceVisual,
-      flip: true,
-    },
-    {
-      tag: 'Live Markets',
-      title: 'ETH price, ecosystem tokens, live charts.',
-      body: 'Real-time market data from CoinGecko. ETH hero charts, top ecosystem tokens, volume sparklines, and whale sentiment derived from your tracked wallets.',
-      cta: 'Open Markets →',
-      ctaPath: '/markets',
-      Visual: MarketsVisual,
-      flip: true,
-    },
-    {
-      tag: 'Invest & Copy',
-      title: 'Mirror whale moves. Execute via MetaMask.',
-      body: 'When a tracked whale makes a significant move, copy the trade at your size. Best-rate routing across all DEXs via DefiLlama — Hadaleum never holds your keys.',
-      cta: 'Start Investing →',
-      ctaPath: '/invest',
-      Visual: InvestVisual,
-      flip: false,
-    },
-    {
-      tag: 'Live Alerts',
-      title: 'Get the signal the moment it fires.',
-      body: 'Set rules: notify me when any wallet goes BULLISH, when a score crosses 80, or when a specific whale changes direction. Alerts fire instantly — no polling, no lag.',
-      cta: 'Set Up Alerts →',
-      ctaPath: '/alerts',
-      Visual: AlertVisual,
-      flip: false,
-    },
-  ];
-
   return (
-    <section className="py-24 px-8 max-w-6xl mx-auto">
-      <div className="flex flex-col gap-24">
-        {blocks.map(({ tag, title, body, cta, ctaPath, Visual, flip }) => (
-          <div key={tag} className={`flex flex-col md:flex-row items-center gap-12 md:gap-16 ${flip ? 'md:flex-row-reverse' : ''}`}>
-            <div className="flex-1 max-w-lg">
-              <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">{tag}</div>
-              <h3 className="font-display text-[28px] font-bold text-text-primary leading-[1.2] mb-4">{title}</h3>
-              <p className="text-[15px] text-text-secondary leading-relaxed mb-5">{body}</p>
-              <button
-                type="button"
-                onClick={() => navigate(ctaPath)}
-                className="text-[14px] font-medium text-green hover:underline"
-              >
-                {cta}
-              </button>
-            </div>
-            <div className="flex-1 w-full max-w-md">
-              <Visual />
-            </div>
-          </div>
-        ))}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className={`group relative rounded-2xl border border-border-default bg-bg-surface overflow-hidden p-6 flex flex-col gap-4 hover:border-border-strong transition-all duration-300 ${className}`}
+    >
+      {/* subtle inset glow on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+           style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} />
+
+      <div className="text-[9px] uppercase tracking-[2.5px] text-green font-mono">{tag}</div>
+
+      <div className="flex-1">
+        <h3 className="font-display text-[20px] font-bold text-text-primary leading-[1.25] mb-2">{title}</h3>
+        <p className="text-[13px] text-text-secondary leading-relaxed">{body}</p>
+      </div>
+
+      {Visual && (
+        <div className="mt-2">
+          <Visual />
+        </div>
+      )}
+
+      {cta && (
+        <button
+          type="button"
+          onClick={() => navigate(ctaPath)}
+          className="text-[13px] font-medium text-green hover:text-green-bright transition-colors self-start mt-auto"
+        >
+          {cta}
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+function FeaturesSection() {
+  return (
+    <section className="py-24 px-6 md:px-10 max-w-6xl mx-auto">
+      <div className="text-center mb-14">
+        <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-3 font-mono">Features</div>
+        <h2 className="font-display text-[36px] md:text-[44px] font-bold text-text-primary leading-[1.05]">
+          Built for traders who<br className="hidden md:block" /> want real edge.
+        </h2>
+      </div>
+
+      {/* Bento grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-auto">
+        {/* Row 1: Watchlist (large) + Intelligence */}
+        <BentoCard
+          tag="Whale Watchlist"
+          title="2,796 wallets. Ranked by intelligence, not balance."
+          body="Every major ETH whale scored 0–100 using activity, success rate, recency, and balance weight. Exchange hot wallets filtered out automatically."
+          cta="View Watchlist →"
+          ctaPath="/watchlist"
+          Visual={WatchlistVisual}
+          className="xl:col-span-2"
+          delay={0}
+        />
+        <BentoCard
+          tag="AI Intelligence"
+          title="Claude reads the chain so you don't have to."
+          body="Every wallet analyzed by Claude AI. Structured BULLISH / BEARISH / NEUTRAL signal with reasoning, updated every 6 hours."
+          cta="See Signals →"
+          ctaPath="/intelligence"
+          Visual={IntelligenceVisual}
+          delay={0.08}
+        />
+
+        {/* Row 2: Alerts + Markets + Invest */}
+        <BentoCard
+          tag="Live Alerts"
+          title="Get the signal the moment it fires."
+          body="Set rules: notify me when any wallet goes BULLISH, or when a score crosses 80. Fires instantly — no polling, no lag."
+          cta="Set Up Alerts →"
+          ctaPath="/alerts"
+          Visual={AlertVisual}
+          delay={0.12}
+        />
+        <BentoCard
+          tag="Live Markets"
+          title="ETH price, ecosystem tokens, live charts."
+          body="Real-time data from CoinGecko. ETH hero charts, top ecosystem tokens, and whale sentiment derived from your tracked wallets."
+          cta="Open Markets →"
+          ctaPath="/markets"
+          Visual={MarketsVisual}
+          delay={0.16}
+        />
+        <BentoCard
+          tag="Invest & Copy"
+          title="Mirror whale moves. Execute via MetaMask."
+          body="Copy trades at your size via non-custodial MetaMask execution. Best-rate DEX routing via DefiLlama. Hadaleum never holds your keys."
+          cta="Start Investing →"
+          ctaPath="/invest"
+          Visual={InvestVisual}
+          delay={0.2}
+        />
       </div>
     </section>
   );
@@ -608,7 +694,7 @@ function FeaturesSection() {
 function ComparisonSection() {
   return (
     <section className="py-24 px-8 max-w-4xl mx-auto text-center">
-      <h2 className="font-display text-[36px] font-bold text-text-primary mb-4">How Hadaleum compares.</h2>
+      <h2 className="font-display text-[36px] md:text-[44px] font-bold text-text-primary mb-4 leading-[1.05]">How Hadaleum compares.</h2>
       <p className="text-text-muted text-[16px] mb-4">The Bloomberg Terminal for DeFi — at 1/100th the price. We built what Nansen should have been.</p>
       <p className="text-text-muted text-[13px] mt-2 mb-12">Pricing as of June 2026. Nansen $150/mo, Arkham free tier available.</p>
       <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden text-left">
@@ -638,20 +724,26 @@ function ComparisonSection() {
 }
 
 function TrustStrip() {
+  const names = ['Wintermute', 'Paradigm', 'Jump Crypto', 'a16z Crypto', 'Dragonfly Capital', 'Cumberland DRW', 'Galaxy Digital', 'Vitalik.eth', 'ETH Foundation'];
   return (
-    <div className="py-8 border-y border-border-subtle text-center">
-      <p className="text-[12px] text-text-muted mb-4 uppercase tracking-widest">
-        Tracking wallets from
+    <div className="py-10 border-y border-border-subtle text-center px-6">
+      <p className="text-[9px] text-text-muted mb-6 uppercase tracking-[2.5px] font-mono">
+        Tracking on-chain wallets from
       </p>
-      <div className="flex items-center justify-center gap-8 flex-wrap px-6">
-        {['Wintermute', 'Paradigm', 'Jump Crypto', 'a16z Crypto', 'Dragonfly Capital', 'Cumberland DRW', 'Galaxy Digital', 'Vitalik.eth', 'ETH Foundation'].map((name) => (
-          <span key={name} className="text-[13px] text-text-muted font-medium">{name}</span>
+      <div className="flex items-center justify-center gap-6 flex-wrap max-w-4xl mx-auto">
+        {names.map((name) => (
+          <span
+            key={name}
+            className="text-[13px] text-text-muted/70 font-medium hover:text-text-secondary transition-colors cursor-default"
+          >
+            {name}
+          </span>
         ))}
       </div>
-      <p className="text-[10px] text-text-muted mt-3">
-        Public on-chain addresses — verifiable on{' '}
-        <a href="https://etherscan.io" target="_blank" rel="noopener noreferrer" className="text-green/60 hover:text-green underline underline-offset-2">Etherscan</a>.
-        {' '}Not affiliated with or endorsed by these organizations.
+      <p className="text-[10px] text-text-muted/50 mt-6">
+        Public on-chain addresses · Verifiable on{' '}
+        <a href="https://etherscan.io" target="_blank" rel="noopener noreferrer" className="text-green/50 hover:text-green/80 underline underline-offset-2 transition-colors">Etherscan</a>
+        {' '}· Not affiliated with or endorsed by these organizations.
       </p>
     </div>
   );
@@ -704,20 +796,20 @@ function HowItWorksSection() {
     <section className="py-24 px-8">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">How It Works</div>
-          <h2 className="font-display text-[36px] font-bold text-text-primary">Three steps to copy smart money.</h2>
+          <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-3 font-mono">How It Works</div>
+          <h2 className="font-display text-[36px] md:text-[44px] font-bold text-text-primary leading-[1.05]">Three steps to copy<br className="hidden md:block" /> smart money.</h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-5">
           {steps.map((s, index) => (
             <motion.div
               key={s.num}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ delay: index * 0.15, duration: 0.5 }}
-              className="rounded-2xl border border-border-default bg-bg-surface p-8 flex flex-col gap-3"
+              transition={{ delay: index * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="rounded-2xl border border-border-default bg-bg-surface p-8 flex flex-col gap-3 hover:border-border-strong transition-colors"
             >
-              <div className="text-[48px] font-bold text-green/20 leading-none">{s.num}</div>
+              <div className="font-display text-[56px] font-bold text-green/[0.15] leading-none tabular-nums">{s.num}</div>
               <h3 className="font-display text-[18px] font-bold text-text-primary">{s.title}</h3>
               <p className="text-[14px] text-text-secondary leading-relaxed">{s.desc}</p>
             </motion.div>
@@ -899,12 +991,17 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="py-24 px-6 text-center">
-        <div className="max-w-2xl mx-auto rounded-3xl border border-green/20 bg-green/[0.04] px-8 py-14">
-          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Start today</div>
-          <h2 className="font-display text-[34px] md:text-[40px] font-bold text-text-primary leading-tight mb-4">
-            The deepest layer of Ethereum intelligence.
+        <div className="max-w-2xl mx-auto rounded-3xl border border-green/20 bg-bg-surface relative overflow-hidden px-8 py-16"
+             style={{ boxShadow: '0 0 80px rgba(0,217,146,0.07), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+          {/* Background glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 blur-3xl opacity-[0.15] pointer-events-none rounded-full"
+               style={{ background: 'rgba(0,217,146,0.6)' }} />
+          <div className="relative">
+          <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-4 font-mono">Start today</div>
+          <h2 className="font-display text-[40px] md:text-[52px] font-bold text-text-primary leading-[0.96] mb-5">
+            The deepest layer of<br />Ethereum intelligence.
           </h2>
-          <p className="text-[15px] text-text-secondary leading-relaxed max-w-lg mx-auto mb-8">
+          <p className="text-[15px] text-text-secondary leading-relaxed max-w-lg mx-auto mb-10">
             Full 2,796-wallet watchlist, unlimited AI signals, non-custodial copy trading, and instant alerts.
             Start free — upgrade to Pro when you're ready.
           </p>
@@ -912,7 +1009,7 @@ export default function LandingPage() {
             <MagneticButton
               type="button"
               onClick={() => navigate('/signup')}
-              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-3.5 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
+              className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-4 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
             >
               Start 7-day free trial →
             </MagneticButton>
@@ -925,6 +1022,7 @@ export default function LandingPage() {
             </button>
           </div>
           <p className="text-[12px] text-text-muted mt-4">No credit card required · Cancel anytime</p>
+          </div>
         </div>
       </section>
 
