@@ -267,12 +267,20 @@ def _aggregate_stats(rows: list[dict], *, since: datetime | None = None) -> dict
     resolved = [r for r in rows if r.get("outcome_status") not in (None, "PENDING")]
     wins = [r for r in resolved if r.get("outcome_status") == "WIN"]
     losses = [r for r in resolved if r.get("outcome_status") == "LOSS"]
+    # Win-only P&L (headline) and NET P&L across all scored moves (honest).
     total_hypo_pnl = sum(float(r.get("hypothetical_pnl_usd") or 0) for r in wins)
+    net_hypo_pnl = sum(float(r.get("hypothetical_pnl_usd") or 0) for r in resolved)
     avg_win_pct = (
         sum(float(r.get("return_pct_24h") or 0) for r in wins) / len(wins)
         if wins else 0.0
     )
-    win_rate = round(len(wins) / len(resolved) * 100, 1) if resolved else None
+    avg_loss_pct = (
+        sum(float(r.get("return_pct_24h") or 0) for r in losses) / len(losses)
+        if losses else 0.0
+    )
+    # Win rate over decisive (WIN/LOSS) moves — NEUTRAL ties don't pad the rate.
+    decisive = len(wins) + len(losses)
+    win_rate = round(len(wins) / decisive * 100, 1) if decisive else None
 
     return {
         "detections": len(rows),
@@ -281,8 +289,26 @@ def _aggregate_stats(rows: list[dict], *, since: datetime | None = None) -> dict
         "losses": len(losses),
         "win_rate_pct": win_rate,
         "total_hypothetical_pnl_usd": round(total_hypo_pnl, 2),
+        "net_hypothetical_pnl_usd": round(net_hypo_pnl, 2),
         "avg_win_return_pct": round(avg_win_pct, 2),
+        "avg_loss_return_pct": round(avg_loss_pct, 2),
     }
+
+
+def _equity_curve(rows: list[dict]) -> list[dict[str, Any]]:
+    """Cumulative hypothetical P&L (incl. losses) over scored moves, oldest→newest."""
+    decisive = [r for r in rows if r.get("outcome_status") in ("WIN", "LOSS")]
+    decisive.sort(key=lambda r: r.get("outcome_scored_at") or r.get("detected_at") or "")
+    cum = 0.0
+    pts: list[dict[str, Any]] = []
+    for i, r in enumerate(decisive, start=1):
+        cum += float(r.get("hypothetical_pnl_usd") or 0)
+        pts.append({
+            "n": i,
+            "t": r.get("outcome_scored_at") or r.get("detected_at"),
+            "cum_pnl": round(cum, 2),
+        })
+    return pts
 
 
 def _move_public_row(r: dict, *, extra: dict | None = None) -> dict:
@@ -369,19 +395,24 @@ async def get_pending_preview(*, limit: int = 40) -> dict[str, Any]:
     }
 
 
-def _marketing_headline(d24: dict, d7: dict, on_track: int) -> str | None:
+def _marketing_headline(d30: dict, d24: dict, d7: dict, on_track: int) -> str | None:
+    # Lead with the win rate over a meaningful sample — that's the credible hook.
+    wr = d30.get("win_rate_pct")
+    decisive = (d30.get("wins") or 0) + (d30.get("losses") or 0)
+    if wr is not None and decisive >= 10:
+        return (
+            f"Hadaleum's flagged moves won {wr:.0f}% of the time over the last 30 days "
+            f"({d30.get('wins', 0)} of {decisive} scored, verified on-chain)."
+        )
     wins = d24.get("wins") or 0
-    pnl = d24.get("total_hypothetical_pnl_usd") or 0
     avg = d24.get("avg_win_return_pct") or 0
     if wins > 0:
-        parts = [f"Hadaleum detected {wins} winning copy-trader move{'s' if wins != 1 else ''} in the last 24 hours"]
+        parts = [f"Hadaleum flagged {wins} winning copy-trader move{'s' if wins != 1 else ''} in the last 24h"]
         if avg:
             parts.append(f"averaging +{avg:.1f}% per win")
-        if pnl:
-            parts.append(f"— {NOTIONAL_USD:,.0f} copies would have returned +${pnl:,.0f} hypothetically")
-        return ", ".join(parts) + "."
+        return ", ".join(parts) + " — verified on-chain."
     if on_track > 0:
-        return f"{on_track} detected move{'s' if on_track != 1 else ''} currently tracking toward WIN (live prices, pending 24h score)."
+        return f"{on_track} detected move{'s' if on_track != 1 else ''} tracking toward WIN right now (live prices, pending 24h score)."
     if (d7.get("wins") or 0) > 0:
         return f"{d7['wins']} verified wins in the last 7 days — on-chain detections scored 24h after each move."
     return None
@@ -392,14 +423,24 @@ async def get_marketing_snapshot() -> dict[str, Any]:
     pending = await get_pending_preview()
     d24 = pulse.get("last_24h") or {}
     d7 = pulse.get("last_7d") or {}
+    d30 = pulse.get("last_30d") or {}
     on_track = pending.get("on_track_count") or 0
-    headline = _marketing_headline(d24, d7, on_track)
+    headline = _marketing_headline(d30, d24, d7, on_track)
+    biggest = pulse.get("biggest_win")
 
     tweet_hooks = []
-    if d24.get("wins"):
+    wr30 = d30.get("win_rate_pct")
+    decisive30 = (d30.get("wins") or 0) + (d30.get("losses") or 0)
+    if wr30 is not None and decisive30 >= 10:
         tweet_hooks.append(
-            f"🟢 Hadaleum flagged {d24['wins']} winning ETH copy-trader moves in 24h "
-            f"(avg +{d24.get('avg_win_return_pct', 0):.1f}%). Verified on-chain. hadaleum.com/wins"
+            f"🟢 Hadaleum's flagged ETH copy-trader moves won {wr30:.0f}% of the time "
+            f"over 30d ({d30.get('wins', 0)}/{decisive30}). Every move verifiable on-chain. hadaleum.com/wins"
+        )
+    if biggest and biggest.get("return_pct_24h"):
+        tok = biggest.get("token_bought") or biggest.get("token_sold") or "a token"
+        tweet_hooks.append(
+            f"🚀 Biggest detected win: +{float(biggest['return_pct_24h']):.1f}% on {tok} in 24h. "
+            f"Logged on-chain the moment a ranked trader moved. hadaleum.com/wins"
         )
     if on_track:
         tweet_hooks.append(
@@ -411,12 +452,34 @@ async def get_marketing_snapshot() -> dict[str, Any]:
         "tweet_hooks": tweet_hooks,
         "stats_24h": d24,
         "stats_7d": d7,
+        "stats_30d": d30,
         "on_track_count": on_track,
         "pending_total": pending.get("total_pending") or 0,
         "recent_wins": pulse.get("recent_wins") or [],
+        "recent_losses": pulse.get("recent_losses") or [],
+        "recent_scored": pulse.get("recent_scored") or [],
+        "biggest_win": biggest,
+        "equity_curve": pulse.get("equity_curve") or [],
         "watching": (pending.get("moves") or [])[:8],
         "methodology": pulse.get("methodology"),
         "updated_at": pulse.get("updated_at"),
+    }
+
+
+def _scored_public_row(r: dict) -> dict:
+    return {
+        "detected_at": r.get("detected_at"),
+        "scored_at": r.get("outcome_scored_at"),
+        "trader_label": r.get("trader_label"),
+        "trader_rank": r.get("trader_rank"),
+        "action": r.get("action"),
+        "token_bought": r.get("token_bought"),
+        "token_sold": r.get("token_sold"),
+        "return_pct_24h": r.get("return_pct_24h"),
+        "hypothetical_pnl_usd": r.get("hypothetical_pnl_usd"),
+        "amount_usd": r.get("amount_usd"),
+        "tx_hash": r.get("tx_hash"),
+        "outcome_status": r.get("outcome_status"),
     }
 
 
@@ -424,14 +487,15 @@ async def get_trust_pulse() -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     since_24h = now - timedelta(hours=24)
     since_7d = now - timedelta(days=7)
+    since_30d = now - timedelta(days=30)
 
     try:
         res = (
             supabase_client.table("detected_moves")
             .select("*")
-            .gte("detected_at", since_7d.isoformat())
+            .gte("detected_at", since_30d.isoformat())
             .order("detected_at", desc=True)
-            .limit(500)
+            .limit(1000)
             .execute()
         )
         rows = res.data or []
@@ -439,21 +503,19 @@ async def get_trust_pulse() -> dict[str, Any]:
         log_error("trust_pulse_fetch_failed", error=str(e)[:200])
         rows = []
 
-    recent_wins = [
-        {
-            "detected_at": r.get("detected_at"),
-            "trader_label": r.get("trader_label"),
-            "action": r.get("action"),
-            "token_bought": r.get("token_bought"),
-            "token_sold": r.get("token_sold"),
-            "return_pct_24h": r.get("return_pct_24h"),
-            "hypothetical_pnl_usd": r.get("hypothetical_pnl_usd"),
-            "amount_usd": r.get("amount_usd"),
-            "tx_hash": r.get("tx_hash"),
-        }
-        for r in rows
-        if r.get("outcome_status") == "WIN"
-    ][:12]
+    recent_wins = [_scored_public_row(r) for r in rows if r.get("outcome_status") == "WIN"][:12]
+    recent_losses = [_scored_public_row(r) for r in rows if r.get("outcome_status") == "LOSS"][:12]
+    # Full record (wins + losses), newest scored first.
+    recent_scored = sorted(
+        [_scored_public_row(r) for r in rows if r.get("outcome_status") in ("WIN", "LOSS")],
+        key=lambda r: r.get("scored_at") or r.get("detected_at") or "",
+        reverse=True,
+    )[:20]
+    wins_only = [r for r in rows if r.get("outcome_status") == "WIN"]
+    biggest_win = (
+        _scored_public_row(max(wins_only, key=lambda r: float(r.get("return_pct_24h") or 0)))
+        if wins_only else None
+    )
 
     return {
         "available": True,
@@ -466,6 +528,11 @@ async def get_trust_pulse() -> dict[str, Any]:
         "notional_usd": NOTIONAL_USD,
         "last_24h": _aggregate_stats(rows, since=since_24h),
         "last_7d": _aggregate_stats(rows, since=since_7d),
+        "last_30d": _aggregate_stats(rows, since=since_30d),
+        "equity_curve": _equity_curve(rows),
+        "recent_losses": recent_losses,
+        "recent_scored": recent_scored,
+        "biggest_win": biggest_win,
         "pending_scoring": sum(1 for r in rows if r.get("outcome_status") == "PENDING"),
         "recent_wins": recent_wins,
         "updated_at": now.isoformat(),

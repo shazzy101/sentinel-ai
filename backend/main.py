@@ -16,7 +16,7 @@ import re
 import config  # noqa: F401 — load .env before chain/API imports
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from auth_context import resolve_user
@@ -2487,6 +2487,51 @@ async def trust_pulse_marketing(request: Request):
     """Polished stats + tweet hooks for GTM / customer demos."""
     data = await get_marketing_snapshot()
     return success(data)
+
+
+@app.get("/api/trust/og.svg")
+async def trust_og_image(request: Request):
+    """Shareable 1200×630 stats card (SVG) for /wins — win rate, net P&L, sample."""
+    m = await get_marketing_snapshot()
+    d30 = m.get("stats_30d") or {}
+    wr = d30.get("win_rate_pct")
+    wins = d30.get("wins") or 0
+    losses = d30.get("losses") or 0
+    decisive = wins + losses
+    net = d30.get("net_hypothetical_pnl_usd") or 0
+    biggest = m.get("biggest_win") or {}
+    big_pct = biggest.get("return_pct_24h")
+    big_tok = biggest.get("token_bought") or biggest.get("token_sold") or ""
+
+    wr_str = f"{wr:.0f}%" if (wr is not None and decisive >= 1) else "—"
+    sample = f"{wins} of {decisive} scored moves · 30d" if decisive else "ledger building"
+    net_str = f"{'+' if net >= 0 else '−'}${abs(net):,.0f}"
+    big_str = f"+{float(big_pct):.1f}% on {big_tok}" if big_pct else "—"
+
+    def esc(s: str) -> str:
+        return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#050509"/>
+  <circle cx="980" cy="120" r="380" fill="#00D992" opacity="0.06"/>
+  <circle cx="200" cy="560" r="300" fill="#627EEA" opacity="0.05"/>
+  <text x="80" y="110" font-family="Inter,Arial,sans-serif" font-size="30" font-weight="700" fill="#EEEEF4">Hadaleum</text>
+  <text x="80" y="150" font-family="JetBrains Mono,monospace" font-size="20" fill="#00D992" letter-spacing="2">LIVE · VERIFIED ON-CHAIN</text>
+  <text x="80" y="300" font-family="Inter,Arial,sans-serif" font-size="150" font-weight="800" fill="#00D992">{esc(wr_str)}</text>
+  <text x="80" y="350" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="600" fill="#EEEEF4">win rate on flagged copy-trader moves</text>
+  <text x="80" y="392" font-family="Inter,Arial,sans-serif" font-size="24" fill="#9898A8">{esc(sample)}</text>
+  <line x1="80" y1="450" x2="1120" y2="450" stroke="#8282C8" stroke-opacity="0.12"/>
+  <text x="80"  y="510" font-family="Inter,Arial,sans-serif" font-size="22" fill="#606070">NET HYPOTHETICAL P&amp;L ($1K/move)</text>
+  <text x="80"  y="556" font-family="JetBrains Mono,monospace" font-size="40" font-weight="700" fill="{'#00D992' if net >= 0 else '#EF4444'}">{esc(net_str)}</text>
+  <text x="640" y="510" font-family="Inter,Arial,sans-serif" font-size="22" fill="#606070">BIGGEST DETECTED WIN</text>
+  <text x="640" y="556" font-family="JetBrains Mono,monospace" font-size="40" font-weight="700" fill="#00D992">{esc(big_str)}</text>
+  <text x="80" y="600" font-family="Inter,Arial,sans-serif" font-size="20" fill="#606070">hadaleum.com/wins · scored 24h later via CoinGecko · not financial advice</text>
+</svg>"""
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @app.post("/api/admin/run-trust-pipeline", dependencies=[Depends(require_admin)])
