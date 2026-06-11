@@ -14,8 +14,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { formatWalletAddress, ERROR_MESSAGES } from '@/lib/web3';
 import { useAuth } from '@/context/AuthProvider';
 import { useTheme } from '@/context/ThemeProvider';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { apiFetch } from '@/lib/apiClient';
 
 const NAV_ITEMS = [
   { label: 'Copy', icon: BarChart3, path: '/markets' },
@@ -67,27 +66,6 @@ function useSidebarStats(enabled = true) {
   return stats;
 }
 
-function useCountdown(targetDate) {
-  const [label, setLabel] = useState('');
-  useEffect(() => {
-    if (!targetDate) { setLabel(''); return; }
-    function compute() {
-      const ms = targetDate.getTime() - Date.now();
-      if (ms <= 0) { setLabel('now'); return; }
-      const totalMins = Math.ceil(ms / 60_000);
-      const h = Math.floor(totalMins / 60);
-      const m = totalMins % 60;
-      if (h === 0) setLabel(`${m}m`);
-      else if (m === 0) setLabel(`${h}h`);
-      else setLabel(`${h}h ${m}m`);
-    }
-    compute();
-    const t = setInterval(compute, 60_000);
-    return () => clearInterval(t);
-  }, [targetDate]);
-  return label;
-}
-
 function relativeLastScan(date) {
   if (!date) return '—';
   const ms = Date.now() - date.getTime();
@@ -129,13 +107,12 @@ function NavItem({ item, isActive, badge }) {
 }
 
 export default function Sidebar({ onOpenCommand }) {
-  const { count, lastScanned, nextScan } = useSidebarStats();
+  const auth = useAuth();
+  const { count, lastScanned } = useSidebarStats(Boolean(auth?.user));
   const alertCount = useAlertBadge();
-  const nextScanLabel = useCountdown(nextScan);
   const location = useLocation();
   const navigate = useNavigate();
   const wallet = useWallet();
-  const auth = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   return (
@@ -188,7 +165,7 @@ export default function Sidebar({ onOpenCommand }) {
             Last scan · {relativeLastScan(lastScanned)}
           </div>
           <div className="text-[11px] text-text-muted">
-            {nextScanLabel ? `Next · ${nextScanLabel}` : 'Auto-scan · 6h'}
+            Auto-scan · 6h
           </div>
         </div>
 
@@ -305,7 +282,9 @@ export default function Sidebar({ onOpenCommand }) {
           {auth?.user ? (
             <button
               type="button"
-              onClick={() => auth.signOut().then(() => navigate('/login'))}
+              onClick={() => auth.signOut()
+                .then(() => navigate('/login'))
+                .catch((e) => { console.error('Sign out failed:', e); navigate('/login'); })}
               className="flex items-center gap-1.5 text-[11px] text-text-muted hover:text-text-secondary transition-colors mt-1"
             >
               <LogOut className="h-3 w-3" />
