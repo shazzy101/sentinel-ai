@@ -2232,7 +2232,7 @@ def _copy_dataset_freshness() -> datetime | None:
     return newest
 
 
-def _last_active_days(wallet: dict, ref: datetime | None) -> int | None:
+def _last_active_days(wallet: dict, ref: datetime | None = None) -> int | None:
     """Days since this wallet's last trade, measured against dataset freshness."""
     ref = ref or _copy_dataset_freshness()
     if ref is None:
