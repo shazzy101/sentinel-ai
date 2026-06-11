@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 
 def build_ask_system_prompt(wallets: list[dict]) -> str:
     wallet_context = "\n".join([
@@ -26,11 +28,16 @@ def select_ask_model(message: str, history: list[dict]) -> tuple[str, int]:
 
 
 async def fetch_ask_wallets(supabase_client) -> list[dict]:
-    result = (
-        supabase_client.table("wallets")
-        .select("address, label, score, balance")
-        .order("score", desc=True)
-        .limit(20)
-        .execute()
-    )
+    # The Supabase client is synchronous (blocking HTTP). Run it off the event
+    # loop so it doesn't stall other requests while the query is in flight.
+    def _query():
+        return (
+            supabase_client.table("wallets")
+            .select("address, label, score, balance")
+            .order("score", desc=True)
+            .limit(20)
+            .execute()
+        )
+
+    result = await asyncio.to_thread(_query)
     return result.data or []

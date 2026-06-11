@@ -11,6 +11,7 @@ from typing import Optional
 import httpx
 
 import config  # noqa: F401 — ensures load_dotenv() runs before API calls
+from observability import log_error
 
 ETHERSCAN_BASE = "https://api.etherscan.io/v2/api"
 
@@ -150,6 +151,10 @@ async def _fetch_tx_page(address: str, params: dict, raw: bool = False) -> list:
                         data.get("message", "Unknown Etherscan transaction error"),
                         {"address": address, "attempt": attempt + 1},
                     )
+                    # Back off and retry on ALL error statuses, not just NOTOK.
+                    if attempt < 2:
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                        continue
         except EtherscanError as e:
             last_error = e
             if attempt < 2:
@@ -247,7 +252,7 @@ async def get_eth_internal_transactions(address: str, limit: int = 20) -> list[d
             if data.get("status") == "1":
                 return data.get("result", [])
     except Exception as e:
-        print(f"[ETH] Internal tx error: {e}")
+        log_error("eth_internal_tx_error", error=str(e)[:200])
     return []
 
 
@@ -270,32 +275,33 @@ async def get_eth_token_transfers(address: str, limit: int = 20) -> list[dict]:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(ETHERSCAN_BASE, params=params)
             data = resp.json()
-            if data.get("status") == "1":
-                return [
-                    {
-                        "hash": tx.get("hash"),
-                        "token_name": tx.get("tokenName"),
-                        "token_symbol": tx.get("tokenSymbol"),
-                        "value": int(tx.get("value", 0)) / (
-                            10 ** int(tx.get("tokenDecimal", 18))
-                        ),
-                        "from_addr": tx.get("from"),
-                        "to_addr": tx.get("to"),
-                        "direction": "in" if (
-                            tx.get("to", "").lower() == address.lower()
-                        ) else "out",
-                        "timestamp": datetime.fromtimestamp(
-                            int(tx.get("timeStamp", 0))
-                        ).isoformat(),
-                        "timestamp_unix": int(tx.get("timeStamp", 0)),
-                        "chain": "ethereum",
-                        "type": "token_transfer",
-                        "status": "success",
-                    }
-                    for tx in data.get("result", [])
-                ]
+            if data.get("status") != "1":
+                return []
+            out: list[dict] = []
+            for tx in data.get("result", []):
+                try:
+                    ts_unix = int(tx.get("timeStamp", 0))
+                    value = int(tx.get("value", 0)) / (10 ** int(tx.get("tokenDecimal", 18)))
+                except (TypeError, ValueError):
+                    # Skip malformed records rather than failing the whole page.
+                    continue
+                out.append({
+                    "hash": tx.get("hash"),
+                    "token_name": tx.get("tokenName"),
+                    "token_symbol": tx.get("tokenSymbol"),
+                    "value": value,
+                    "from_addr": tx.get("from"),
+                    "to_addr": tx.get("to"),
+                    "direction": "in" if (tx.get("to", "").lower() == address.lower()) else "out",
+                    "timestamp": datetime.fromtimestamp(ts_unix, tz=timezone.utc).isoformat(),
+                    "timestamp_unix": ts_unix,
+                    "chain": "ethereum",
+                    "type": "token_transfer",
+                    "status": "success",
+                })
+            return out
     except Exception as e:
-        print(f"[ETH] Token transfer error: {e}")
+        log_error("eth_token_transfer_error", address=address, error=str(e)[:200])
     return []
 
 

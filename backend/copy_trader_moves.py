@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from chains.ethereum import get_eth_token_transfers
+from observability import log_error
 
 STABLECOINS = frozenset({
     "USDC", "USDT", "DAI", "BUSD", "FRAX", "TUSD", "USDP", "LUSD", "GHO", "PYUSD", "FDUSD",
@@ -111,10 +112,14 @@ async def _fetch_trader_swaps(
     async with sem:
         try:
             transfers = await get_eth_token_transfers(address, limit=transfer_limit)
-            await asyncio.sleep(0.22)
-            return _swaps_from_transfers(address, transfers)
-        except Exception:
-            return []
+            swaps = _swaps_from_transfers(address, transfers)
+        except Exception as e:
+            log_error("copy_moves_fetch_failed", address=address, error=str(e)[:200])
+            swaps = []
+    # Throttle OUTSIDE the semaphore so the slot frees before sleeping — avoids
+    # serializing all fetches behind the pacing delay.
+    await asyncio.sleep(0.22)
+    return swaps
 
 
 async def fetch_recent_copy_moves(

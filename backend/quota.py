@@ -33,6 +33,27 @@ _user_tokens: dict[str, deque[tuple[float, int]]] = defaultdict(deque)
 _user_scan_calls: dict[str, deque[float]] = defaultdict(deque)
 
 
+# Periodic eviction of idle per-user buckets so the dicts don't grow without
+# bound as new users/IPs appear. A key is dropped once its newest entry is older
+# than the stale threshold (well past the 1-hour sliding window).
+_CLEANUP_INTERVAL_S = 300.0
+_STALE_AFTER_S = 7200.0  # 2 hours
+_last_cleanup_ts = 0.0
+
+
+def _evict_stale_buckets(now: float) -> None:
+    global _last_cleanup_ts
+    if now - _last_cleanup_ts < _CLEANUP_INTERVAL_S:
+        return
+    _last_cleanup_ts = now
+    cutoff = now - _STALE_AFTER_S
+    for store in (_user_ask_calls, _user_scan_calls):
+        for k in [k for k, b in store.items() if not b or b[-1] < cutoff]:
+            del store[k]
+    for k in [k for k, b in _user_tokens.items() if not b or b[-1][0] < cutoff]:
+        del _user_tokens[k]
+
+
 def _prune_ts(bucket: deque[float], now: float, window: float = 3600.0) -> None:
     cutoff = now - window
     while bucket and bucket[0] < cutoff:
@@ -123,6 +144,7 @@ def record_token_usage(user: AuthUser | None, ip: str, tokens: int) -> None:
 
 def get_quota_status(user: AuthUser | None, ip: str) -> QuotaStatus:
     now = time.monotonic()
+    _evict_stale_buckets(now)
     key = _user_key(user, ip)
     plan = user.plan if user else "anonymous"
 

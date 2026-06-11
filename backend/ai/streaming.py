@@ -62,8 +62,18 @@ async def stream_claude_text(
     threading.Thread(target=worker, daemon=True).start()
     log_info("claude_stream_started", model=model, max_tokens=max_tokens)
 
+    # Contract: this generator yields ("delta", str) chunks, then ("done", usage)
+    # on success, or ("error", message: str) if the worker fails OR stalls. Every
+    # caller MUST handle the ("error", message) tuple. A hung worker (no item
+    # within the timeout) yields an error and ends the stream instead of blocking
+    # the connection forever.
     while True:
-        item = await queue.get()
+        try:
+            item = await asyncio.wait_for(queue.get(), timeout=120)
+        except asyncio.TimeoutError:
+            log_error("claude_stream_timeout", model=model)
+            yield ("error", "The AI response timed out. Please try again.")
+            break
         if item is sentinel:
             break
         if item[0] == "error":

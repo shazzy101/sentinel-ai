@@ -2447,8 +2447,9 @@ async def copy_trading_featured():
     })
 
 
+@limiter.limit("10/minute")
 @app.get("/api/copy-trading/recent-moves")
-async def copy_trading_recent_moves(limit: int = 15):
+async def copy_trading_recent_moves(request: Request, limit: int = 15):
     """
     Recent DEX swaps from top ranked copy traders — no whale/$250k gate.
     Scans latest on-chain token transfers for elite traders (Etherscan).
@@ -2480,6 +2481,7 @@ async def copy_trading_recent_moves(limit: int = 15):
     )
     enriched_pool = [_enrich_copy_trader(w) for w in pool[:50]]
 
+    served_stale = False
     try:
         moves = await fetch_recent_copy_moves(
             enriched_pool,
@@ -2487,10 +2489,12 @@ async def copy_trading_recent_moves(limit: int = 15):
             traders_to_scan=40,
             transfer_limit=25,
         )
-    except Exception:
+    except Exception as e:
+        log_error("recent_moves_fetch_failed", error=str(e)[:200])
         moves = entry["moves"] if entry else []
+        served_stale = bool(entry)
 
-    if moves:
+    if moves and not served_stale:
         _copy_moves_cache[cache_key] = {"moves": moves, "ts": datetime.now(timezone.utc)}
 
     return success({
@@ -2498,7 +2502,7 @@ async def copy_trading_recent_moves(limit: int = 15):
         "count": len(moves),
         "available": bool(moves),
         "source": "etherscan",
-        "cached": False,
+        "cached": served_stale,
     })
 
 

@@ -13,8 +13,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from observability import log_error, log_info, log_warning
+
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _DEFAULT_JSON = _DATA_DIR / "copy_trading_top_wallets.json"
+_CACHE_TTL_SECONDS = 30 * 60  # re-load ranked traders at most every 30 min
 
 _EXCHANGE_KEYWORDS = (
     "binance", "coinbase", "kraken", "kucoin", "okx", "crypto.com", "gemini",
@@ -132,7 +135,8 @@ def _load_from_supabase() -> list[dict] | None:
         if not rows:
             return None
         return [normalize_copy_trader(row) for row in rows]
-    except Exception:
+    except Exception as e:
+        log_error("copy_traders_supabase_load_failed", error=str(e)[:200])
         return None
 
 
@@ -161,16 +165,30 @@ def find_copy_trader_by_address(address: str) -> dict | None:
     return None
 
 
+def _cache_age_seconds() -> float | None:
+    loaded = _cache.get("loaded_at")
+    if not loaded:
+        return None
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(loaded)).total_seconds()
+    except ValueError:
+        return None
+
+
 def load_copy_traders(*, force_refresh: bool = False, json_path: Path | None = None) -> list[dict]:
-    """Load ranked copy traders — memory cache → Supabase → JSON file."""
-    if not force_refresh and _cache["data"] is not None:
+    """Load ranked copy traders — memory cache (30-min TTL) → Supabase → JSON file."""
+    age = _cache_age_seconds()
+    if not force_refresh and _cache["data"] is not None and age is not None and age < _CACHE_TTL_SECONDS:
+        log_info("copy_traders_cache_hit", source=_cache.get("source"), age_s=round(age))
         return _cache["data"]
 
+    log_info("copy_traders_cache_miss", force=force_refresh, age_s=round(age) if age is not None else None)
     db_rows = _load_from_supabase()
     if db_rows:
         _cache["data"] = db_rows
         _cache["source"] = "supabase"
     else:
+        log_warning("copy_traders_supabase_fallback_to_json")
         _cache["data"] = _load_json_file(json_path)
         _cache["source"] = "json"
 

@@ -19,6 +19,8 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
+from observability import log_error, log_info, log_warning
+
 ETHERSCAN_BASE = "https://api.etherscan.io/v2/api"
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 HISTORY_DAYS = 180
@@ -28,6 +30,7 @@ _price_warm_ts = 0.0
 _PRICE_TTL_S = 6 * 3600  # refresh ETH price history at most every 6h
 _result_cache: dict[str, tuple[float, dict | None]] = {}
 _RESULT_TTL_S = 30 * 60  # cache per-wallet metrics for 30 min
+_RESULT_CACHE_MAX = 2000  # hard cap on cached addresses (bounds memory)
 
 
 def _ranker():
@@ -60,9 +63,9 @@ async def _warm_eth_prices(client: httpx.AsyncClient) -> None:
             r._eth_price_cache[ds] = price
         if prices:
             _price_warm_ts = time.time()
-    except Exception:
+    except Exception as e:
         # eth_price_on() falls back to a constant if the cache stays empty
-        pass
+        log_warning("eth_price_warm_failed", error=str(e)[:160])
 
 
 async def _fetch_token_transfers(address: str, days: int = HISTORY_DAYS) -> list[dict]:
@@ -88,7 +91,8 @@ async def _fetch_token_transfers(address: str, days: int = HISTORY_DAYS) -> list
             try:
                 resp = await client.get(ETHERSCAN_BASE, params=params)
                 data = resp.json()
-            except Exception:
+            except Exception as e:
+                log_error("live_transfers_fetch_failed", address=address, page=page, error=str(e)[:160])
                 break
             if str(data.get("status")) != "1":
                 break
@@ -117,6 +121,7 @@ async def compute_live_metrics(address: str) -> dict | None:
 
     cached = _result_cache.get(key)
     if cached and (time.time() - cached[0]) < _RESULT_TTL_S:
+        log_info("live_metrics_cache_hit", address=key)
         return cached[1]
 
     r = _ranker()
@@ -136,5 +141,15 @@ async def compute_live_metrics(address: str) -> dict | None:
                 "avg_trade_duration_hrs": raw["avg_trade_duration_hrs"],
             }
 
-    _result_cache[key] = (time.time(), metrics)
+    # Bound the cache: evict expired entries, then the oldest if still over cap,
+    # so a long-running process can't accumulate unbounded per-address results.
+    now_ts = time.time()
+    if len(_result_cache) >= _RESULT_CACHE_MAX:
+        for k in [k for k, (ts, _) in _result_cache.items() if now_ts - ts >= _RESULT_TTL_S]:
+            del _result_cache[k]
+        while len(_result_cache) >= _RESULT_CACHE_MAX:
+            oldest = min(_result_cache, key=lambda k: _result_cache[k][0])
+            del _result_cache[oldest]
+    _result_cache[key] = (now_ts, metrics)
+    log_info("live_metrics_cache_miss", address=key, cache_size=len(_result_cache))
     return metrics
