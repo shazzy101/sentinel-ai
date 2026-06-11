@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowDownUp, Wallet, Shield, ExternalLink, Zap,
-  CheckCircle2, Loader2, AlertTriangle,
+  CheckCircle2, Loader2, AlertTriangle, Lock, Sparkles, TrendingUp, Route,
 } from 'lucide-react';
 import MagneticButton from '../components/primitives/MagneticButton';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
-import { SignalPill } from '../components/ui/Badge';
 import { useWallet } from '../hooks/useWallet';
-import { useWatchlist } from '../hooks/useWatchlist';
 import { useTransaction, useTradeHistory } from '../hooks/useTrade';
+import { useAuth } from '../context/AuthProvider';
 import { api } from '../lib/api';
 import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
 import {
@@ -22,73 +21,52 @@ import { formatWalletAddress } from '../lib/web3';
 import { getSpendableBalance, validateSwapInputs } from '../lib/swapExecution';
 import { fadeUp, motionTokens } from '../design/motion';
 
-function formatTimeAgo(ts) {
-  if (!ts) return '—';
-  const ms = Date.now() - new Date(ts).getTime();
-  const m = Math.floor(ms / 60_000);
-  if (m < 60) return `${Math.max(m, 1)}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-function LiveWhaleMovesFeed({ wallets, onCopyTrade, selectedAddress }) {
-  const feedWallets = useMemo(() =>
-    (wallets || [])
-      .filter((w) => w.signal != null)
-      .sort((a, b) => new Date(b.last_scanned || 0).getTime() - new Date(a.last_scanned || 0).getTime())
-      .slice(0, 10),
-  [wallets]);
-
+function InvestProTeaser({ onUpgrade, isTrialing }) {
+  const perks = [
+    { Icon: TrendingUp, title: 'Live whale copy-trades', body: 'See exactly what tracked smart-money wallets are buying — prefilled as a ready-to-send trade.' },
+    { Icon: Route, title: 'Best rate, every DEX', body: 'DefiLlama routes across every aggregator so you never overpay on a swap.' },
+    { Icon: Shield, title: 'Your keys, always', body: 'Execute from your own MetaMask. Hadaleum is non-custodial — we never touch your funds.' },
+  ];
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto pr-2">
-      <div className="mb-4">
-        <h2 className="font-display text-[14px] font-medium text-text-primary">Live Whale Moves</h2>
-        <p className="text-[11px] text-text-muted mt-0.5">Real-time · Copy any trade</p>
-      </div>
-      {feedWallets.length === 0 ? (
-        <div className="text-[13px] text-text-muted py-12 text-center border border-border-subtle rounded-xl">
-          No whale signals yet. Run scans on Watchlist to populate moves.
+    <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-md rounded-2xl border border-green/20 bg-bg-surface/95 backdrop-blur-md p-7 text-center shadow-elevated"
+        style={{ boxShadow: '0 0 60px rgba(0,217,146,0.10), 0 24px 64px rgba(0,0,0,0.5)' }}
+      >
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-green/10 border border-green/20">
+          <Lock className="h-5 w-5 text-green" strokeWidth={1.75} />
         </div>
-      ) : feedWallets.map((w) => {
-        const tx = w.transactions?.[0];
-        const ethAmt = tx?.value_eth ?? tx?.value ?? w.balance ?? 0;
-        return (
-          <div
-            key={w.address}
-            role="button"
-            tabIndex={0}
-            onClick={() => onCopyTrade(w)}
-            onKeyDown={(e) => e.key === 'Enter' && onCopyTrade(w)}
-            className={`bg-bg-surface border rounded-xl p-4 mb-3 cursor-pointer hover:border-border-strong transition-all ${
-              selectedAddress === w.address ? 'border-green/40 bg-green/5' : 'border-border-default'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[9px] uppercase tracking-widest text-green mb-1">Whale move detected</div>
-                <div className="font-display text-[15px] font-bold text-text-primary truncate">{w.label || 'Whale'}</div>
-                <div className="font-mono text-[12px] text-text-secondary mt-1">
-                  Sent {Number(ethAmt).toFixed(2)} ETH
-                  {ethAmt > 0 ? <span className="text-text-muted ml-1">(~${(Number(ethAmt) * (window.__ethPrice__ || 3800)).toLocaleString(undefined, { maximumFractionDigits: 0 })})</span> : null}
-                  {' '}· {formatTimeAgo(tx?.timestamp || w.last_scanned)}
-                </div>
-                <div className="flex items-center gap-1.5 mt-2 text-[11px] text-text-muted">
-                  Signal: <SignalPill signal={w.signal} />
-                </div>
+        <div className="text-[10px] uppercase tracking-[2px] text-green font-mono mb-2">Pro feature</div>
+        <h2 className="font-display text-[24px] font-bold text-text-primary leading-tight mb-2">
+          Copy smart money,<br />keep your keys.
+        </h2>
+        <p className="text-[13px] text-text-secondary leading-relaxed mb-5 max-w-xs mx-auto">
+          Turn whale intelligence into action. Unlock non-custodial copy trading and best-rate swaps.
+        </p>
+        <div className="space-y-2.5 mb-6 text-left">
+          {perks.map(({ Icon, title, body }) => (
+            <div key={title} className="flex gap-3 rounded-xl border border-border-subtle bg-bg-elevated/40 px-3.5 py-3">
+              <Icon className="h-4 w-4 text-green shrink-0 mt-0.5" strokeWidth={1.75} />
+              <div>
+                <div className="text-[13px] font-semibold text-text-primary">{title}</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">{body}</div>
               </div>
-              <button
-                type="button"
-                disabled
-                title="Copy trading coming soon"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green/40 text-bg-base rounded-lg text-[12px] font-semibold opacity-60 cursor-not-allowed shrink-0"
-              >
-                Coming Soon
-              </button>
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+        <MagneticButton
+          type="button"
+          onClick={onUpgrade}
+          className="w-full rounded-xl bg-green px-6 py-3.5 text-sm font-semibold text-text-inverse hover:bg-green-bright transition-colors"
+          style={{ boxShadow: '0 0 0 1px rgba(0,217,146,0.3), 0 4px 24px rgba(0,217,146,0.22)' }}
+        >
+          {isTrialing ? 'Upgrade to Pro — $19/mo →' : 'Start 7-day free trial →'}
+        </MagneticButton>
+        <p className="text-[11px] text-text-muted mt-3">No credit card required · Cancel anytime</p>
+      </motion.div>
     </div>
   );
 }
@@ -128,10 +106,13 @@ function TokenSelect({ value, onChange, options }) {
 
 export default function InvestPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const auth = useAuth();
   const wallet = useWallet();
   const tx = useTransaction();
   const history = useTradeHistory();
-  const { wallets } = useWatchlist();
+  // Free users (signed in, not Pro and not trialing) get a locked teaser.
+  const locked = !!auth?.user && !auth.isPro;
 
   const [step, setStep] = useState('configure');
   const [fromToken, setFromToken] = useState('USDC');
@@ -299,10 +280,11 @@ export default function InvestPage() {
     <div className="h-full min-h-0 flex flex-col">
       <div className="flex-shrink-0 px-5 pt-4 pb-3 border-b border-border-subtle flex flex-col gap-3">
         <div className="flex flex-col gap-2">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-amber/10 border border-amber/20 text-amber self-start">⚡ Beta — Copy trading coming soon</span>
-          <div className="rounded-xl border border-amber/20 bg-amber/[0.04] px-5 py-4 text-sm text-text-secondary">
-            <strong className="text-text-primary">Copy trading is in beta.</strong> We're finalizing DEX routing and MetaMask integration.{' '}
-            <a href="/upgrade" className="text-green hover:text-green-bright ml-1">Join the waitlist →</a>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-3 py-1 rounded-full bg-green/10 border border-green/20 text-green self-start">
+            <Sparkles className="h-3 w-3" /> Pro · Non-custodial copy trading
+          </span>
+          <div className="rounded-xl border border-green/15 bg-green/[0.03] px-5 py-3.5 text-[13px] text-text-secondary leading-relaxed">
+            <strong className="text-text-primary">Act on smart money in one place.</strong> Mirror a tracked whale's move, get the best DEX rate across all aggregators via DefiLlama, and execute from your own MetaMask — Hadaleum never holds your keys.
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -323,16 +305,16 @@ export default function InvestPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        <div className="flex-1 min-w-0 p-5 overflow-y-auto flex flex-col gap-4">
+      <div className="flex-1 min-h-0 flex overflow-hidden relative">
+        {locked && <InvestProTeaser onUpgrade={() => navigate('/upgrade')} isTrialing={auth?.isTrialing} />}
+        <div className={`flex-1 min-w-0 p-5 overflow-y-auto flex flex-col gap-4 ${locked ? 'pointer-events-none select-none blur-[3px] opacity-50' : ''}`}>
           <WhaleTradesPanel
             onCopyTrade={handleCopyTrade}
             activeTradeId={selectedTradeId}
           />
-          <LiveWhaleMovesFeed wallets={wallets} onCopyTrade={handleCopyTrade} selectedAddress={selectedWallet?.address} />
         </div>
 
-        <div id="swap-panel" className="w-[380px] flex-shrink-0 border-l border-border-subtle bg-bg-surface overflow-y-auto">
+        <div id="swap-panel" className={`w-[380px] flex-shrink-0 border-l border-border-subtle bg-bg-surface overflow-y-auto ${locked ? 'pointer-events-none select-none blur-[3px] opacity-50' : ''}`}>
           <div className="p-4">
             <div className="mb-4">
               <div className="font-display font-bold text-[16px] text-text-primary">Swap</div>
@@ -520,7 +502,17 @@ export default function InvestPage() {
                           <p className="text-amber/70">This is not financial advice. Smart contract interactions carry risk of loss. You are in full control of your wallet at all times.</p>
                         </div>
                       </div>
-                      <Button variant="primary" fullWidth disabled title="MetaMask execution coming soon">Confirm in MetaMask →</Button>
+                      <Button
+                        variant="primary"
+                        fullWidth
+                        disabled={quote?._fallback || !wallet.isConnected || !wallet.isMainnet}
+                        onClick={handleExecute}
+                      >
+                        Confirm in MetaMask →
+                      </Button>
+                      {quote?._fallback && (
+                        <p className="text-[11px] text-amber text-center">Live quote needed to execute — go back and fetch the best rate.</p>
+                      )}
                       <button type="button" onClick={() => setStep('quote')} className="w-full text-xs text-text-muted hover:text-text-secondary py-1">← Back</button>
                     </div>
                   )}
