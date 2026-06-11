@@ -2210,6 +2210,14 @@ async def get_whale_trades():
 
 _copy_trading_cache: dict = {"loaded_at": None, "source": None, "freshness": None}
 
+# Credibility guards for the ranked leaderboard:
+#  - MIN_TRUSTED_TRADES: a wallet needs this many completed trades before its
+#    win-rate / profit-factor are trustworthy (blocks 11-trade "100% win" flukes).
+#  - PF_DISPLAY_CAP: profit factor is capped for display so the ranker's "no
+#    realized losses" sentinel (999) and absurd values never show to users.
+MIN_TRUSTED_TRADES = 25
+PF_DISPLAY_CAP = 50.0
+
 
 def _load_copy_trading_wallets() -> list[dict]:
     """Load ranked copy-trading candidates — DB primary, JSON fallback."""
@@ -2319,6 +2327,13 @@ def _filter_copy_traders(
             max_inactive_days = 45
 
     ref = _copy_dataset_freshness() if max_inactive_days is not None else None
+    # If the dataset carries no last_trade timestamps at all (ref is None), recency
+    # is unmeasurable — disable the recency filter rather than excluding everything.
+    recency_enabled = max_inactive_days is not None and ref is not None
+
+    # Require enough completed trades before trusting win-rate / profit-factor, so
+    # thin-sample "100% win / 999 PF" flukes don't dominate the leaderboard.
+    min_trade_count = MIN_TRUSTED_TRADES if strict else 0
 
     filtered = []
     for w in wallets:
@@ -2336,12 +2351,15 @@ def _filter_copy_traders(
         pf = float(m.get("profit_factor") or 0)
         tr = int(m.get("track_record_days") or 0)
         dd = m.get("max_drawdown_pct")
+        tc = int(m.get("trade_count") or oc.get("total_trades") or 0)
 
         if wr < min_win_rate or pf < min_profit_factor or tr < min_track_days:
             continue
+        if min_trade_count and tc < min_trade_count:
+            continue
         if max_drawdown is not None and dd is not None and float(dd) > max_drawdown:
             continue
-        if max_inactive_days is not None:
+        if recency_enabled:
             age = _last_active_days(w, ref)
             # No timestamp = can't prove recent activity → exclude under recency filter.
             if age is None or age > max_inactive_days:
@@ -2400,12 +2418,25 @@ def _enrich_copy_trader(wallet: dict) -> dict:
     if wallet.get("pnl_sparkline"):
         metrics_meta.setdefault("performance_sparkline", "on_chain")
 
+    # Clamp profit factor for display so the ranker's 999 "no-losses" sentinel
+    # (and other absurd values) never surface as a fake-looking number.
+    metrics = dict(metrics)
+    raw_pf = metrics.get("profit_factor")
+    if raw_pf is not None and float(raw_pf) > PF_DISPLAY_CAP:
+        metrics["profit_factor"] = PF_DISPLAY_CAP
+        metrics_meta["profit_factor"] = "capped"
+
     out = {**wallet, "metrics": metrics}
     out["performance_sparkline"] = sparkline
     out["estimated_return_pct"] = return_pct if return_pct is not None else wallet.get("estimated_return_pct")
     if metrics_meta:
         out["metrics_meta"] = metrics_meta
     out["label"] = _copy_trader_label(wallet)
+
+    # Flag thin-sample wallets so the UI can show a "small sample" caveat.
+    trade_count = int(metrics.get("trade_count") or (wallet.get("on_chain_data") or {}).get("total_trades") or 0)
+    out["trade_count"] = trade_count
+    out["small_sample"] = 0 < trade_count < MIN_TRUSTED_TRADES
 
     # Recency surface: days since last trade (vs dataset freshness) + last_trade passthrough.
     last_active = _last_active_days(wallet)
