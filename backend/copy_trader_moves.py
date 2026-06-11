@@ -29,16 +29,16 @@ LIQUID_SYMBOLS = frozenset({
     "TIA", "SEI", "DOGE", "HYPE",
 }) | STABLECOINS | WETH_ALIASES
 
-ETH_USD_EST = 3500.0
+ETH_USD_FALLBACK = 3500.0  # used only when no live price is supplied
 MIN_USD_EST = 50.0  # drop dust swaps, not whale-sized gates
 
 
-def _usd_estimate(symbol: str, amount: float) -> float | None:
+def _usd_estimate(symbol: str, amount: float, eth_usd: float = ETH_USD_FALLBACK) -> float | None:
     sym = (symbol or "").upper()
     if sym in STABLECOINS:
         return float(amount)
     if sym in WETH_ALIASES:
-        return float(amount) * ETH_USD_EST
+        return float(amount) * eth_usd
     return None
 
 
@@ -51,7 +51,7 @@ def _classify_action(bought: str, sold: str) -> str:
     return "rotate"
 
 
-def _swaps_from_transfers(address: str, transfers: list[dict]) -> list[dict]:
+def _swaps_from_transfers(address: str, transfers: list[dict], eth_usd: float = ETH_USD_FALLBACK) -> list[dict]:
     """Group token transfers by tx hash; keep txs with both in and out legs."""
     by_tx: dict[str, list[dict]] = defaultdict(list)
     for t in transfers:
@@ -76,8 +76,8 @@ def _swaps_from_transfers(address: str, transfers: list[dict]) -> list[dict]:
 
         bought_amt = float(bought_leg.get("value") or 0)
         sold_amt = float(sold_leg.get("value") or 0)
-        usd_b = _usd_estimate(bought, bought_amt)
-        usd_s = _usd_estimate(sold, sold_amt)
+        usd_b = _usd_estimate(bought, bought_amt, eth_usd)
+        usd_s = _usd_estimate(sold, sold_amt, eth_usd)
         usd_candidates = [x for x in (usd_b, usd_s) if x is not None]
         amount_usd = max(usd_candidates) if usd_candidates else None
         if amount_usd is not None and amount_usd < MIN_USD_EST:
@@ -108,11 +108,12 @@ async def _fetch_trader_swaps(
     *,
     transfer_limit: int = 25,
     sem: asyncio.Semaphore,
+    eth_usd: float = ETH_USD_FALLBACK,
 ) -> list[dict]:
     async with sem:
         try:
             transfers = await get_eth_token_transfers(address, limit=transfer_limit)
-            swaps = _swaps_from_transfers(address, transfers)
+            swaps = _swaps_from_transfers(address, transfers, eth_usd)
         except Exception as e:
             log_error("copy_moves_fetch_failed", address=address, error=str(e)[:200])
             swaps = []
@@ -128,6 +129,7 @@ async def fetch_recent_copy_moves(
     limit: int = 15,
     traders_to_scan: int = 40,
     transfer_limit: int = 25,
+    eth_usd: float = ETH_USD_FALLBACK,
 ) -> list[dict]:
     """
     Pull recent swaps from top-ranked copy traders via Etherscan.
@@ -143,6 +145,7 @@ async def fetch_recent_copy_moves(
             (t.get("address") or "").lower(),
             transfer_limit=transfer_limit,
             sem=sem,
+            eth_usd=eth_usd,
         )
         for t in scan
     ]

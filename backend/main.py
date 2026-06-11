@@ -2481,6 +2481,13 @@ async def copy_trading_recent_moves(request: Request, limit: int = 15):
     )
     enriched_pool = [_enrich_copy_trader(w) for w in pool[:50]]
 
+    # Best-effort live ETH price (cached 60s); falls back to the module constant.
+    eth_usd = 3500.0
+    try:
+        eth_usd = float((await get_eth_market_data())["ethereum"]["usd"]) or eth_usd
+    except Exception:
+        pass
+
     served_stale = False
     try:
         moves = await fetch_recent_copy_moves(
@@ -2488,6 +2495,7 @@ async def copy_trading_recent_moves(request: Request, limit: int = 15):
             limit=limit,
             traders_to_scan=40,
             transfer_limit=25,
+            eth_usd=eth_usd,
         )
     except Exception as e:
         log_error("recent_moves_fetch_failed", error=str(e)[:200])

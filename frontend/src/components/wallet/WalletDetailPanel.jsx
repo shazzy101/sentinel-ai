@@ -11,8 +11,22 @@ import { TextureCard, TextureCardContent } from '../ui/texture-card';
 import TradeModal from './TradeModal';
 import { useEnsName, traderDisplayName } from '../../lib/ens';
 import { formatEthAmount, formatEthAxis } from '../../lib/formatAmount';
+import { apiFetch } from '../../lib/apiClient';
+import { useAuth } from '../../context/AuthProvider';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const CURRENT_YEAR = new Date().getFullYear();
+
+// Block-explorer base per chain (defaults to Etherscan).
+const EXPLORERS = {
+  ethereum: 'https://etherscan.io',
+  base: 'https://basescan.org',
+  arbitrum: 'https://arbiscan.io',
+  optimism: 'https://optimistic.etherscan.io',
+  polygon: 'https://polygonscan.com',
+};
+function explorerBase(chain) {
+  return EXPLORERS[(chain || 'ethereum').toLowerCase()] || EXPLORERS.ethereum;
+}
 
 function gradeFromScore(score) {
   if (score >= 85) return 'S';
@@ -23,12 +37,15 @@ function gradeFromScore(score) {
   return 'F';
 }
 
-function getUserTags(address) {
-  try { return JSON.parse(localStorage.getItem(`sentinel-tags-${address}`) || '[]'); }
+function tagsKey(userId, address) {
+  return `sentinel-tags-${userId || 'anon'}-${address}`;
+}
+function getUserTags(userId, address) {
+  try { return JSON.parse(localStorage.getItem(tagsKey(userId, address)) || '[]'); }
   catch { return []; }
 }
-function saveUserTags(address, tags) {
-  localStorage.setItem(`sentinel-tags-${address}`, JSON.stringify(tags));
+function saveUserTags(userId, address, tags) {
+  localStorage.setItem(tagsKey(userId, address), JSON.stringify(tags));
 }
 
 // v4 scoring engine weights: Recency/25, Activity/25, DeFi/25, SuccessRate/15, Balance/10
@@ -91,12 +108,13 @@ function TabBtn({ active, onClick, children }) {
 }
 
 export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove }) {
+  const userId = useAuth()?.user?.id;
   const [copied, setCopied] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [detail, setDetail] = useState(wallet);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState('overview');
-  const [userTags, setUserTags] = useState(() => getUserTags(wallet?.address));
+  const [userTags, setUserTags] = useState(() => getUserTags(userId, wallet?.address));
   const [newTag, setNewTag] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
   const scrollRef = useRef(null);
@@ -147,8 +165,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     setDetail(wallet);
     setLoading(true);
     let cancelled = false;
-    fetch(`${API_BASE}/api/wallets/${wallet.address}`)
-      .then((r) => r.json())
+    apiFetch(`/api/wallets/${wallet.address}`, { auth: true })
       .then((body) => {
         if (!cancelled && body.success) setDetail(body.data?.wallet || wallet);
       })
@@ -159,7 +176,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     // generated AI analysis / transaction history appears without reopening.
   }, [wallet?.address, wallet?.last_scanned]);
 
-  useEffect(() => { setUserTags(getUserTags(wallet?.address)); }, [wallet?.address]);
+  useEffect(() => { setUserTags(getUserTags(userId, wallet?.address)); }, [userId, wallet?.address]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; setTab('overview'); }, [wallet?.address]);
 
   const hasAnalysis = Boolean(
@@ -188,10 +205,11 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
     if (removing) return;
     setRemoving(true);
     try {
-      await fetch(`${API_BASE}/api/watchlist/${wallet.address}`, { method: 'DELETE' });
+      await apiFetch(`/api/watchlist/${wallet.address}`, { method: 'DELETE', auth: true });
+      // Only notify the parent on a successful removal — not in finally.
+      onRemove?.();
     } finally {
       setRemoving(false);
-      onRemove?.();
     }
   };
 
@@ -252,7 +270,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
             }
           </button>
           <a
-            href={`https://etherscan.io/address/${detail.address}`}
+            href={`${explorerBase(detail.chain)}/address/${detail.address}`}
             target="_blank"
             rel="noreferrer"
             className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded text-text-muted hover:text-blue transition-colors"
@@ -277,7 +295,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
       {/* Tabs */}
       <div className="flex-shrink-0 flex gap-1 px-4 py-2 border-b border-border-subtle">
         <TabBtn active={tab === 'overview'}     onClick={() => setTab('overview')}>Overview</TabBtn>
-        <TabBtn active={tab === 'performance'}  onClick={() => setTab('performance')}>2026 Chart</TabBtn>
+        <TabBtn active={tab === 'performance'}  onClick={() => setTab('performance')}>{CURRENT_YEAR} Chart</TabBtn>
         <TabBtn active={tab === 'activity'}     onClick={() => setTab('activity')}>Activity</TabBtn>
       </div>
 
@@ -387,7 +405,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                     onClick={() => {
                       const next = userTags.filter((t) => t !== tag);
                       setUserTags(next);
-                      saveUserTags(detail.address, next);
+                      saveUserTags(userId, detail.address, next);
                     }}
                   >
                     {tag} ×
@@ -401,7 +419,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                   if (t && !userTags.includes(t)) {
                     const next = [...userTags, t];
                     setUserTags(next);
-                    saveUserTags(detail.address, next);
+                    saveUserTags(userId, detail.address, next);
                   }
                   setNewTag('');
                 }}
@@ -429,7 +447,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
         {tab === 'performance' && (
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-[13px] font-semibold text-text-primary">2026 Balance History</div>
+              <div className="text-[13px] font-semibold text-text-primary">{CURRENT_YEAR} Balance History</div>
               {ytdPct != null && (
                 <span className={`text-[13px] font-mono font-bold ${ytdPct >= 0 ? 'text-green' : 'text-red'}`}>
                   {ytdPct >= 0 ? '▲' : '▼'} {Math.abs(ytdPct).toFixed(1)}% YTD
@@ -447,7 +465,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
             {!loading && sparkData.length < 2 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="text-[28px] mb-2">📈</div>
-                <div className="text-[13px] font-medium text-text-secondary mb-1">No 2026 history yet</div>
+                <div className="text-[13px] font-medium text-text-secondary mb-1">No {CURRENT_YEAR} history yet</div>
                 <p className="text-[12px] text-text-muted max-w-[260px] leading-[1.6]">
                   Rescan this wallet to compute its YTD balance history from on-chain transactions.
                 </p>
@@ -557,7 +575,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
                   return (
                   <a
                     key={`${tx.hash}-${i}`}
-                    href={`https://etherscan.io/tx/${(tx.hash || '').split('#')[0]}`}
+                    href={`${explorerBase(detail.chain)}/tx/${(tx.hash || '').split('#')[0]}`}
                     target="_blank"
                     rel="noreferrer"
                     className="group flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-bg-elevated/40 px-3 py-2.5 hover:border-border-default hover:bg-bg-elevated transition-all"
