@@ -45,16 +45,35 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-async def _call_claude(prompt: str, max_tokens: int = 300, model: str = "claude-haiku-4-5-20251001") -> str:
-    """Run sync Anthropic SDK call without blocking the event loop."""
+async def _call_claude(prompt: str, max_tokens: int = 300, model: str = "claude-haiku-4-5-20251001",
+                       retries: int = 2) -> str:
+    """Run sync Anthropic SDK call without blocking the event loop.
+
+    Retries transient failures (429 rate-limit, 5xx/529 overloaded, connection
+    drops) with backoff; permanent errors (401 auth, 404 model, 400 bad request)
+    fail fast so they're not masked.
+    """
     client = get_client()
-    message = await asyncio.to_thread(
-        client.messages.create,
-        model=model,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return message.content[0].text.strip()
+    for attempt in range(retries + 1):
+        try:
+            message = await asyncio.to_thread(
+                client.messages.create,
+                model=model,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return message.content[0].text.strip()
+        except anthropic.APIError as e:
+            status = getattr(e, "status_code", None)
+            transient = (
+                isinstance(e, (anthropic.RateLimitError, anthropic.APIConnectionError, anthropic.InternalServerError))
+                or (status is not None and (status == 429 or status >= 500))
+            )
+            if transient and attempt < retries:
+                await asyncio.sleep(0.8 * (attempt + 1))
+                continue
+            raise
+    raise RuntimeError("unreachable")
 
 
 def _parse_json_response(text: str) -> dict:
@@ -258,11 +277,15 @@ Return ONLY valid JSON."""
     except RuntimeError:
         raise
     except Exception as e:
-        # Surface the actual Anthropic error (auth / model / billing) instead of
-        # silently showing "check API keys".
+        # Surface the actual Anthropic error (auth / model / billing) for logs.
         log_error("market_summary_failed", error=f"{type(e).__name__}: {str(e)[:240]}")
-        result = {
-            "headline": "Intelligence unavailable — check API keys.",
+        # Prefer the last good summary over a scary "unavailable" message — a
+        # transient blip shouldn't blank a marketing-facing page. Don't cache
+        # the fallback, so the next cycle re-attempts a fresh summary.
+        if cache["data"]:
+            return cache["data"]
+        return {
+            "headline": "Intelligence is refreshing — check back in a moment.",
             "ethereum_outlook": "N/A",
             "flow_state": "NEUTRAL",
             "top_signal": "NEUTRAL",
