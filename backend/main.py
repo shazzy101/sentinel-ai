@@ -2157,7 +2157,7 @@ async def get_whale_trades():
 # COPY TRADING — ranked DEX traders (Supabase → JSON fallback)
 # ─────────────────────────────────────────
 
-_copy_trading_cache: dict = {"loaded_at": None, "source": None}
+_copy_trading_cache: dict = {"loaded_at": None, "source": None, "freshness": None}
 
 
 def _load_copy_trading_wallets() -> list[dict]:
@@ -2173,6 +2173,7 @@ def _invalidate_copy_trading_cache() -> None:
     invalidate_copy_traders_cache()
     _copy_trading_cache["loaded_at"] = None
     _copy_trading_cache["source"] = None
+    _copy_trading_cache["freshness"] = None
 
 
 def _find_copy_trader(address: str) -> dict | None:
@@ -2187,6 +2188,58 @@ def _copy_trader_label(trader: dict) -> str:
     return label
 
 
+# ── Copy-trader recency ──────────────────────────────────────────────
+# The ranked dataset is a periodic Dune export, so each wallet's `last_trade`
+# is frozen at export time. Measuring "recently active" against wall-clock now
+# would mark the whole list stale once the export ages. Instead we anchor
+# recency to the dataset's own freshness (its newest trade), which correctly
+# flags wallets that went quiet *relative to their peers* and stays stable
+# between exports.
+
+def _parse_trade_ts(ts) -> datetime | None:
+    if not ts:
+        return None
+    if isinstance(ts, datetime):
+        return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    s = str(ts).strip().replace(" UTC", "").replace("T", " ")
+    if "." in s:
+        s = s.split(".")[0]
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _copy_dataset_freshness() -> datetime | None:
+    """Newest last_trade across the loaded dataset (memoized per cache load)."""
+    cached = _copy_trading_cache.get("freshness")
+    if cached is not None:
+        return cached if cached != "none" else None
+    newest: datetime | None = None
+    for w in _load_copy_trading_wallets():
+        dt = _parse_trade_ts((w.get("on_chain_data") or {}).get("last_trade"))
+        if dt and (newest is None or dt > newest):
+            newest = dt
+    _copy_trading_cache["freshness"] = newest or "none"
+    return newest
+
+
+def _last_active_days(wallet: dict, ref: datetime | None) -> int | None:
+    """Days since this wallet's last trade, measured against dataset freshness."""
+    ref = ref or _copy_dataset_freshness()
+    if ref is None:
+        return None
+    dt = _parse_trade_ts((wallet.get("on_chain_data") or {}).get("last_trade"))
+    if dt is None:
+        return None
+    return max(0, (ref - dt).days)
+
+
 def _filter_copy_traders(
     wallets: list[dict],
     *,
@@ -2194,13 +2247,16 @@ def _filter_copy_traders(
     min_profit_factor: float = 0,
     min_track_days: int = 0,
     max_drawdown: float | None = None,
+    max_inactive_days: int | None = None,
     qualified_only: bool = True,
     strict: bool = False,
 ) -> list[dict]:
     """
     Filter copy-trading wallets.
     qualified_only: exclude MEV/arb bots (>100 trades/day) — dataset is already pre-ranked.
-    strict: apply trader-quality thresholds (60% WR, 2.0 PF, 90d track).
+    strict: apply trader-quality thresholds (60% WR, 2.0 PF, 90d track, 45d activity).
+    max_inactive_days: drop wallets that went quiet relative to dataset freshness
+        (and wallets missing a last_trade timestamp entirely).
     """
     if strict:
         min_win_rate = max(min_win_rate, 60)
@@ -2208,6 +2264,10 @@ def _filter_copy_traders(
         min_track_days = max(min_track_days, 90)
         if max_drawdown is None:
             max_drawdown = 20
+        if max_inactive_days is None:
+            max_inactive_days = 45
+
+    ref = _copy_dataset_freshness() if max_inactive_days is not None else None
 
     filtered = []
     for w in wallets:
@@ -2230,11 +2290,25 @@ def _filter_copy_traders(
             continue
         if max_drawdown is not None and dd is not None and float(dd) > max_drawdown:
             continue
+        if max_inactive_days is not None:
+            age = _last_active_days(w, ref)
+            # No timestamp = can't prove recent activity → exclude under recency filter.
+            if age is None or age > max_inactive_days:
+                continue
         filtered.append(w)
     return filtered
 
 
 def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
+    if sort == "recency":
+        ref = _copy_dataset_freshness()
+        # Most recently active first; unknown activity sinks to the bottom.
+        return sorted(
+            wallets,
+            key=lambda w: (-(_last_active_days(w, ref) if _last_active_days(w, ref) is not None else 10_000),
+                           float(w.get("copy_trading_score") or 0)),
+            reverse=True,
+        )
     key_map = {
         "copy_score": lambda w: float(w.get("copy_trading_score") or 0),
         "win_rate": lambda w: float((w.get("metrics") or {}).get("win_rate_pct") or 0),
@@ -2243,6 +2317,19 @@ def _sort_copy_traders(wallets: list[dict], sort: str) -> list[dict]:
         "drawdown": lambda w: float((w.get("metrics") or {}).get("max_drawdown_pct") or 999),
         "duration": lambda w: float((w.get("metrics") or {}).get("avg_trade_duration_hrs") or 0),
     }
+    if sort == "copy_score":
+        # Score primary, but a recently-active wallet edges out a slightly-stale
+        # peer at a near-identical score so the top of the list never looks dead.
+        ref = _copy_dataset_freshness()
+
+        def _score_recency(w):
+            age = _last_active_days(w, ref)
+            recency_bonus = 0.0
+            if age is not None:
+                recency_bonus = max(0.0, 1.0 - age / 90.0)  # 0..1 over a 90d window
+            return (float(w.get("copy_trading_score") or 0), recency_bonus)
+
+        return sorted(wallets, key=_score_recency, reverse=True)
     fn = key_map.get(sort, key_map["copy_score"])
     reverse = sort != "drawdown"
     return sorted(wallets, key=fn, reverse=reverse)
@@ -2268,6 +2355,12 @@ def _enrich_copy_trader(wallet: dict) -> dict:
     if metrics_meta:
         out["metrics_meta"] = metrics_meta
     out["label"] = _copy_trader_label(wallet)
+
+    # Recency surface: days since last trade (vs dataset freshness) + last_trade passthrough.
+    last_active = _last_active_days(wallet)
+    out["last_active_days"] = last_active
+    out["last_trade"] = (wallet.get("on_chain_data") or {}).get("last_trade")
+    out["is_recently_active"] = last_active is not None and last_active <= 14
     return out
 
 
@@ -2280,12 +2373,15 @@ async def copy_trading_top(
     min_profit_factor: float = 0,
     min_track_days: int = 0,
     max_drawdown: float | None = None,
+    max_inactive_days: int | None = None,
     qualified_only: bool = True,
     strict: bool = True,
 ):
     """
     Top-ranked DEX traders for copy-trading.
-    Default strict=true: 60% WR, 2.0 PF, 90d track, max 20% drawdown when known.
+    Default strict=true: 60% WR, 2.0 PF, 90d track, max 20% drawdown when known,
+    and active within 45 days of the dataset's freshness (drops quiet wallets).
+    Pass max_inactive_days to tighten/relax the activity window.
     """
     all_wallets = _load_copy_trading_wallets()
     pool = _filter_copy_traders(
@@ -2294,6 +2390,7 @@ async def copy_trading_top(
         min_profit_factor=min_profit_factor,
         min_track_days=min_track_days,
         max_drawdown=max_drawdown,
+        max_inactive_days=max_inactive_days,
         qualified_only=qualified_only,
         strict=strict,
     )

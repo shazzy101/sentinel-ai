@@ -11,12 +11,12 @@ export default function Shell({ title, actions, children }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-bg-base relative">
+    <div className="flex flex-col h-[100dvh] overflow-hidden bg-bg-base relative">
       <AppBackground variant="app" />
       <TrialBanner />
       <div className="flex flex-row flex-1 overflow-hidden min-h-0">
         {/* Desktop sidebar — hidden on mobile */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex">
           <Sidebar onOpenCommand={() => setPaletteOpen(true)} />
         </div>
 
@@ -27,7 +27,7 @@ export default function Shell({ title, actions, children }) {
               className="fixed inset-0 z-40 bg-black/60 md:hidden"
               onClick={() => setMobileSidebarOpen(false)}
             />
-            <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+            <div className="fixed inset-y-0 left-0 z-50 flex md:hidden">
               <Sidebar
                 onOpenCommand={() => { setPaletteOpen(true); setMobileSidebarOpen(false); }}
                 onClose={() => setMobileSidebarOpen(false)}

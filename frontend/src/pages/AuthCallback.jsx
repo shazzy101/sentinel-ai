@@ -34,6 +34,24 @@ export default function AuthCallbackPage() {
         return;
       }
 
+      // Token-hash flow (recommended for email confirmation): works across
+      // devices because it does not require the PKCE code_verifier that only
+      // exists in the browser that started signup. Requires the Supabase email
+      // template to point at `${SiteURL}/auth/callback?token_hash={{ .TokenHash }}&type={{ .Type }}`.
+      const tokenHash = params.get('token_hash');
+      const type = params.get('type');
+      if (tokenHash && type) {
+        setMessage('Confirming your email…');
+        const { error: otpError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (cancelled) return;
+        if (otpError) {
+          setError(otpError.message);
+          return;
+        }
+        navigate(next, { replace: true });
+        return;
+      }
+
       const code = params.get('code');
       if (code) {
         setMessage('Completing sign-in…');

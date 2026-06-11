@@ -10,6 +10,21 @@ import { formatUsd, mergeCopyTraderMetrics, buildBacktestOutlookSeries } from '.
 import { api } from '../../lib/api';
 import { useEnsName, traderDisplayName } from '../../lib/ens';
 
+function LastActiveBadge({ days }) {
+  if (days == null) return null;
+  const label = days <= 0 ? 'Active today' : days === 1 ? 'Active 1d ago' : `Active ${days}d ago`;
+  const tone =
+    days <= 7 ? 'bg-green/10 text-green border-green/20'
+    : days <= 30 ? 'bg-amber/10 text-amber border-amber/20'
+    : 'bg-red/10 text-red border-red/20';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border font-mono ${tone}`}>
+      <span className={`w-1 h-1 rounded-full ${days <= 7 ? 'bg-green' : days <= 30 ? 'bg-amber' : 'bg-red'}`} />
+      {label}
+    </span>
+  );
+}
+
 const METRIC_CARDS = [
   { key: 'win_rate_pct', label: 'Win Rate', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
   { key: 'profit_factor', label: 'Profit Factor', fmt: (v) => Number(v).toFixed(1), good: (v) => v >= 2 },
@@ -104,6 +119,7 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
           <span className="px-2 py-0.5 rounded bg-green/10 text-green border border-green/20 font-mono">
             Score {detail.copy_trading_score?.toFixed?.(0) ?? detail.copy_trading_score}
           </span>
+          <LastActiveBadge days={detail.last_active_days} />
           <span className="text-text-muted">{oc.trades_per_day?.toFixed(1)} trades/day</span>
           <span className="text-text-muted">·</span>
           <span className="text-text-muted">{formatUsd(oc.avg_trade_usd)} avg swap</span>

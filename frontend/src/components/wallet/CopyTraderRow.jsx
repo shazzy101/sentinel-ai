@@ -43,6 +43,14 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
 
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
+          {wallet.last_active_days != null && (
+            <span
+              className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${
+                wallet.last_active_days <= 7 ? 'bg-green' : wallet.last_active_days <= 30 ? 'bg-amber' : 'bg-red'
+              }`}
+              title={wallet.last_active_days <= 0 ? 'Active today' : `Last active ${wallet.last_active_days}d ago`}
+            />
+          )}
           <span className={`text-[13px] font-medium text-text-primary truncate ${hasRealName ? '' : 'font-mono'}`}>
             {primaryName}
           </span>

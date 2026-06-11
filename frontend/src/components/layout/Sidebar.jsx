@@ -141,7 +141,7 @@ export default function Sidebar({ onOpenCommand }) {
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <aside className="relative z-30 flex w-[240px] flex-shrink-0 flex-col p-3">
+    <aside className="relative z-30 flex h-full w-[240px] flex-shrink-0 flex-col p-3">
       <div className="glass-surface flex h-full flex-col overflow-hidden rounded-2xl shadow-card">
         {/* Logo → landing page */}
         <div className="border-b border-white/[0.06] px-4 py-4">
