@@ -13,11 +13,11 @@ const FREE_FEATURES = [
 ]
 
 const PRO_FEATURES = [
-  'Full 2,796 wallet watchlist',
-  'Unlimited AI signals',
-  'Copy trading (non-custodial)',
-  'Signal history & accuracy track record',
-  'Email alerts on signal flips',
+  'All 2,796 ranked whale wallets',
+  'Unlimited Claude AI signals',
+  'One-click copy trading + best-rate swaps',
+  'Signal accuracy track record',
+  'Instant alerts on signal flips',
   'Priority support',
 ]
 
@@ -100,11 +100,11 @@ export default function UpgradePage() {
               </span>
             </div>
           )}
-          <h1 className="font-display text-4xl font-bold text-text-primary mb-3">
-            Upgrade to Hadaleum Pro
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-text-primary mb-3 leading-[1.05]">
+            Trade like you have<br />a Bloomberg Terminal.
           </h1>
-          <p className="text-text-muted text-lg">
-            The deepest layer of Ethereum intelligence. Unlimited access to everything.
+          <p className="text-text-secondary text-lg max-w-xl mx-auto">
+            Everything Nansen charges <span className="text-text-muted line-through">$150/mo</span> for — whale tracking, AI signals, copy trading — for <span className="text-green font-semibold">$19</span>.
           </p>
         </div>
 
@@ -175,6 +175,9 @@ export default function UpgradePage() {
                   <span className="ml-2 text-[11px] text-green">billed ${annualPrice}/year</span>
                 )}
               </div>
+              <div className="mt-1.5 text-[11px] text-text-muted">
+                <span className="text-green font-semibold">87% cheaper</span> than Nansen · less than one bad swap's gas
+              </div>
             </div>
             <ul className="space-y-3 mb-6">
               {PRO_FEATURES.map((f) => (
@@ -205,7 +208,34 @@ export default function UpgradePage() {
           </div>
         </div>
 
-        <p className="text-center text-[12px] text-text-muted mt-8">
+        {/* Risk reversal row */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-[12px] text-text-muted">
+          {['7-day free trial', 'No credit card to start', 'Cancel anytime', 'Secured by Stripe'].map((t) => (
+            <span key={t} className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-green" /> {t}
+            </span>
+          ))}
+        </div>
+
+        {/* Objection-handling FAQ */}
+        <div className="max-w-2xl mx-auto mt-12 space-y-3">
+          {[
+            ['What happens when my trial ends?', 'Nothing automatic — we never charge a card you didn’t enter. You drop to the Free plan unless you choose to upgrade.'],
+            ['Is my money safe? Is this custodial?', 'Always non-custodial. Copy trades execute from your own MetaMask; Hadaleum never holds your funds or your private keys.'],
+            ['Can I cancel anytime?', 'Yes — one click in Settings. You keep Pro until the end of the period you paid for.'],
+            ['Why is it so much cheaper than Nansen?', 'We focus purely on Ethereum and the signals that matter, instead of charging enterprise prices for multi-chain bloat.'],
+          ].map(([q, a]) => (
+            <details key={q} className="group rounded-xl border border-border-default bg-bg-surface px-4 py-3">
+              <summary className="flex cursor-pointer items-center justify-between text-[14px] font-medium text-text-primary list-none">
+                {q}
+                <span className="text-text-muted transition-transform group-open:rotate-45 text-lg leading-none">+</span>
+              </summary>
+              <p className="mt-2 text-[13px] text-text-secondary leading-relaxed">{a}</p>
+            </details>
+          ))}
+        </div>
+
+        <p className="text-center text-[12px] text-text-muted mt-10">
           Payments processed securely by Stripe. Not financial advice.
         </p>
       </motion.div>
