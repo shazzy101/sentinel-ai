@@ -104,8 +104,31 @@ def _tracked(move: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
-async def _fetch_prices_by_contract(addresses: list[str]) -> dict[str, float]:
-    """USD prices for arbitrary ERC-20s via CoinGecko token_price (keyed by addr)."""
+async def _fetch_prices_defillama(addresses: list[str]) -> dict[str, float]:
+    """USD prices via DefiLlama coins API (DEX-pool based — covers most tokens
+    with liquidity, including brand-new micro-caps CoinGecko doesn't list)."""
+    addrs = list(dict.fromkeys([a.lower() for a in addresses if a]))
+    if not addrs:
+        return {}
+    out: dict[str, float] = {}
+    for i in range(0, len(addrs), 80):
+        chunk = addrs[i : i + 80]
+        keys = ",".join(f"ethereum:{a}" for a in chunk)
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                res = await client.get(f"https://coins.llama.fi/prices/current/{keys}")
+                res.raise_for_status()
+                coins = (res.json() or {}).get("coins", {})
+            for a in chunk:
+                entry = coins.get(f"ethereum:{a}")
+                if entry and entry.get("price"):
+                    out[a] = float(entry["price"])
+        except Exception as e:
+            log_error("defillama_price_failed", error=str(e)[:160])
+    return out
+
+
+async def _fetch_prices_coingecko_contract(addresses: list[str]) -> dict[str, float]:
     addrs = list(dict.fromkeys([a.lower() for a in addresses if a]))
     if not addrs:
         return {}
@@ -127,6 +150,19 @@ async def _fetch_prices_by_contract(addresses: list[str]) -> dict[str, float]:
         except Exception as e:
             log_error("coingecko_token_price_failed", error=str(e)[:160])
     return out
+
+
+async def _fetch_prices_by_contract(addresses: list[str]) -> dict[str, float]:
+    """Price arbitrary ERC-20s. DefiLlama first (broad DEX coverage), then
+    CoinGecko for any addresses DefiLlama couldn't price."""
+    addrs = list(dict.fromkeys([a.lower() for a in addresses if a]))
+    if not addrs:
+        return {}
+    prices = await _fetch_prices_defillama(addrs)
+    missing = [a for a in addrs if a not in prices]
+    if missing:
+        prices.update(await _fetch_prices_coingecko_contract(missing))
+    return prices
 
 
 def _price_of(symbol: str | None, address: str | None,
@@ -579,7 +615,7 @@ async def get_trust_pulse() -> dict[str, Any]:
         "available": True,
         "methodology": (
             "Hadaleum logs on-chain swaps from ranked copy traders at detection time, "
-            f"then scores each move {SCORE_AFTER_HOURS}h later using CoinGecko prices. "
+            f"then scores each move {SCORE_AFTER_HOURS}h later using on-chain DEX prices (DefiLlama/CoinGecko). "
             f"WIN = token moved ≥{WIN_THRESHOLD_PCT}% in the trader's favor. "
             f"Hypothetical P&L assumes a ${NOTIONAL_USD:,.0f} copy per move."
         ),
