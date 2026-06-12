@@ -29,6 +29,13 @@ export default function SignupPage() {
         },
       })
       if (error) throw error
+      // Supabase hides "already registered" to prevent email enumeration, but
+      // signals it by returning a user with an empty identities array. Send them
+      // to sign in instead of falsely claiming we emailed a confirmation link.
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        navigate(`/login?notice=exists&email=${encodeURIComponent(email)}`)
+        return
+      }
       // Create profile with 7-day trial
       if (data.user) {
         await supabase.from('profiles').upsert({

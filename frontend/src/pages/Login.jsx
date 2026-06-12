@@ -8,10 +8,13 @@ import { HexLogo } from '@/components/ui/SentinelLogo'
 export default function LoginPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(params.get('email') || '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const notice = params.get('notice') === 'exists'
+    ? 'You already have an account — sign in below.'
+    : ''
 
   useEffect(() => { document.title = 'Sign In — Hadaleum' }, [])
 
@@ -56,6 +59,11 @@ export default function LoginPage() {
         </div>
 
         <div className="glass-surface rounded-2xl p-6 shadow-card">
+          {notice && (
+            <div className="mb-4 rounded-xl bg-green/10 border border-green/20 px-4 py-3 text-sm text-green">
+              {notice}
+            </div>
+          )}
           {!supabase && (
             <div className="mb-4 rounded-xl bg-amber/10 border border-amber/20 px-4 py-3 text-sm text-amber">
               Auth is not configured yet. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
