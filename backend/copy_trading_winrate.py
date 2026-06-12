@@ -14,7 +14,7 @@ def unrealized_win_rate(
     current_prices: dict[str, float],
     *,
     now_ts: int | None = None,
-    stale_days: int = 7,
+    stale_days: int = 3,
 ) -> float | None:
     """Percent of positions in profit, counting open bags at current price.
 

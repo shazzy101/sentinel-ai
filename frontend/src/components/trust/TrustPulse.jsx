@@ -172,11 +172,15 @@ export default function TrustPulse({ variant = 'full' }) {
 
   useEffect(() => {
     let cancelled = false;
-    api.getTrustPulse()
-      .then((d) => { if (!cancelled) setPulse(d); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    const load = () => {
+      api.getTrustPulse()
+        .then((d) => { if (!cancelled) setPulse(d); })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setLoading(false); });
+    };
+    load();
+    const iv = setInterval(load, 60_000); // keep the ledger live, not mount-only
+    return () => { cancelled = true; clearInterval(iv); };
   }, []);
 
   if (loading) {
