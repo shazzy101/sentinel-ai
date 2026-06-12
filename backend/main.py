@@ -784,6 +784,7 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
             log_error("scan_ai_fallback", address=address, error=str(ai_err)[:160])
             sig, reason = derive_flow_signal(
                 score_result["score"], score_result.get("breakdown"),
+                transactions=all_transactions,
             )
             score = score_result["score"]
             analysis = {
@@ -950,33 +951,63 @@ def enrich_wallet_performance(
     ]
 
 
-def derive_flow_signal(score: int, breakdown: dict | None) -> tuple[str, str]:
-    """
-    Heuristic BULLISH/BEARISH/NEUTRAL signal derived from the v4 score
-    breakdown — NO Claude call. Used to fill the signal everywhere when a
-    fresh AI analysis isn't available, so the watchlist / copy-trade feeds
-    never look empty. The real AI signal always takes precedence.
+def _net_eth_flow_direction(transactions: list[dict] | None) -> tuple[str, str] | None:
+    """Direction from real net ETH flow over the recent window.
 
-    Reads recency/activity/defi from the breakdown (each 0-25) plus score.
+    Accumulating (net ETH in) → BULLISH; distributing (net ETH out) → BEARISH;
+    balanced → NEUTRAL. ETH-only so token-denominated values can't corrupt it.
+    Returns None when there isn't enough flow to judge (caller falls back)."""
+    inflow = outflow = 0.0
+    n = 0
+    for t in transactions or []:
+        if (t.get("value_symbol") or "ETH").upper() != "ETH":
+            continue
+        v = float(t.get("value") or 0)
+        if v <= 0:
+            continue
+        d = t.get("direction")
+        if d == "in":
+            inflow += v
+        elif d == "out":
+            outflow += v
+        else:
+            continue
+        n += 1
+    if n < 3:
+        return None
+    total = inflow + outflow
+    if total <= 0:
+        return None
+    ratio = (inflow - outflow) / total  # -1 (all out) .. +1 (all in)
+    if ratio >= 0.2:
+        return "BULLISH", "Accumulating — net ETH inflow across recent on-chain activity."
+    if ratio <= -0.2:
+        return "BEARISH", "Distributing — net ETH outflow across recent on-chain activity."
+    return "NEUTRAL", "Balanced in/out flow — no strong directional bias."
+
+
+def derive_flow_signal(
+    score: int, breakdown: dict | None, transactions: list[dict] | None = None
+) -> tuple[str, str]:
     """
+    BULLISH/BEARISH/NEUTRAL signal — NO Claude call. The real AI analysis always
+    takes precedence; this fills the gap.
+
+    When recent transactions are available it reads the ACTUAL net ETH flow
+    (accumulation vs distribution), which is directional. Without flow data it
+    must NOT fabricate a direction — an active wallet is not automatically
+    "bullish" (that one-sided bias produced an all-BULLISH, 0-bearish board).
+    """
+    flow = _net_eth_flow_direction(transactions)
+    if flow:
+        return flow
+
+    # No flow data → don't fake a direction. Only call a dormant wallet bearish.
     bd = breakdown or {}
     recency = bd.get("recency", 0) or 0
-    activity = bd.get("activity", 0) or 0
-    defi = bd.get("defi", 0) or 0
-
-    # Actively deploying capital: recent + engaged + real activity
-    if recency >= 16 and activity >= 13 and (defi >= 10 or score >= 80):
-        return "BULLISH", "Actively deploying capital — recent on-chain activity with DeFi engagement."
-    # Was a real wallet, has gone quiet — reducing footprint
     if recency <= 4 and score >= 45:
         return "BEARISH", "Previously active wallet has gone quiet — reduced on-chain footprint."
-    # Score-only fallback when breakdown is missing
-    if not bd:
-        if score >= 80:
-            return "BULLISH", "High-conviction wallet by Sentinel score."
-        if score <= 25:
-            return "NEUTRAL", "Limited recent signal."
-    return "NEUTRAL", "Steady on-chain presence with no strong directional bias."
+    return "NEUTRAL", "No directional flow signal yet — rescan to compute."
 
 
 _EXCHANGE_KEYWORDS = (
@@ -1054,7 +1085,9 @@ async def get_watchlist(
         if wallets:
             wallet_ids = [w["id"] for w in wallets if w.get("id")]
             latest_by_wallet = fetch_latest_analyses(wallet_ids)
-            tx_by_wallet = fetch_wallet_transactions(wallet_ids) if include_ytd else {}
+            # Always batch-fetch recent txns: needed for the directional flow
+            # signal (accumulation vs distribution), not just the YTD sparkline.
+            tx_by_wallet = fetch_wallet_transactions(wallet_ids)
 
             for wallet in wallets:
                 wid = wallet.get("id")
@@ -1075,9 +1108,11 @@ async def get_watchlist(
                         "generated_at": latest.get("generated_at"),
                     }
                 else:
-                    # No AI signal yet — derive a flow signal (zero Claude cost)
+                    # No AI signal yet — derive a directional flow signal from
+                    # the wallet's real net ETH flow (zero Claude cost).
                     sig, reason = derive_flow_signal(
-                        wallet.get("score") or 0, wallet.get("score_breakdown")
+                        wallet.get("score") or 0, wallet.get("score_breakdown"),
+                        transactions=tx_by_wallet.get(wid),
                     )
                     wallet["signal"] = sig
                     wallet["signal_reason"] = reason
@@ -1172,6 +1207,17 @@ async def get_wallet_detail(address: str):
             .limit(1)
             .execute()
         )
+        # Recent transactions from DB — fetched before the signal so the flow
+        # direction (accumulation vs distribution) can use real net ETH flow.
+        tx_row = (
+            supabase_client.table("transactions")
+            .select("hash, timestamp, value, value_symbol, direction, status")
+            .eq("wallet_id", wallet_id)
+            .order("timestamp", desc=True)
+            .limit(40)
+            .execute()
+        )
+
         if analysis_row.data:
             a = analysis_row.data[0]
             wallet["analysis"] = {
@@ -1189,21 +1235,13 @@ async def get_wallet_detail(address: str):
             wallet["signal_source"] = "ai"
         else:
             sig, reason = derive_flow_signal(
-                wallet.get("score") or 0, wallet.get("score_breakdown")
+                wallet.get("score") or 0, wallet.get("score_breakdown"),
+                transactions=tx_row.data,
             )
             wallet["signal"] = sig
             wallet["signal_reason"] = reason
             wallet["signal_source"] = "flow"
 
-        # Recent transactions from DB + live token transfers
-        tx_row = (
-            supabase_client.table("transactions")
-            .select("hash, timestamp, value, value_symbol, direction, status")
-            .eq("wallet_id", wallet_id)
-            .order("timestamp", desc=True)
-            .limit(40)
-            .execute()
-        )
         eth_txs = [
             t for t in (tx_row.data or [])
             if (t.get("value_symbol") or "ETH").upper() == "ETH"
