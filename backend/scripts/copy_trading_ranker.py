@@ -426,6 +426,7 @@ def reconstruct_trades(address: str, transfers: list[dict]) -> list[dict]:
                     "contract": symbol_contract.get(sym),
                     "amount": b["amount"],
                     "cost_per_unit": b["cost_per_unit"],
+                    "buy_ts": b["ts"],
                 })
 
     return completed_trades, open_positions, first_ts, last_ts

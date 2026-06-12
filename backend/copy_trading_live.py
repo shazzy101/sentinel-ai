@@ -142,7 +142,8 @@ async def _unrealized_win_rate(trades: list[dict], open_positions: list[dict]) -
         c = (p.get("contract") or "").lower()
         if c in prices_by_contract:
             current_prices[(p.get("token") or "").upper()] = prices_by_contract[c]
-    return unrealized_win_rate(trades, open_positions, current_prices)
+    # now_ts lets old unpriceable bags (>7d, no DEX price → dead) count as losses.
+    return unrealized_win_rate(trades, open_positions, current_prices, now_ts=int(time.time()))
 
 
 async def compute_live_metrics(address: str) -> dict | None:
