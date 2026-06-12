@@ -13,7 +13,7 @@ import { useTransaction, useTradeHistory } from '../hooks/useTrade';
 import { useAuth } from '../context/AuthProvider';
 import { useEthPrice } from '../hooks/useEthPrice';
 import { api } from '../lib/api';
-import WhaleTradesPanel from '../components/invest/WhaleTradesPanel';
+import AiCopyPicks from '../components/invest/AiCopyPicks';
 import {
   TOKEN_ADDRESSES, FROM_TOKENS, TO_TOKENS, POPULAR_PAIRS,
   toTokenUnits, parseQuoteOutput, flattenProtocols,
@@ -278,7 +278,7 @@ export default function InvestPage() {
             <Sparkles className="h-3 w-3" /> Pro · Non-custodial copy trading
           </span>
           <div className="rounded-xl border border-green/15 bg-green/[0.03] px-5 py-3.5 text-[13px] text-text-secondary leading-relaxed">
-            <strong className="text-text-primary">Act on smart money in one place.</strong> Mirror a tracked whale's move, get the best DEX rate across all aggregators via DefiLlama, and execute from your own MetaMask — Hadaleum never holds your keys.
+            <strong className="text-text-primary">Copy the trades our AI ranks highest.</strong> We score fresh moves from proven traders by their on-chain edge and the current ETH market, then route you the best DEX rate via DefiLlama — executed from your own MetaMask. Hadaleum never holds your keys.
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -302,7 +302,7 @@ export default function InvestPage() {
       <div className="flex-1 min-h-0 flex overflow-hidden relative">
         {locked && <InvestProTeaser onUpgrade={() => navigate('/upgrade')} isTrialing={auth?.isTrialing} />}
         <div className={`flex-1 min-w-0 p-5 overflow-y-auto flex flex-col gap-4 ${locked ? 'pointer-events-none select-none blur-[3px] opacity-50' : ''}`}>
-          <WhaleTradesPanel
+          <AiCopyPicks
             onCopyTrade={handleCopyTrade}
             activeTradeId={selectedTradeId}
           />

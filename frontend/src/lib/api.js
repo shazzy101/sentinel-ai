@@ -59,6 +59,11 @@ export const api = {
   getWhaleTrades: () =>
     apiGet('/api/invest/whale-trades').then((d) => d?.trades || []).catch(() => []),
 
+  getAiPicks: (limit = 6) =>
+    apiGet(`/api/invest/ai-picks?limit=${limit}`)
+      .then((d) => ({ picks: d?.picks || [], marketSignal: d?.market_signal || 'NEUTRAL' }))
+      .catch(() => ({ picks: [], marketSignal: 'NEUTRAL' })),
+
   getNetworkPulse: () =>
     apiGet('/api/network/pulse').then((d) => d || { available: false }).catch(() => ({ available: false })),
 

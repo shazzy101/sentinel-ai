@@ -2203,6 +2203,113 @@ async def get_whale_trades():
         return error("WHALE_TRADES_FAILED", str(e), status_code=500)
 
 
+def _market_signal() -> str:
+    """Current ETH market lean from the cached AI summary (no Claude call)."""
+    try:
+        from ai.analyst import _market_summary_cache
+        data = _market_summary_cache.get("data") or {}
+        return (data.get("top_signal") or data.get("flow_state") or "NEUTRAL").upper()
+    except Exception:
+        return "NEUTRAL"
+
+
+def _ai_copy_score(move: dict, market: str) -> tuple[int, list[str]]:
+    """Rank a copy-trader move for how worth-copying it is, with reasons.
+
+    Blends the trader's proven edge (copy score, win rate, profit factor) with
+    alignment to the current ETH market and recency. Returns (0-100, reasons)."""
+    reasons: list[str] = []
+    copy_score = float(move.get("copy_score") or 0)
+    wr = float(move.get("win_rate_pct") or 0)
+    pf = float(move.get("profit_factor") or 0)
+    action = (move.get("action") or "").lower()
+
+    score = copy_score * 0.40 + wr * 0.25 + min(pf, 10.0) / 10.0 * 100 * 0.15
+    if wr >= 70:
+        reasons.append(f"{wr:.0f}% historical win rate")
+    if pf >= 3:
+        reasons.append(f"{min(pf, 50):.0f}x profit factor")
+    if copy_score >= 85:
+        reasons.append("top-ranked trader")
+
+    # Market alignment: buying into strength / taking profit into weakness.
+    bull = market in ("BULLISH", "ACCUMULATION")
+    bear = market in ("BEARISH", "DISTRIBUTION")
+    if action in ("buy", "rotate") and bull:
+        score += 20
+        reasons.append("aligned with bullish ETH flow")
+    elif action == "take_profit" and bear:
+        score += 20
+        reasons.append("de-risking into bearish flow")
+    else:
+        score += 8
+
+    # Recency — fresher moves are more copyable.
+    age_d = _last_active_days({"on_chain_data": {"last_trade": move.get("time")}})
+    if age_d is not None and age_d <= 1:
+        score += 10
+        reasons.append("moved in the last 24h")
+
+    if not reasons:
+        reasons.append("ranked DEX trader")
+    return min(100, round(score)), reasons
+
+
+@limiter.limit("20/minute")
+@app.get("/api/invest/ai-picks")
+async def invest_ai_picks(request: Request, limit: int = 6):
+    """AI-curated trades to copy — recent moves from top traders, ranked by
+    proven edge + ETH-market alignment + recency, with a plain-English why."""
+    pool = _sort_copy_traders(
+        _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True),
+        "copy_score",
+    )
+    enriched = [_enrich_copy_trader(w) for w in pool[:80]]
+
+    eth_usd = 3500.0
+    try:
+        eth_usd = float((await get_eth_market_data())["ethereum"]["usd"]) or eth_usd
+    except Exception:
+        pass
+
+    try:
+        moves = await fetch_recent_copy_moves(enriched, limit=40, traders_to_scan=60, transfer_limit=30, eth_usd=eth_usd)
+    except Exception as e:
+        log_error("ai_picks_moves_failed", error=str(e)[:160])
+        moves = []
+
+    market = _market_signal()
+    picks = []
+    for m in moves:
+        score, reasons = _ai_copy_score(m, market)
+        action = (m.get("action") or "buy").lower()
+        # Map to a copyable pair within the supported swap tokens.
+        if action == "take_profit":
+            suggested_from, suggested_to = "ETH", "USDC"
+        else:
+            suggested_from, suggested_to = "USDC", "ETH"
+        picks.append({
+            "id": m.get("tx_hash"),
+            "ai_score": score,
+            "ai_rationale": reasons,
+            "whaleLabel": m.get("trader_label") or "Ranked DEX trader",
+            "whaleAddress": m.get("trader_address"),
+            "whaleAction": f"{'Bought' if action in ('buy', 'rotate') else 'Sold'} {m.get('bought') if action != 'take_profit' else m.get('sold')}",
+            "token": m.get("bought") if action != "take_profit" else m.get("sold"),
+            "win_rate_pct": m.get("win_rate_pct"),
+            "copy_score": m.get("copy_score"),
+            "amount_usd": m.get("amount_usd"),
+            "timestamp": m.get("time"),
+            "txHash": m.get("tx_hash"),
+            "suggestedFrom": suggested_from,
+            "suggestedTo": suggested_to,
+            "suggestedAmount": round(min(max(float(m.get("amount_usd") or 0) * 0.01, 25), 500), 2) if suggested_from == "USDC" else round(min(max(float(m.get("amount_usd") or 0) * 0.01 / eth_usd, 0.01), 0.5), 4),
+        })
+
+    picks.sort(key=lambda p: p["ai_score"], reverse=True)
+    return success({"picks": picks[:max(1, min(limit, 12))], "market_signal": market, "count": len(picks)})
+
+
 # ─────────────────────────────────────────
 # ROUTES — COPY TRADING INTELLIGENCE
 # ─────────────────────────────────────────
