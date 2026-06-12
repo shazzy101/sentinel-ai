@@ -53,6 +53,7 @@ def normalize_copy_trader(raw: dict, *, rank: int | None = None) -> dict:
         wr = metrics_in["win_rate"]
     metrics = {
         "win_rate_pct": wr,
+        "unrealized_win_rate_pct": metrics_in.get("unrealized_win_rate_pct"),
         "profit_factor": metrics_in.get("profit_factor"),
         "max_drawdown_pct": metrics_in.get("max_drawdown_pct"),
         "avg_trade_duration_hrs": metrics_in.get("avg_trade_duration_hrs"),

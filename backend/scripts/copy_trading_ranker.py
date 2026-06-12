@@ -39,6 +39,32 @@ from typing import Optional
 
 import httpx
 
+# Make the shared backend modules importable when run as a script.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from copy_trading_winrate import unrealized_win_rate  # noqa: E402
+
+
+async def _defillama_current_prices(client: httpx.AsyncClient, addresses: list[str]) -> dict[str, float]:
+    """Current USD prices keyed by lowercase contract (DefiLlama coins)."""
+    addrs = list(dict.fromkeys([(a or "").lower() for a in addresses if a]))
+    if not addrs:
+        return {}
+    out: dict[str, float] = {}
+    for i in range(0, len(addrs), 80):
+        chunk = addrs[i : i + 80]
+        keys = ",".join(f"ethereum:{a}" for a in chunk)
+        try:
+            res = await client.get(f"https://coins.llama.fi/prices/current/{keys}", timeout=12)
+            res.raise_for_status()
+            coins = (res.json() or {}).get("coins", {})
+            for a in chunk:
+                e = coins.get(f"ethereum:{a}")
+                if e and e.get("price"):
+                    out[a] = float(e["price"])
+        except Exception:
+            pass
+    return out
+
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 
 # ─── Config ──────────────────────────────────────────────────────────────────
@@ -494,8 +520,10 @@ def composite_score(m: dict) -> float:
     if m["track_record_days"] < MIN_DAYS:
         return 0.0
 
-    # Win rate: 0→0, 60→25, 80→30, 100→30  (25 pts max)
-    wr = m["win_rate"]
+    # Win rate: 0→0, 60→25, 80→30, 100→30  (25 pts max).
+    # Prefer the UNREALIZED win rate (held bags marked to market) so a wallet
+    # that sells winners and holds losers can't score high on a fake 100%.
+    wr = m["unrealized_win_rate"] if m.get("unrealized_win_rate") is not None else m["win_rate"]
     wr_score = min(wr / 100 * 30, 30)
 
     # Profit factor: 0→0, 2→25, 5→30, >5→30  (30 pts max)
@@ -601,13 +629,33 @@ async def analyze_wallet(
         if len(transfers) < MIN_TRADES:
             return None
 
-        trades, _open_positions, first_ts, last_ts = reconstruct_trades(address, transfers)
+        trades, open_positions, first_ts, last_ts = reconstruct_trades(address, transfers)
         if len(trades) < MIN_TRADES:
             return None
 
         m = compute_metrics(trades, first_ts, last_ts)
         if m is None:
             return None
+
+        # Unrealized win rate: mark still-held bags to current price so a wallet
+        # that dumps winners and holds losers can't show a fake-perfect record.
+        # This is what composite_score actually scores (falls back to realized).
+        current_prices: dict[str, float] = {}
+        if open_positions:
+            by_contract = await _defillama_current_prices(
+                client, [p.get("contract") for p in open_positions]
+            )
+            for p in open_positions:
+                c = (p.get("contract") or "").lower()
+                tok = (p.get("token") or "").upper()
+                if c in by_contract and tok:
+                    current_prices[tok] = by_contract[c]
+        uwr = unrealized_win_rate(
+            trades, open_positions, current_prices, now_ts=int(time.time())
+        )
+        if uwr is not None:
+            m["unrealized_win_rate"] = uwr
+            m["unrealized_win_rate_pct"] = uwr
 
         score = composite_score(m)
         if score <= 0:
@@ -703,6 +751,7 @@ async def main():
         for rank, row in enumerate(top, start=1):
             metrics = {
                 "win_rate_pct":          row["win_rate"],
+                "unrealized_win_rate_pct": row.get("unrealized_win_rate_pct"),
                 "profit_factor":         row["profit_factor"],
                 "max_drawdown_pct":      row["max_drawdown_pct"],
                 "avg_trade_duration_hrs": row["avg_trade_duration_hrs"],
