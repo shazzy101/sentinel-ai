@@ -540,7 +540,7 @@ function HeroSection({ walletCount }) {
             </MagneticButton>
             <button
               type="button"
-              onClick={() => navigate('/intelligence')}
+              onClick={() => navigate('/wins')}
               className="w-full sm:w-auto text-text-secondary text-[15px] px-8 py-4 rounded-xl hover:text-text-primary transition-all"
               style={{
                 background: 'rgba(255,255,255,0.03)',
@@ -826,7 +826,7 @@ function SocialProofBar() {
         <div className="flex items-center gap-2">
           <span className="inline-flex rounded-full h-1.5 w-1.5 bg-green/70" />
           <span className="font-display font-bold text-text-primary text-sm">NEW</span>
-          <span className="text-text-muted text-sm">Invest beta · Copy trades</span>
+          <span className="text-text-muted text-sm">Invest · Early access</span>
         </div>
       </div>
     </div>
@@ -945,50 +945,31 @@ function PricingSection() {
   );
 }
 
+// Honest proof instead of fabricated testimonials. We don't invent quotes —
+// the product's credibility is the verifiable on-chain track record.
 function TestimonialsSection() {
-  const TESTIMONIALS = [
-    {
-      quote: "Caught the Wintermute BULLISH signal 4 hours before the move. Hadaleum's the only tool that gave me that edge.",
-      name: "@defi_edge",
-      handle: "ETH trader · 3 years on-chain"
-    },
-    {
-      quote: "Finally something that's not $150/month. The AI signal summaries are genuinely useful — not just price alerts.",
-      name: "@cryptobeta9",
-      handle: "DeFi researcher"
-    },
-    {
-      quote: "The whale scoring system is the real product. I don't copy every trade — I just watch the top 10 scored wallets.",
-      name: "@0xkaspian",
-      handle: "Independent trader"
-    }
+  const PROOF = [
+    { k: 'Every signal logged on-chain', v: 'Wins and losses are recorded the moment a ranked trader moves, then scored 24h later against real DEX prices.' },
+    { k: 'Non-custodial by design', v: 'Copy trades execute through your own MetaMask. Hadaleum never holds, moves, or can touch your funds.' },
+    { k: 'Ranked by performance, not balance', v: 'Traders are scored on realized + unrealized P&L from Dune dex.trades — not how much ETH they happen to hold.' },
   ];
-
   return (
     <section className="py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Early Access</div>
-          <h2 className="font-display text-[30px] font-bold text-text-primary">What traders are saying.</h2>
+          <div className="text-[11px] uppercase tracking-[2px] text-green mb-3">Verified, not vibes</div>
+          <h2 className="font-display text-[30px] font-bold text-text-primary">Proof over promises.</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
-          {TESTIMONIALS.map(({ quote, name, handle }) => (
-            <div key={name} className="rounded-2xl border border-border-default bg-bg-surface p-5">
-              <p className="text-sm text-text-secondary leading-relaxed mb-4">"{quote}"</p>
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-bg-overlay border border-border-subtle flex items-center justify-center">
-                  <span className="text-[10px] text-text-muted font-bold">{name[1].toUpperCase()}</span>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-text-primary">{name}</div>
-                  <div className="text-[11px] text-text-muted">{handle}</div>
-                </div>
-              </div>
+          {PROOF.map(({ k, v }) => (
+            <div key={k} className="rounded-2xl border border-border-default bg-bg-surface p-5">
+              <div className="text-sm font-semibold text-text-primary mb-2">{k}</div>
+              <p className="text-[13px] text-text-secondary leading-relaxed">{v}</p>
             </div>
           ))}
         </div>
-        <p className="text-center text-[11px] text-text-muted mt-6">
-          Early access users · <a href="https://x.com/hadaleum" className="hover:text-text-secondary">Share your experience →</a>
+        <p className="text-center text-[12px] text-text-muted mt-6">
+          See the live record — <Link to="/wins" className="text-green hover:underline">detected wins ledger →</Link>
         </p>
       </div>
     </section>

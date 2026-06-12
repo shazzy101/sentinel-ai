@@ -160,6 +160,9 @@ function AnimatedRoutes() {
         <Route path="/alerts" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AlertsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/settings" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><SettingsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
+        <Route path="/enterprise" element={<Navigate to="/institutional" replace />} />
+        {/* Catch-all: unknown URLs rendered a blank root div. Send them home. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>
     </AnimatePresence>

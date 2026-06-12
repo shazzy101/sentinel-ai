@@ -18,7 +18,13 @@ export default function AnimatedCounter({
   const [text, setText] = useState(`${prefix}0${suffix}`);
 
   useEffect(() => {
-    if (inView) spring.set(Number(value) || 0);
+    const target = Number(value) || 0;
+    if (inView) spring.set(target);
+    // Guarantee the counter lands on the real value even if the in-view observer
+    // never fires (above-the-fold elements sometimes miss it) — otherwise the
+    // stat strip is stuck showing 0, which looks broken.
+    const fallback = setTimeout(() => spring.set(target), 900);
+    return () => clearTimeout(fallback);
   }, [inView, value, spring]);
 
   useEffect(() => {
