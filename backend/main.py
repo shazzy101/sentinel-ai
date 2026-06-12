@@ -773,14 +773,37 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
         )
         all_transactions = transactions + token_transfers
 
-        analysis = await analyze_wallet(
-            wallet_name=label,
-            transactions=transactions[:10],  # Regular txs for AI (token transfers confuse prompt)
-            balance=balance,
-            chain=chain,
-            address=address,
-        )
+        # The SCORE never depends on the AI call — compute it first so a rescan
+        # always refreshes the score even when Claude is rate-limited or the
+        # shared budget is exhausted (which was returning notok for the rescan
+        # button after a few wallets and never updating the score).
         score_result = score_wallet(all_transactions, balance, chain, address=address, label=label)
+
+        try:
+            analysis = await analyze_wallet(
+                wallet_name=label,
+                transactions=transactions[:10],  # Regular txs for AI (token transfers confuse prompt)
+                balance=balance,
+                chain=chain,
+                address=address,
+            )
+        except Exception as ai_err:
+            # AI unavailable → degrade to the no-Claude flow-based signal so the
+            # rescan still succeeds and saves the fresh score.
+            log_error("scan_ai_fallback", address=address, error=str(ai_err)[:160])
+            sig, reason = derive_flow_signal(
+                score_result["score"], score_result.get("breakdown"),
+            )
+            score = score_result["score"]
+            analysis = {
+                "signal": sig,
+                "summary": reason,
+                "key_insight": reason,
+                "risk_level": "LOW" if score >= 70 else "MEDIUM" if score >= 45 else "HIGH",
+                "risk_reason": "Flow-based signal — full AI analysis temporarily unavailable.",
+                "tags": [],
+                "ai_unavailable": True,
+            }
         wallet_payload = {
             "address": address,
             "label": label,
