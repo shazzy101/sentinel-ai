@@ -474,7 +474,10 @@ def compute_metrics(trades: list[dict], first_ts: Optional[int], last_ts: Option
     gross_loss   = abs(sum(t["pnl_usd"] for t in losses))
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else (999.0 if gross_profit > 0 else 0.0)
 
-    # Max drawdown from cumulative P&L curve
+    # Max drawdown from cumulative P&L curve. Measured against peak profit, so a
+    # wallet that gives back MORE than its peak gain can exceed 100% — which reads
+    # as broken to users ("180% drawdown"). Clamp to 100%: a >100% giveback just
+    # means the gains were fully wiped and then some.
     cumulative = 0.0
     peak = 0.0
     max_dd = 0.0
@@ -485,6 +488,7 @@ def compute_metrics(trades: list[dict], first_ts: Optional[int], last_ts: Option
         drawdown = (peak - cumulative) / abs(peak) if peak > 0 else 0
         if drawdown > max_dd:
             max_dd = drawdown
+    max_dd = min(max_dd, 1.0)
 
     # Average trade duration
     avg_duration_hrs = sum(t["duration_hrs"] for t in trades) / n if n > 0 else 0

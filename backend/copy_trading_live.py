@@ -187,7 +187,9 @@ async def compute_live_metrics(address: str) -> dict | None:
         # Drawdown / duration need enough CLOSED trades to be meaningful.
         if raw and raw.get("trade_count", 0) >= min_t:
             metrics = {
-                "max_drawdown_pct": raw["max_drawdown_pct"],
+                # Clamp to 100% — drawdown vs peak profit can exceed 100% but that
+                # reads as broken in the UI ("180% drawdown").
+                "max_drawdown_pct": min(float(raw["max_drawdown_pct"]), 100.0),
                 "avg_trade_duration_hrs": raw["avg_trade_duration_hrs"],
             }
         # Unrealized win rate counts CLOSED + still-held bags, so it needs enough

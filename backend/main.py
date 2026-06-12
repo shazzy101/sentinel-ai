@@ -2604,7 +2604,8 @@ def _enrich_copy_trader(wallet: dict) -> dict:
             metrics["unrealized_win_rate_pct"] = round(float(live["unrealized_win_rate_pct"]), 1)
             metrics_meta["unrealized_win_rate_pct"] = "on_chain"
         if live.get("max_drawdown_pct") is not None:
-            metrics["max_drawdown_pct"] = live["max_drawdown_pct"]
+            # Clamp legacy uncapped values (>100% reads as broken to users).
+            metrics["max_drawdown_pct"] = min(float(live["max_drawdown_pct"]), 100.0)
             metrics_meta["max_drawdown_pct"] = "on_chain"
         if live.get("avg_trade_duration_hrs") is not None:
             metrics["avg_trade_duration_hrs"] = live["avg_trade_duration_hrs"]
