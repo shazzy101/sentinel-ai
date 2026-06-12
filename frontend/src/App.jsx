@@ -101,7 +101,7 @@ function InvestRoute() {
 
 function AskSentinelRoute() {
   return (
-    <Shell title="Ask Hadaleum">
+    <Shell title="Screener">
       <AskSentinelPage />
     </Shell>
   );

@@ -4,10 +4,10 @@ import { streamAskAi } from '@/lib/authHeaders';
 import { api } from '@/lib/api';
 
 const SUGGESTED_PROMPTS = [
-  'Which wallets are most bullish right now?',
-  "What's the average score of wallets with BULLISH signals?",
-  'Show me the top 5 highest conviction wallets',
-  'Which wallets changed signal in the last 24h?',
+  'Most active whales in the last 24h',
+  'Wallets with BULLISH signals, ranked by activity',
+  'Which tracked whales hold the largest ETH balances?',
+  'Whales that flipped signal recently',
 ];
 
 function HexIcon({ size = 16 }) {
@@ -110,7 +110,7 @@ export default function AskSentinelPage() {
   const abortRef = useRef(null);
 
   useEffect(() => {
-    document.title = 'Ask AI — Hadaleum';
+    document.title = 'Screener — Hadaleum';
   }, []);
 
   // Abort any in-flight stream when the page unmounts so the reader/connection
@@ -231,10 +231,10 @@ export default function AskSentinelPage() {
             <div className="flex flex-col items-center pt-16">
               <HexIcon size={48} />
               <h2 className="font-display text-[24px] font-bold text-text-primary text-center mt-8 mb-2">
-                Ask me anything about whale activity.
+                Screen the watchlist in plain English.
               </h2>
               <p className="text-[14px] text-text-muted text-center mb-12">
-                Powered by tracked Ethereum wallets + Claude AI · responses stream live
+                Ask for a filter — get a ranked list of real tracked wallets. Behavioral scores, not profitability · for P&amp;L, see Copy.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full mx-auto">
                 {SUGGESTED_PROMPTS.map((p) => (
@@ -280,7 +280,7 @@ export default function AskSentinelPage() {
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about whale activity, signals, scores..."
+              placeholder="Screen wallets — e.g. 'most active whales with bullish signals'"
               rows={1}
               className="flex-1 bg-transparent resize-none outline-none text-[14px] text-text-primary placeholder:text-text-muted overflow-y-auto leading-relaxed"
               style={{ maxHeight: '128px', minHeight: '24px' }}
