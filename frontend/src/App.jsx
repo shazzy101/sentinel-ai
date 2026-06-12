@@ -30,7 +30,6 @@ const WatchlistPage = lazy(() => import('./pages/Watchlist'));
 const IntelligencePage = lazy(() => import('./pages/Intelligence'));
 const AlertsPage = lazy(() => import('./pages/Alerts'));
 const InvestPage = lazy(() => import('./pages/Invest'));
-const AskSentinelPage = lazy(() => import('./pages/AskSentinel'));
 const NewsPage = lazy(() => import('./pages/News'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 
@@ -99,14 +98,6 @@ function InvestRoute() {
   );
 }
 
-function AskSentinelRoute() {
-  return (
-    <Shell title="Screener">
-      <AskSentinelPage />
-    </Shell>
-  );
-}
-
 function NewsRoute() {
   return (
     <Shell title="News Intelligence">
@@ -155,7 +146,6 @@ function AnimatedRoutes() {
         <Route path="/markets" element={<MotionPage><AuthGuard><MarketsRoute /></AuthGuard></MotionPage>} />
         <Route path="/copy" element={<Navigate to="/markets" replace />} />
         <Route path="/invest" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><InvestRoute /></Suspense></AuthGuard></MotionPage>} />
-        <Route path="/ask" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AskSentinelRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/news" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><NewsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/alerts" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AlertsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/settings" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><SettingsRoute /></Suspense></AuthGuard></MotionPage>} />

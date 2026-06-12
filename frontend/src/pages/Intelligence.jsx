@@ -441,17 +441,6 @@ export default function IntelligencePage() {
       </section>
 
       <SignalFeed whaleSignals={whaleSignals} copySignals={copySignals} isPro={isPro} isTrialing={isTrialing} />
-
-      {/* Ask AI shortcut */}
-      <div className="bg-bg-surface border border-green/20 rounded-xl p-5 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[14px] text-text-primary font-medium">Have a question about today's signals?</p>
-          <p className="text-[13px] text-text-muted mt-1">Ask Hadaleum AI for a deeper analysis.</p>
-        </div>
-        <Button variant="primary" onClick={() => navigate('/ask')}>
-          Ask Sentinel →
-        </Button>
-      </div>
     </div>
     </div>
   );

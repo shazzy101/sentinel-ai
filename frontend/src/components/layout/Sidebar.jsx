@@ -22,7 +22,6 @@ const NAV_ITEMS = [
   { label: 'Invest', icon: Zap, path: '/invest' },
   { label: 'News Intelligence', icon: Newspaper, path: '/news' },
   { label: 'AI Signals', icon: Sparkles, path: '/intelligence' },
-  { label: 'Screener', icon: MessageSquare, path: '/ask' },
   { label: 'Alerts', icon: Bell, path: '/alerts' },
 ];
 

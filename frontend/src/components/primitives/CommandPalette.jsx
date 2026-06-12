@@ -13,7 +13,6 @@ const NAV = [
   { label: 'AI Signals', path: '/intelligence', icon: Sparkles, kbd: 'I' },
   { label: 'Markets', path: '/markets', icon: BarChart3, kbd: 'M' },
   { label: 'Invest', path: '/invest', icon: Zap, kbd: 'T' },
-  { label: 'Ask AI', path: '/ask', icon: MessageSquare, kbd: 'A' },
   { label: 'Scoring', path: '/scoring', icon: LineChart, kbd: 'S' },
   { label: 'Alerts', path: '/alerts', icon: Bell, kbd: 'L' },
 ];

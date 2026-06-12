@@ -23,11 +23,9 @@ from pydantic import BaseModel, Field
 from auth_context import resolve_user
 from observability import bind_request_context, log_error, log_info, new_request_id, setup_logging
 from quota import (
-    check_ask_quota,
     consume_global_budget,
     get_quota_status,
     record_token_usage,
-    try_consume_ask_quota,
     try_consume_scan_quota,
 )
 from rate_limits import rate_limit_key, rate_limit_message
@@ -68,8 +66,6 @@ except ImportError:  # local dev without full requirements
 setup_logging()
 
 from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init_analyst
-from ai.ask_service import build_ask_system_prompt, fetch_ask_wallets, select_ask_model
-from ai.streaming import stream_claude_text
 from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
 from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
 from integrations import dune
@@ -460,11 +456,6 @@ class AddWalletRequest(BaseModel):
     label: str
     chain: str
     tags: Optional[list[str]] = []
-
-
-class AskRequest(BaseModel):
-    message: str
-    history: list[dict] = []
 
 
 class WaitlistRequest(BaseModel):
@@ -1653,123 +1644,6 @@ async def get_user_quota(request: Request):
     })
 
 
-@limiter.limit("15/minute")
-@app.post("/api/ask")
-async def ask_sentinel(request: Request, body: AskRequest):
-    """
-    Claude answers questions about wallet data (non-streaming fallback).
-    Prefer POST /api/ask/stream for token streaming in the UI.
-    """
-    user = getattr(request.state, "auth_user", None)
-    ip = get_remote_address(request)
-
-    if not body.message.strip():
-        return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
-
-    # Atomically reserve the per-user ask slot up front (no TOCTOU window), then
-    # consume the shared global Claude budget here at the route level.
-    allowed, quota = try_consume_ask_quota(user, ip)
-    if not allowed:
-        return quota_error(quota)
-    if not consume_global_budget():
-        return quota_error(check_ask_quota(user, ip))
-
-    try:
-        from ai.analyst import get_client
-
-        wallets = await fetch_ask_wallets(supabase_client)
-        system_prompt = build_ask_system_prompt(wallets)
-        model, max_tokens = select_ask_model(body.message, body.history)
-        messages = body.history + [{"role": "user", "content": body.message}]
-
-        client = get_client()
-        response = await asyncio.to_thread(
-            client.messages.create,
-            model=model,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=messages,
-        )
-
-        usage = response.usage
-        tokens = (getattr(usage, "input_tokens", 0) or 0) + (getattr(usage, "output_tokens", 0) or 0)
-        # Ask slot + global budget already reserved at the gate; only record tokens.
-        record_token_usage(user, ip, tokens)
-
-        return success({
-            "response": response.content[0].text,
-            "used_wallets": len(wallets),
-            "tokens_used": tokens,
-            "quota": get_quota_status(user, ip).__dict__,
-        })
-    except RuntimeError as e:
-        return error("AI_UNAVAILABLE", str(e), status_code=503)
-    except Exception as e:
-        log_error("ask_failed", error=str(e))
-        return error(
-            "ASK_FAILED",
-            "Hadaleum AI couldn't complete that question. Try a shorter prompt or check back shortly.",
-            status_code=500,
-            details={"reason": str(e)[:200]},
-        )
-
-
-@limiter.limit("15/minute")
-@app.post("/api/ask/stream")
-async def ask_sentinel_stream(request: Request, body: AskRequest):
-    """Stream Claude response as Server-Sent Events (token deltas)."""
-    user = getattr(request.state, "auth_user", None)
-    ip = get_remote_address(request)
-
-    if not body.message.strip():
-        return error("EMPTY_MESSAGE", "Ask a question about whale wallets or copy traders.", status_code=400)
-
-    # Atomically reserve the ask slot + global budget before streaming begins.
-    allowed, quota = try_consume_ask_quota(user, ip)
-    if not allowed:
-        return quota_error(quota)
-    if not consume_global_budget():
-        return quota_error(check_ask_quota(user, ip))
-
-    wallets = await fetch_ask_wallets(supabase_client)
-    system_prompt = build_ask_system_prompt(wallets)
-    model, max_tokens = select_ask_model(body.message, body.history)
-    messages = body.history + [{"role": "user", "content": body.message}]
-
-    async def event_generator():
-        rid = new_request_id()
-        yield f"data: {json.dumps({'type': 'start', 'request_id': rid, 'used_wallets': len(wallets)})}\n\n"
-        full_text: list[str] = []
-        tokens_used = 0
-        try:
-            async for kind, payload in stream_claude_text(
-                system=system_prompt,
-                messages=messages,
-                model=model,
-                max_tokens=max_tokens,
-            ):
-                if kind == "delta":
-                    full_text.append(payload)
-                    yield f"data: {json.dumps({'type': 'delta', 'text': payload})}\n\n"
-                elif kind == "done":
-                    tokens_used = (payload.get("input_tokens") or 0) + (payload.get("output_tokens") or 0)
-                elif kind == "error":
-                    yield f"data: {json.dumps({'type': 'error', 'message': payload})}\n\n"
-                    return
-
-            # Ask slot + global budget already reserved at the gate; record tokens only.
-            record_token_usage(user, ip, tokens_used)
-            remaining = get_quota_status(user, ip)
-            yield f"data: {json.dumps({'type': 'done', 'tokens_used': tokens_used, 'text': ''.join(full_text), 'quota': {'ask_remaining': remaining.user_ask_remaining, 'tokens_remaining': remaining.user_tokens_remaining, 'plan': remaining.plan}})}\n\n"
-        except Exception as exc:
-            log_error("ask_stream_failed", error=str(exc))
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Stream interrupted — try again.'})}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @app.get("/api/market/eth")
