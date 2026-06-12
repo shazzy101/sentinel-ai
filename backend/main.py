@@ -792,9 +792,17 @@ async def scan_wallet(request: Request, body: WalletScanRequest):
                 "key_insight": reason,
                 "risk_level": "LOW" if score >= 70 else "MEDIUM" if score >= 45 else "HIGH",
                 "risk_reason": "Flow-based signal — full AI analysis temporarily unavailable.",
+                "signal_reason": reason,
                 "tags": [],
                 "ai_unavailable": True,
             }
+            # Persist the fallback analysis too (analyze_wallet does this on the
+            # happy path) so the stored analyses row matches what the user sees.
+            try:
+                from db.supabase import save_analysis_cache
+                await save_analysis_cache(address, analysis)
+            except Exception:
+                pass
         wallet_payload = {
             "address": address,
             "label": label,

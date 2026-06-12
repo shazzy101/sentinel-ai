@@ -293,7 +293,7 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
               </div>
               <div className="flex items-center gap-4 mt-2 text-[10px] text-text-muted">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-0.5 bg-green rounded" /> Backtested (win rate {m.win_rate_pct}% · PF {Number(m.profit_factor).toFixed(1)})
+                  <span className="w-3 h-0.5 bg-green rounded" /> Backtested (win rate {m.unrealized_win_rate_pct ?? m.win_rate_pct}% · PF {Number(m.profit_factor).toFixed(1)})
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-0.5 bg-blue rounded border-dashed" /> +{outlook.outlookReturnPct?.toFixed(1)}% outlook (90d)

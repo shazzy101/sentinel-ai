@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
-  LayoutGrid, Sparkles, BarChart3, MessageSquare,
+  LayoutGrid, Sparkles, BarChart3,
   Bell, ExternalLink, Search, Zap, Newspaper, LogIn, LogOut, Star,
   Settings as SettingsIcon, Moon, Sun,
 } from 'lucide-react';
