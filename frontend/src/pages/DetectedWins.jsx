@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { ExternalLink, Trophy, Eye, TrendingUp, Copy, Check, Image as ImageIcon } from 'lucide-react';
+import { ExternalLink, Trophy, Eye, TrendingUp, Minus, Copy, Check, Image as ImageIcon } from 'lucide-react';
 import { api, getApiBase } from '../lib/api';
 import AnimatedCounter from '../components/primitives/AnimatedCounter';
 import SentinelLogo from '../components/ui/SentinelLogo';
@@ -62,16 +62,19 @@ function ScoredRow({ move, live = false }) {
   const ret = live ? move.live_return_pct : move.return_pct_24h;
   const pnl = live ? move.hypothetical_pnl_live_usd : move.hypothetical_pnl_usd;
   const isLoss = !live && move.outcome_status === 'LOSS';
+  const isNeutral = !live && move.outcome_status === 'NEUTRAL';
   const up = (ret ?? 0) >= 0;
 
   return (
     <div className="flex items-center gap-4 px-5 py-4 border-b border-border-subtle last:border-0 hover:bg-bg-elevated/30 transition-colors">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
         live ? 'bg-amber/10 border border-amber/20'
+        : isNeutral ? 'bg-text-muted/10 border border-border-default'
         : isLoss ? 'bg-red/10 border border-red/20'
         : 'bg-green/15 border border-green/25'
       }`}>
         {live ? <Eye className="h-4 w-4 text-amber" />
+          : isNeutral ? <Minus className="h-4 w-4 text-text-muted" />
           : isLoss ? <TrendingUp className="h-4 w-4 text-red rotate-180" />
           : <Trophy className="h-4 w-4 text-green" />}
       </div>
@@ -80,8 +83,10 @@ function ScoredRow({ move, live = false }) {
           {move.trader_label || 'Ranked copy trader'}
           {move.trader_rank ? <span className="text-text-muted font-normal ml-2">#{move.trader_rank}</span> : null}
           {!live && (
-            <span className={`ml-2 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${isLoss ? 'bg-red/15 text-red' : 'bg-green/15 text-green'}`}>
-              {isLoss ? 'Loss' : 'Win'}
+            <span className={`ml-2 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+              isNeutral ? 'bg-text-muted/15 text-text-muted' : isLoss ? 'bg-red/15 text-red' : 'bg-green/15 text-green'
+            }`}>
+              {isNeutral ? 'Flat' : isLoss ? 'Loss' : 'Win'}
             </span>
           )}
         </div>
@@ -94,7 +99,7 @@ function ScoredRow({ move, live = false }) {
       </div>
       <div className="text-right shrink-0">
         {ret != null && (
-          <div className={`font-mono text-[15px] font-bold ${up ? 'text-green' : 'text-red'}`}>
+          <div className={`font-mono text-[15px] font-bold ${isNeutral ? 'text-text-muted' : up ? 'text-green' : 'text-red'}`}>
             {up ? '+' : ''}{Number(ret).toFixed(1)}%
           </div>
         )}

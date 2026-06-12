@@ -11,7 +11,7 @@ import httpx
 
 from copy_trader_moves import fetch_recent_copy_moves
 from db.supabase import supabase_client
-from observability import log_error, log_info
+from observability import log_error, log_info, log_warning
 
 NOTIONAL_USD = 1000.0
 WIN_THRESHOLD_PCT = 3.0
@@ -292,6 +292,31 @@ async def ingest_detected_moves(
 
 async def score_pending_moves(*, batch_size: int = 50) -> dict:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=SCORE_AFTER_HOURS)).isoformat()
+
+    # Sweep legacy/unscoreable stragglers: PENDING moves older than 24h that have
+    # no token_tracked (or no detection price) can NEVER be scored, so they stay
+    # PENDING forever and inflate the "watching" count. Retire them to NEUTRAL.
+    try:
+        stuck = (
+            supabase_client.table("detected_moves")
+            .select("id")
+            .eq("outcome_status", "PENDING")
+            .lte("detected_at", cutoff)
+            .is_("token_tracked", "null")
+            .limit(500)
+            .execute()
+        )
+        stuck_ids = [r["id"] for r in (stuck.data or [])]
+        for sid in stuck_ids:
+            supabase_client.table("detected_moves").update({
+                "outcome_status": "NEUTRAL",
+                "outcome_scored_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", sid).execute()
+        if stuck_ids:
+            log_info("detected_moves_swept_stuck", count=len(stuck_ids))
+    except Exception as e:
+        log_warning("detected_moves_sweep_failed", error=str(e)[:160])
+
     try:
         pending = (
             supabase_client.table("detected_moves")
@@ -614,12 +639,15 @@ async def get_trust_pulse() -> dict[str, Any]:
 
     recent_wins = [_scored_public_row(r) for r in rows if r.get("outcome_status") == "WIN"][:12]
     recent_losses = [_scored_public_row(r) for r in rows if r.get("outcome_status") == "LOSS"][:12]
-    # Full record (wins + losses), newest scored first.
+    # Full record = every RESOLVED move (win, loss, AND neutral/flat), newest
+    # scored first. Including NEUTRAL shows the full activity instead of just the
+    # handful that crossed the ±3% threshold — most logged moves are flat, and
+    # hiding them made the record look empty. Win rate stays decisive-only.
     recent_scored = sorted(
-        [_scored_public_row(r) for r in rows if r.get("outcome_status") in ("WIN", "LOSS")],
+        [_scored_public_row(r) for r in rows if r.get("outcome_status") in ("WIN", "LOSS", "NEUTRAL")],
         key=lambda r: r.get("scored_at") or r.get("detected_at") or "",
         reverse=True,
-    )[:20]
+    )[:40]
     wins_only = [r for r in rows if r.get("outcome_status") == "WIN"]
     biggest_win = (
         _scored_public_row(max(wins_only, key=lambda r: float(r.get("return_pct_24h") or 0)))

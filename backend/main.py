@@ -288,7 +288,9 @@ async def _warm_live_metrics_once() -> None:
         "copy_score",
     )
     addrs = [w.get("address") for w in pool[:_LIVE_WARM_TOP_N] if w.get("address")]
-    await warm_live_metrics(addrs, concurrency=4)
+    # Keep concurrency low: each wallet makes up to 10 sequential Etherscan calls,
+    # so higher concurrency trips the free-tier rate limit and yields empty data.
+    await warm_live_metrics(addrs, concurrency=2)
 
 
 async def _cron_live_metrics():
@@ -307,6 +309,13 @@ async def _cron_live_metrics():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
+    # Load persisted live metrics so the leaderboard serves unrealized win rate
+    # immediately on boot, before the warmer cron refreshes them.
+    try:
+        from copy_trading_live import load_live_metrics_cache
+        load_live_metrics_cache()
+    except Exception:
+        pass
     asyncio.create_task(_cron_top())
     asyncio.create_task(_cron_full())
     asyncio.create_task(_cron_ai_top())

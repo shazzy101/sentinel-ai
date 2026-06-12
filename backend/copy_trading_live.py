@@ -12,6 +12,7 @@ than the offline batch ranker.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import importlib.util
@@ -89,13 +90,25 @@ async def _fetch_token_transfers(address: str, days: int = HISTORY_DAYS) -> list
                 "sort": "desc",
                 "apikey": key,
             }
-            try:
-                resp = await client.get(ETHERSCAN_BASE, params=params)
-                data = resp.json()
-            except Exception as e:
-                log_error("live_transfers_fetch_failed", address=address, page=page, error=str(e)[:160])
+            data = None
+            for attempt in range(3):
+                try:
+                    resp = await client.get(ETHERSCAN_BASE, params=params)
+                    data = resp.json()
+                except Exception as e:
+                    log_error("live_transfers_fetch_failed", address=address, page=page, error=str(e)[:160])
+                    data = None
+                    break
+                # Etherscan signals rate limiting with status "0" + a rate-limit
+                # message (not a 429). Back off and retry instead of giving up,
+                # which would drop the wallet to its realized-rate fallback.
+                msg = str(data.get("message", "")) + str(data.get("result", ""))
+                if str(data.get("status")) != "1" and "rate limit" in msg.lower():
+                    import asyncio
+                    await asyncio.sleep(0.6 * (attempt + 1))
+                    continue
                 break
-            if str(data.get("status")) != "1":
+            if not data or str(data.get("status")) != "1":
                 break
             result = data.get("result") or []
             reached_cutoff = False
@@ -240,5 +253,49 @@ async def warm_live_metrics(addresses: list[str], *, concurrency: int = 4) -> in
                 log_warning("warm_live_metrics_failed", address=addr, error=str(e)[:120])
 
     await asyncio.gather(*[_one(a) for a in addresses if a])
+    save_live_metrics_cache()
     log_info("warm_live_metrics_done", requested=len(addresses), warmed=warmed)
     return warmed
+
+
+# ── Persistence ─────────────────────────────────────────────────────────────
+# The in-memory cache is lost on restart and is empty until the warmer runs, so
+# the leaderboard would fall back to realized win rate on every cold boot. Persist
+# computed metrics to disk so the list serves unrealized instantly after deploy.
+_CACHE_FILE = os.path.join(os.path.dirname(__file__), "data", "live_metrics_cache.json")
+
+
+def save_live_metrics_cache() -> None:
+    """Write non-empty cached metrics to disk (address → metrics)."""
+    try:
+        payload = {
+            "saved_at": int(time.time()),
+            "metrics": {addr: m for addr, (_, m) in _result_cache.items() if m},
+        }
+        os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
+        tmp = _CACHE_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(payload, f)
+        os.replace(tmp, _CACHE_FILE)
+        log_info("live_metrics_cache_saved", count=len(payload["metrics"]))
+    except Exception as e:
+        log_warning("live_metrics_cache_save_failed", error=str(e)[:160])
+
+
+def load_live_metrics_cache() -> int:
+    """Load persisted metrics into the in-memory cache on startup. Returns count."""
+    try:
+        if not os.path.exists(_CACHE_FILE):
+            return 0
+        with open(_CACHE_FILE) as f:
+            payload = json.load(f)
+        metrics = payload.get("metrics") or {}
+        now_ts = time.time()
+        for addr, m in metrics.items():
+            if m:
+                _result_cache[addr.lower()] = (now_ts, m)
+        log_info("live_metrics_cache_loaded", count=len(metrics))
+        return len(metrics)
+    except Exception as e:
+        log_warning("live_metrics_cache_load_failed", error=str(e)[:160])
+        return 0
