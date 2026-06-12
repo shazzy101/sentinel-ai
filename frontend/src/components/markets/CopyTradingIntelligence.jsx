@@ -251,6 +251,18 @@ export default function CopyTradingIntelligence() {
     }, []);
   }, [copyMoves]);
 
+  // Drop zero/dust-value transfers (they render as a pointless "Received
+  // 0.000 ETH" wall) and de-duplicate by tx hash.
+  const meaningfulWatchlistTxs = useMemo(() => {
+    const seen = new Set();
+    return (watchlistTxs || []).filter((tx) => {
+      if (Number(tx.value || 0) < 0.001) return false;
+      if (!tx.hash || seen.has(tx.hash)) return false;
+      seen.add(tx.hash);
+      return true;
+    });
+  }, [watchlistTxs]);
+
   const lastMoveByTrader = useMemo(() => {
     const map = {};
     for (const m of copyMoves) {
@@ -279,7 +291,7 @@ export default function CopyTradingIntelligence() {
     );
   }
 
-  const hasWatchlistActivity = watchlistTxs.length > 0;
+  const hasWatchlistActivity = meaningfulWatchlistTxs.length > 0;
   const hasCopyActivity = deduplicatedMoves.length > 0;
 
   return (
@@ -378,7 +390,7 @@ export default function CopyTradingIntelligence() {
               </button>
             </div>
           ) : (
-            watchlistTxs.map((tx) => <WatchlistMoveRow key={tx.hash} tx={tx} />)
+            meaningfulWatchlistTxs.map((tx) => <WatchlistMoveRow key={tx.hash} tx={tx} />)
           )}
         </GlassCard>
       </div>

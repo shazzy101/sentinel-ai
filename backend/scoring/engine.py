@@ -24,6 +24,7 @@ Weights (component maxes unchanged so the UI breakdown bars stay valid):
   Balance        0-10   Mild log-scaled confidence factor. Never the driver.
 """
 
+import math
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -165,51 +166,21 @@ def score_wallet(
     tx_count = len(transactions)
 
     # ── RECENCY (0-25) ───────────────────────────────────────────────
-    # Dormant giants must sink below active traders. This is the heaviest
-    # behavioral lever after activity.
+    # v5.1: CONTINUOUS exponential decay instead of buckets. Bucketed recency
+    # gave every active wallet a flat 25, which (with the other maxed buckets)
+    # produced a wall of 100s. A smooth curve lets scores actually spread.
     latest = _get_latest_timestamp(transactions)
     days_since = (now - latest).days if latest else None
     if days_since is None:
         recency_score = 0
-    elif days_since <= 0:
-        recency_score = 25
-    elif days_since <= 1:
-        recency_score = 23
-    elif days_since <= 3:
-        recency_score = 20
-    elif days_since <= 7:
-        recency_score = 16
-    elif days_since <= 14:
-        recency_score = 12
-    elif days_since <= 30:
-        recency_score = 8
-    elif days_since <= 60:
-        recency_score = 4
-    elif days_since <= 90:
-        recency_score = 2
     else:
-        recency_score = 0
+        recency_score = round(25 * math.exp(-max(days_since, 0) / 25.0))
 
     # ── ACTIVITY (0-25) ──────────────────────────────────────────────
-    # Recent transaction frequency in the fetched window. v5 raises the bar so
-    # full marks require sustained high activity — a handful of txns no longer
-    # near-maxes this, which is a big reason v4 clustered at ~100.
-    if tx_count >= 120:
-        activity_score = 25
-    elif tx_count >= 75:
-        activity_score = 21
-    elif tx_count >= 45:
-        activity_score = 17
-    elif tx_count >= 25:
-        activity_score = 13
-    elif tx_count >= 12:
-        activity_score = 9
-    elif tx_count >= 5:
-        activity_score = 5
-    elif tx_count >= 1:
-        activity_score = 2
-    else:
-        activity_score = 0
+    # v5.1: CONTINUOUS log scale, asymptotic to 25 only at extreme counts.
+    # Two busy whales with different tx counts now get different scores instead
+    # of both flat-lining at 25.
+    activity_score = round(min(25.0, 25 * math.log1p(tx_count) / math.log1p(800)))
 
     # ── DeFi ENGAGEMENT (0-25) ───────────────────────────────────────
     # Real alpha interacts with DeFi: contract calls (methodId != 0x) and a
@@ -226,13 +197,12 @@ def score_wallet(
     }
     token_diversity = len(token_symbols)
 
-    # v5: split more evenly between "is DeFi-native" (call ratio) and "trades a
-    # real spread of tokens" (diversity), and require a HIGH bar on both for
-    # full marks. A wallet that just moves one token around no longer maxes this.
+    # v5.1: CONTINUOUS — call ratio scaled linearly (0-13) + token diversity on a
+    # saturating curve (0-12). Neither maxes for a typical wallet, so DeFi
+    # engagement spreads scores instead of pinning them at 25.
     call_ratio = contract_calls / tx_count if tx_count else 0
-    engage_points = 0.0
-    engage_points += min(call_ratio * 15, 15)        # up to 15 — needs near-all txns to be contract calls
-    engage_points += min(token_diversity * 1.25, 10) # up to 10 — needs ~8 distinct tokens
+    engage_points = call_ratio * 13.0
+    engage_points += 12.0 * (1 - math.exp(-token_diversity / 9.0))
     defi_score = round(min(engage_points, 25))
 
     # ── SUCCESS RATE (0-15) ──────────────────────────────────────────
@@ -244,22 +214,8 @@ def score_wallet(
     success_score = round(success_rate * 15)
 
     # ── BALANCE (0-10) ───────────────────────────────────────────────
-    # Mild log-scaled confidence factor. Big is fine, not rewarded heavily,
-    # and never penalized. A whale gets at most 10 here — can't carry the score.
-    if balance >= 10000:
-        balance_score = 10
-    elif balance >= 1000:
-        balance_score = 9
-    elif balance >= 100:
-        balance_score = 7
-    elif balance >= 10:
-        balance_score = 5
-    elif balance >= 1:
-        balance_score = 3
-    elif balance >= 0.1:
-        balance_score = 1
-    else:
-        balance_score = 0
+    # v5.1: CONTINUOUS log — mild confidence factor, never the driver.
+    balance_score = round(min(10.0, 10 * math.log1p(max(balance, 0)) / math.log1p(50000))) if balance > 0 else 0
 
     total = min(
         activity_score + defi_score + recency_score + success_score + balance_score,
