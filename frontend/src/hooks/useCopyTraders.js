@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../lib/apiClient';
 
-const CACHE_KEY = 'sentinel-copy-traders-v2';
+// v3: bumped to invalidate pre-deploy payloads cached without unrealized win rate.
+const CACHE_KEY = 'sentinel-copy-traders-v3';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function readCache(key) {

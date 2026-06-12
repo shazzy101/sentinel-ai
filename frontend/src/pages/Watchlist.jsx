@@ -576,7 +576,7 @@ export default function WatchlistPage() {
             <BentoItem delay={0.04}>
               <StatWidget
                 label="Avg Win Rate"
-                value={`${(copyTraders.reduce((a, w) => a + (w.metrics?.win_rate_pct ?? 0), 0) / copyTraders.length).toFixed(1)}%`}
+                value={`${(copyTraders.reduce((a, w) => a + ((w.metrics?.unrealized_win_rate_pct ?? w.metrics?.win_rate_pct) ?? 0), 0) / Math.max(copyTraders.length, 1)).toFixed(1)}%`}
                 animate={false}
                 icon={TrendingUp}
               />
