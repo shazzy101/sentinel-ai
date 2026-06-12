@@ -169,17 +169,21 @@ async def compute_live_metrics(address: str) -> dict | None:
     if transfers:
         trades, open_positions, first_ts, last_ts = r.reconstruct_trades(address, transfers)
         raw = r.compute_metrics(trades, first_ts, last_ts)
-        # Require enough reconstructed trades — avoid returning zeros that
-        # would clobber good Dune dataset values on the frontend.
-        if raw and raw.get("trade_count", 0) >= getattr(r, "MIN_TRADES", 10):
+        min_t = getattr(r, "MIN_TRADES", 10)
+        # Drawdown / duration need enough CLOSED trades to be meaningful.
+        if raw and raw.get("trade_count", 0) >= min_t:
             metrics = {
                 "max_drawdown_pct": raw["max_drawdown_pct"],
                 "avg_trade_duration_hrs": raw["avg_trade_duration_hrs"],
             }
-            # Unrealized win rate: mark still-held bags to current price so a
-            # sells-winners/holds-losers wallet can't show a fake 100%.
+        # Unrealized win rate counts CLOSED + still-held bags, so it needs enough
+        # TOTAL positions — independent of the closed-trade gate. A sells-winners/
+        # holds-losers wallet has few closed trades but many open bags (exactly
+        # the wallet whose realized 100% is misleading).
+        if (len(trades) + len(open_positions)) >= min_t:
             unrealized = await _unrealized_win_rate(trades, open_positions)
             if unrealized is not None:
+                metrics = metrics or {}
                 metrics["unrealized_win_rate_pct"] = unrealized
 
     # Bound the cache: evict expired entries, then the oldest if still over cap,
