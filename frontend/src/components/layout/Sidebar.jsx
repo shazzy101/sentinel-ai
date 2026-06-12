@@ -275,7 +275,7 @@ export default function Sidebar({ onOpenCommand }) {
                 {auth?.user?.email ?? 'Guest'}
               </div>
               <div className="text-[10px] text-text-muted">
-                {auth?.user ? (auth?.isPro ? 'Pro account' : auth?.isTrialing ? `Trial · ${auth.trialDaysLeft}d` : 'Free account') : 'Not signed in'}
+                {auth?.user ? (auth?.isTrialing ? `Trial · ${auth.trialDaysLeft}d left` : auth?.isPro ? 'Pro account' : 'Free account') : 'Not signed in'}
               </div>
             </div>
           </div>

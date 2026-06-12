@@ -14,11 +14,24 @@ def _parse_ts(ts) -> datetime | None:
         return None
 
 
+def _is_eth_row(tx: dict) -> bool:
+    """True only for native-ETH movements.
+
+    The ETH balance series must NOT be reconstructed from ERC-20 transfers: a
+    token row's `value` is denominated in that token (e.g. 5000 USDC), and
+    applying it to an ETH balance corrupts the series — it was the cause of the
+    'super bugged' whale balance charts (huge cliffs to zero). Treat missing
+    symbols as ETH (legacy rows), everything else by symbol.
+    """
+    sym = (tx.get("value_symbol") or "ETH").upper()
+    return sym == "ETH"
+
+
 def balance_at_date(transactions: list[dict], current_balance: float, target: datetime) -> float:
-    """Reconstruct ETH balance at `target` by reversing txs after that date."""
+    """Reconstruct ETH balance at `target` by reversing native-ETH txs after that date."""
     balance = float(current_balance or 0)
     sorted_txs = sorted(
-        transactions,
+        [t for t in transactions if _is_eth_row(t)],
         key=lambda t: _parse_ts(t.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
@@ -45,7 +58,10 @@ def compute_ytd_growth(transactions: list[dict], current_balance: float) -> dict
     year_start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
     current = float(current_balance or 0)
 
-    if not transactions:
+    # Reconstruct the ETH balance series from native-ETH movements ONLY. Token
+    # transfers carry token-denominated values that would corrupt the line.
+    eth_txs = [t for t in transactions if _is_eth_row(t)]
+    if not eth_txs:
         return {
             "ytd_pct": None,
             "ytd_start_balance": None,
@@ -53,9 +69,9 @@ def compute_ytd_growth(transactions: list[dict], current_balance: float) -> dict
             "sparkline": [],
         }
 
-    start_balance = balance_at_date(transactions, current, year_start)
+    start_balance = balance_at_date(eth_txs, current, year_start)
     ytd_txs = [
-        t for t in transactions
+        t for t in eth_txs
         if (_parse_ts(t.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc)) >= year_start
     ]
     ytd_txs.sort(key=lambda t: _parse_ts(t.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc))
