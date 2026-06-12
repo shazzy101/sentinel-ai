@@ -68,8 +68,8 @@ function CompactBanner({ pulse }) {
 }
 
 function FullCard({ pulse }) {
-  const d24 = pulse.last_24h || {};
   const d7 = pulse.last_7d || {};
+  const d30 = pulse.last_30d || {};
   const wins = pulse.recent_wins || [];
 
   return (
@@ -95,10 +95,20 @@ function FullCard({ pulse }) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border-subtle">
         {[
-          { label: 'Wins (24h)', value: d24.wins ?? 0, suffix: '', color: 'text-green' },
-          { label: 'Hypo P&L (24h)', value: fmtUsd(d24.total_hypothetical_pnl_usd), raw: true, color: 'text-green' },
-          { label: 'Avg win (24h)', value: d24.avg_win_return_pct ?? 0, suffix: '%', prefix: '+', color: 'text-green' },
-          { label: 'Wins (7d)', value: d7.wins ?? 0, suffix: '', color: 'text-text-primary' },
+          { label: 'Wins (7d)', value: d7.wins ?? 0, suffix: '', color: 'text-green' },
+          {
+            label: 'Net P&L (7d)',
+            value: fmtUsd(d7.net_hypothetical_pnl_usd),
+            raw: true,
+            color: (d7.net_hypothetical_pnl_usd ?? 0) >= 0 ? 'text-green' : 'text-red',
+          },
+          {
+            label: 'Win rate (7d)',
+            value: d7.win_rate_pct == null ? '—' : `${Math.round(d7.win_rate_pct)}%`,
+            raw: true,
+            color: 'text-text-primary',
+          },
+          { label: 'Moves tracked (30d)', value: d30.detections ?? 0, suffix: '', color: 'text-text-primary' },
         ].map(({ label, value, suffix = '', prefix = '', raw, color }) => (
           <div key={label} className="bg-bg-surface px-4 py-4">
             <div className="text-[10px] uppercase tracking-widest text-text-muted mb-2">{label}</div>

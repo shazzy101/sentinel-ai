@@ -270,6 +270,11 @@ async def ingest_detected_moves(
             continue
         sym, addr = _tracked(move)
         price_at = _price_of(sym, addr, id_prices, addr_prices)
+        # Skip moves we can't price at detection — they can never score to a real
+        # WIN/LOSS and just flood the ledger with NEUTRAL noise.
+        if not price_at:
+            skipped += 1
+            continue
         row = _move_row(move, price_at=price_at)
         try:
             supabase_client.table("detected_moves").upsert(
@@ -351,9 +356,13 @@ async def score_pending_moves(*, batch_size: int = 50) -> dict:
     return {"scored": scored, "wins": wins, "pending": len(rows)}
 
 
-def _aggregate_stats(rows: list[dict], *, since: datetime | None = None) -> dict[str, Any]:
+def _aggregate_stats(rows: list[dict], *, since: datetime | None = None, by: str = "detected") -> dict[str, Any]:
+    # `by="scored"` windows on outcome_scored_at so freshly-resolved moves show
+    # up live — a detected-at window of 24h can only hold still-PENDING moves
+    # (scoring lags detection by 24h), which made wins(24h) structurally always 0.
+    ts_field = "outcome_scored_at" if by == "scored" else "detected_at"
     if since:
-        rows = [r for r in rows if _parse_ts(r.get("detected_at")) and _parse_ts(r["detected_at"]) >= since]
+        rows = [r for r in rows if _parse_ts(r.get(ts_field)) and _parse_ts(r[ts_field]) >= since]
 
     resolved = [r for r in rows if r.get("outcome_status") not in (None, "PENDING")]
     wins = [r for r in resolved if r.get("outcome_status") == "WIN"]
@@ -626,7 +635,7 @@ async def get_trust_pulse() -> dict[str, Any]:
             f"Hypothetical P&L assumes a ${NOTIONAL_USD:,.0f} copy per move."
         ),
         "notional_usd": NOTIONAL_USD,
-        "last_24h": _aggregate_stats(rows, since=since_24h),
+        "last_24h": _aggregate_stats(rows, since=since_24h, by="scored"),
         "last_7d": _aggregate_stats(rows, since=since_7d),
         "last_30d": _aggregate_stats(rows, since=since_30d),
         "equity_curve": _equity_curve(rows),
