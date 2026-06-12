@@ -17,6 +17,11 @@ export function mergeCopyTraderMetrics(baseMetrics, liveMetrics, metricsMeta = {
       meta[key] = 'on_chain';
     }
   }
+  // Unrealized win rate only comes from the live on-chain compute — always take it.
+  if (liveMetrics.unrealized_win_rate_pct != null) {
+    merged.unrealized_win_rate_pct = liveMetrics.unrealized_win_rate_pct;
+    meta.unrealized_win_rate_pct = 'on_chain';
+  }
   return { metrics: merged, metricsMeta: meta };
 }
 

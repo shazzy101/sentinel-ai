@@ -295,6 +295,7 @@ def reconstruct_trades(address: str, transfers: list[dict]) -> list[dict]:
     # Per-token FIFO buy queue: {symbol: [(amount, cost_per_unit_usd, ts_unix), ...]}
     buy_queue: dict[str, list] = defaultdict(list)
     completed_trades: list[dict] = []
+    symbol_contract: dict[str, str] = {}  # token symbol → ERC-20 contract address
     first_ts = None
     last_ts = None
 
@@ -321,6 +322,10 @@ def reconstruct_trades(address: str, transfers: list[dict]) -> list[dict]:
                 amount  = raw_val / (10 ** decimals)
             except Exception:
                 amount = 0.0
+
+            contract = (t.get("contractAddress") or "").lower()
+            if symbol and contract:
+                symbol_contract[symbol] = contract
 
             if to_addr == addr_lower:
                 tokens_in.append((symbol, amount, ts))
@@ -409,7 +414,21 @@ def reconstruct_trades(address: str, transfers: list[dict]) -> list[dict]:
                         "profitable":   pnl > 0,
                     })
 
-    return completed_trades, first_ts, last_ts
+    # Whatever's left in the FIFO buy queue is still HELD — the open positions
+    # (the bags). Surface them so callers can compute an unrealized win rate by
+    # marking these to current price.
+    open_positions: list[dict] = []
+    for sym, buys in buy_queue.items():
+        for b in buys:
+            if b["amount"] > 1e-12:
+                open_positions.append({
+                    "token": sym,
+                    "contract": symbol_contract.get(sym),
+                    "amount": b["amount"],
+                    "cost_per_unit": b["cost_per_unit"],
+                })
+
+    return completed_trades, open_positions, first_ts, last_ts
 
 
 # ─── Metrics computation ──────────────────────────────────────────────────────
@@ -581,7 +600,7 @@ async def analyze_wallet(
         if len(transfers) < MIN_TRADES:
             return None
 
-        trades, first_ts, last_ts = reconstruct_trades(address, transfers)
+        trades, _open_positions, first_ts, last_ts = reconstruct_trades(address, transfers)
         if len(trades) < MIN_TRADES:
             return None
 

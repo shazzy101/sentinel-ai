@@ -26,7 +26,10 @@ function LastActiveBadge({ days }) {
 }
 
 const METRIC_CARDS = [
-  { key: 'win_rate_pct', label: 'Win Rate', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
+  // Unrealized = held bags marked to market (the honest one). Realized = closed
+  // trades only (sells winners / holds losers can read a fake 100%).
+  { key: 'unrealized_win_rate_pct', label: 'Unrealized Win %', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
+  { key: 'win_rate_pct', label: 'Realized Win %', fmt: (v) => `${v}%`, good: (v) => v >= 60 },
   { key: 'profit_factor', label: 'Profit Factor', fmt: (v) => Number(v).toFixed(1), good: (v) => v >= 2 },
   { key: 'max_drawdown_pct', label: 'Max Drawdown', fmt: (v) => `${v}%`, good: (v) => v <= 20 },
   { key: 'avg_trade_duration_hrs', label: 'Avg Duration', fmt: (v) => `${Number(v).toFixed(0)}h`, good: (v) => v >= 4 },
@@ -57,7 +60,9 @@ export default function CopyTraderDetailPanel({ wallet, onClose, onTrack, onUntr
 
   const needsLiveMetrics =
     detail?.metrics_meta?.max_drawdown_pct === 'estimated'
-    || detail?.metrics_meta?.avg_trade_duration_hrs === 'estimated';
+    || detail?.metrics_meta?.avg_trade_duration_hrs === 'estimated'
+    // Unrealized win rate only exists from the live compute — fetch it on open.
+    || (detail?.metrics || {}).unrealized_win_rate_pct == null;
 
   useEffect(() => {
     setDetail(wallet);

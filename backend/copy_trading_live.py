@@ -20,6 +20,7 @@ from datetime import datetime, timezone, timedelta
 import httpx
 
 from observability import log_error, log_info, log_warning
+from copy_trading_winrate import unrealized_win_rate
 
 ETHERSCAN_BASE = "https://api.etherscan.io/v2/api"
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
@@ -109,6 +110,41 @@ async def _fetch_token_transfers(address: str, days: int = HISTORY_DAYS) -> list
     return transfers
 
 
+async def _defillama_prices(addresses: list[str]) -> dict[str, float]:
+    """Current USD prices keyed by lowercase contract address (DefiLlama coins)."""
+    addrs = list(dict.fromkeys([(a or "").lower() for a in addresses if a]))
+    if not addrs:
+        return {}
+    out: dict[str, float] = {}
+    for i in range(0, len(addrs), 80):
+        chunk = addrs[i : i + 80]
+        keys = ",".join(f"ethereum:{a}" for a in chunk)
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                res = await client.get(f"https://coins.llama.fi/prices/current/{keys}")
+                res.raise_for_status()
+                coins = (res.json() or {}).get("coins", {})
+            for a in chunk:
+                entry = coins.get(f"ethereum:{a}")
+                if entry and entry.get("price"):
+                    out[a] = float(entry["price"])
+        except Exception as e:
+            log_error("live_defillama_price_failed", error=str(e)[:160])
+    return out
+
+
+async def _unrealized_win_rate(trades: list[dict], open_positions: list[dict]) -> float | None:
+    """Win rate counting still-held bags at current price (DefiLlama)."""
+    contracts = [p.get("contract") for p in open_positions if p.get("contract")]
+    prices_by_contract = await _defillama_prices(contracts) if contracts else {}
+    current_prices: dict[str, float] = {}
+    for p in open_positions:
+        c = (p.get("contract") or "").lower()
+        if c in prices_by_contract:
+            current_prices[(p.get("token") or "").upper()] = prices_by_contract[c]
+    return unrealized_win_rate(trades, open_positions, current_prices)
+
+
 async def compute_live_metrics(address: str) -> dict | None:
     """
     Compute supplemental on-chain metrics (max drawdown, avg duration) for a
@@ -131,7 +167,7 @@ async def compute_live_metrics(address: str) -> dict | None:
     transfers = await _fetch_token_transfers(address)
     metrics = None
     if transfers:
-        trades, first_ts, last_ts = r.reconstruct_trades(address, transfers)
+        trades, open_positions, first_ts, last_ts = r.reconstruct_trades(address, transfers)
         raw = r.compute_metrics(trades, first_ts, last_ts)
         # Require enough reconstructed trades — avoid returning zeros that
         # would clobber good Dune dataset values on the frontend.
@@ -140,6 +176,11 @@ async def compute_live_metrics(address: str) -> dict | None:
                 "max_drawdown_pct": raw["max_drawdown_pct"],
                 "avg_trade_duration_hrs": raw["avg_trade_duration_hrs"],
             }
+            # Unrealized win rate: mark still-held bags to current price so a
+            # sells-winners/holds-losers wallet can't show a fake 100%.
+            unrealized = await _unrealized_win_rate(trades, open_positions)
+            if unrealized is not None:
+                metrics["unrealized_win_rate_pct"] = unrealized
 
     # Bound the cache: evict expired entries, then the oldest if still over cap,
     # so a long-running process can't accumulate unbounded per-address results.

@@ -75,10 +75,16 @@ function CopyTraderRow({ wallet, index, isSelected, isTracked, onSelect }) {
         </div>
       </div>
 
-      <span className={`font-mono text-[12px] font-bold text-right ${
-        (m.win_rate_pct ?? 0) >= 60 ? 'text-green' : 'text-text-secondary'
-      }`}>
-        {fmtMetric(m.win_rate_pct, '%')}
+      <span
+        className={`font-mono text-[12px] font-bold text-right ${
+          ((m.unrealized_win_rate_pct ?? m.win_rate_pct) ?? 0) >= 60 ? 'text-green' : 'text-text-secondary'
+        }`}
+        title={m.unrealized_win_rate_pct != null
+          ? 'Unrealized win rate (held positions marked to market)'
+          : 'Realized win rate (closed trades)'}
+      >
+        {/* Prefer the honest unrealized rate; fall back to realized until computed. */}
+        {fmtMetric(m.unrealized_win_rate_pct ?? m.win_rate_pct, '%')}
       </span>
 
       <span className={`font-mono text-[12px] font-bold text-right ${
