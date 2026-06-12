@@ -6,7 +6,7 @@ import CopyTraderRow from './CopyTraderRow';
 
 const TOOLTIPS = {
   Trader: 'Ranked DEX wallet. ENS name when resolved; otherwise a shortened address. Click a row for full metrics and chart.',
-  'Win%': 'Share of closed DEX trades that were profitable (on-chain history). 60%+ is strong; 80%+ is elite.',
+  'Win%': 'Unrealized win rate — share of all positions (closed + still-held, marked to current market price) that are in profit. The honest number: it cannot be gamed by selling winners and holding losers the way a realized rate can. Falls back to realized until the on-chain figure is computed.',
   PF: 'Profit factor — gross wins ÷ gross losses. 2.0+ means $2 gained for every $1 lost. Very high values often mean selective, low-frequency trading.',
   'Max DD': 'Maximum drawdown — largest peak-to-trough decline in cumulative P&L. Under 15% is ideal for copy-trading. Shown as ~ when estimated from win rate and profit factor.',
   Duration: 'Average hours each position is held before closing. Longer holds (8h+) suggest conviction; very short holds may indicate scalping. Shown as ~ when estimated from trade frequency.',

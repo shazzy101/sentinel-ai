@@ -275,6 +275,35 @@ async def _cron_trust_pipeline():
         await asyncio.sleep(15 * 60)
 
 
+# Number of top copy traders to keep warm with live on-chain metrics
+# (unrealized win rate + on-chain drawdown) so the leaderboard serves them.
+_LIVE_WARM_TOP_N = 150
+
+
+async def _warm_live_metrics_once() -> None:
+    from copy_trading_live import warm_live_metrics
+
+    pool = _sort_copy_traders(
+        _filter_copy_traders(_load_copy_trading_wallets(), qualified_only=True, strict=True),
+        "copy_score",
+    )
+    addrs = [w.get("address") for w in pool[:_LIVE_WARM_TOP_N] if w.get("address")]
+    await warm_live_metrics(addrs, concurrency=4)
+
+
+async def _cron_live_metrics():
+    """Keep the top copy traders' live metrics warm so the leaderboard shows
+    unrealized win rate instead of falling back to the gameable realized rate.
+    First pass ~2 min after boot, then refresh every 30 min (matches cache TTL)."""
+    await asyncio.sleep(2 * 60)
+    while True:
+        try:
+            await _warm_live_metrics_once()
+        except Exception:
+            pass
+        await asyncio.sleep(30 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
@@ -287,6 +316,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_dune_refresh())
     asyncio.create_task(_cron_news())
     asyncio.create_task(_cron_trust_pipeline())
+    asyncio.create_task(_cron_live_metrics())
     yield
 
 
@@ -2550,6 +2580,26 @@ def _enrich_copy_trader(wallet: dict) -> dict:
     if raw_pf is not None and float(raw_pf) > PF_DISPLAY_CAP:
         metrics["profit_factor"] = PF_DISPLAY_CAP
         metrics_meta["profit_factor"] = "capped"
+
+    # Merge real on-chain metrics from the live warmer cache when available, so
+    # the LEADERBOARD shows the honest unrealized win rate (not the gameable
+    # realized rate) and the same on-chain Max Drawdown / Avg Duration the
+    # detail panel shows — keeping list and detail consistent.
+    try:
+        from copy_trading_live import get_cached_live_metrics
+        live = get_cached_live_metrics(wallet.get("address") or "")
+    except Exception:
+        live = None
+    if live:
+        if live.get("unrealized_win_rate_pct") is not None:
+            metrics["unrealized_win_rate_pct"] = round(float(live["unrealized_win_rate_pct"]), 1)
+            metrics_meta["unrealized_win_rate_pct"] = "on_chain"
+        if live.get("max_drawdown_pct") is not None:
+            metrics["max_drawdown_pct"] = live["max_drawdown_pct"]
+            metrics_meta["max_drawdown_pct"] = "on_chain"
+        if live.get("avg_trade_duration_hrs") is not None:
+            metrics["avg_trade_duration_hrs"] = live["avg_trade_duration_hrs"]
+            metrics_meta["avg_trade_duration_hrs"] = "on_chain"
 
     out = {**wallet, "metrics": metrics}
     out["performance_sparkline"] = sparkline

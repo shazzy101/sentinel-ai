@@ -199,3 +199,46 @@ async def compute_live_metrics(address: str) -> dict | None:
     _result_cache[key] = (now_ts, metrics)
     log_info("live_metrics_cache_miss", address=key, cache_size=len(_result_cache))
     return metrics
+
+
+def get_cached_live_metrics(address: str) -> dict | None:
+    """Synchronous read of cached live metrics for list enrichment.
+
+    Returns the cached dict (which may include unrealized_win_rate_pct,
+    max_drawdown_pct, avg_trade_duration_hrs) if present. Tolerates mild
+    staleness — the background warmer keeps the top traders fresh, and a
+    slightly-stale honest number beats falling back to the gameable realized
+    win rate. Returns None when nothing is cached for the address.
+    """
+    if not address:
+        return None
+    entry = _result_cache.get(address.lower())
+    if not entry:
+        return None
+    return entry[1]
+
+
+async def warm_live_metrics(addresses: list[str], *, concurrency: int = 4) -> int:
+    """Pre-compute live metrics for many wallets so the leaderboard can serve
+    unrealized win rate + on-chain drawdown without per-request latency.
+
+    Returns the number of addresses that produced metrics. Failures are
+    swallowed per-address (that row simply keeps its dataset fallback)."""
+    import asyncio
+
+    sem = asyncio.Semaphore(max(1, concurrency))
+    warmed = 0
+
+    async def _one(addr: str) -> None:
+        nonlocal warmed
+        async with sem:
+            try:
+                m = await compute_live_metrics(addr)
+                if m:
+                    warmed += 1
+            except Exception as e:
+                log_warning("warm_live_metrics_failed", address=addr, error=str(e)[:120])
+
+    await asyncio.gather(*[_one(a) for a in addresses if a])
+    log_info("warm_live_metrics_done", requested=len(addresses), warmed=warmed)
+    return warmed

@@ -188,7 +188,12 @@ def build_copy_trader_sparkline(wallet: dict) -> tuple[list[dict], float | None]
     oc = wallet.get("on_chain_data") or {}
 
     track_days = max(int(metrics.get("track_record_days") or oc.get("active_days") or 90), 30)
-    win_rate = float(metrics.get("win_rate_pct") or 0) / 100
+    # Prefer the honest unrealized win rate for the modelled curve; the realized
+    # rate is gameable (sell winners / hold losers) and inflates the estimate.
+    wr_pct = metrics.get("unrealized_win_rate_pct")
+    if wr_pct is None:
+        wr_pct = metrics.get("win_rate_pct")
+    win_rate = float(wr_pct or 0) / 100
     profit_factor = min(float(metrics.get("profit_factor") or 1), 15)
 
     if win_rate <= 0:

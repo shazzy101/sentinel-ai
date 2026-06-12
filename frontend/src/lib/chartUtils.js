@@ -32,7 +32,8 @@ export function mergeCopyTraderMetrics(baseMetrics, liveMetrics, metricsMeta = {
 export function buildBacktestOutlookSeries(wallet) {
   const metrics = wallet?.metrics || {};
   const oc = wallet?.on_chain_data || {};
-  const winRate = Number(metrics.win_rate_pct ?? 0);
+  // Prefer the honest unrealized win rate; realized is gameable and inflates the curve.
+  const winRate = Number(metrics.unrealized_win_rate_pct ?? metrics.win_rate_pct ?? 0);
   const pf = Math.min(Number(metrics.profit_factor ?? 1), 15);
   const trackDays = Math.max(Number(metrics.track_record_days ?? oc.active_days ?? 90), 30);
   const maxDd = Number(metrics.max_drawdown_pct ?? 12);
@@ -71,8 +72,11 @@ export function buildBacktestOutlookSeries(wallet) {
     const t = histStart.getTime() + (i / histWeeks) * (now.getTime() - histStart.getTime());
     const d = new Date(t);
     const progress = i / histWeeks;
-    // Realistic curve: trend + drawdown wobble (not a straight line)
-    const wobble = Math.sin(i * 2.1 + pf * 0.3) * (maxDd / 4) * progress;
+    // Realistic curve: trend + drawdown wobble (not a straight line). Cap the
+    // wobble amplitude so a high on-chain Max DD (e.g. 88%) doesn't turn the
+    // line into ±20% noise — keep swings visually sane (<= ~5%).
+    const wobbleAmp = Math.min(maxDd, 20) / 4;
+    const wobble = Math.sin(i * 2.1 + pf * 0.3) * wobbleAmp * progress;
     const pct = ytdReturnPct * progress + wobble;
     raw.push({
       date: d.toISOString(),
@@ -158,7 +162,15 @@ export function sparklineReturnPct(wallet) {
 export function buildBalanceSparkline(transactions, currentBalance) {
   if (!transactions?.length) return [];
 
-  const sorted = [...transactions].sort(
+  // ETH balance series must be reconstructed from native-ETH movements only.
+  // An ERC-20 transfer's `value` is token-denominated (e.g. 5000 USDC); applying
+  // it to the ETH balance corrupted the line into cliffs/zeros.
+  const ethTxs = transactions.filter(
+    (tx) => ((tx.value_symbol || 'ETH').toUpperCase() === 'ETH')
+  );
+  if (!ethTxs.length) return [];
+
+  const sorted = [...ethTxs].sort(
     (a, b) => (a.timestamp_unix || 0) - (b.timestamp_unix || 0)
   );
 
