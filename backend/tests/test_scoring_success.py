@@ -27,7 +27,7 @@ def test_tx_succeeded_unknown_assumes_success():
     assert _tx_succeeded({}) is True
 
 
-def test_mixed_success_failed_win_rate():
+def test_mixed_success_failed_tx_success_rate():
     now = datetime.now(timezone.utc).isoformat()
     txs = [
         {"timestamp": now, "is_error": False},
@@ -36,13 +36,13 @@ def test_mixed_success_failed_win_rate():
         {"timestamp": now, "is_error": True},   # one failure
     ]
     result = score_wallet(txs, balance=10.0, chain="ethereum", address="0xtest")
-    # 3 of 4 succeeded → 75% win rate.
-    assert result["win_rate"] == 75.0
+    # 3 of 4 txns landed → 75% tx-success rate (NOT a trading win rate).
+    assert result["tx_success_rate"] == 75.0
 
 
 if __name__ == "__main__":
     test_tx_succeeded_canonical_is_error_wins()
     test_tx_succeeded_raw_etherscan_fallback()
     test_tx_succeeded_unknown_assumes_success()
-    test_mixed_success_failed_win_rate()
+    test_mixed_success_failed_tx_success_rate()
     print("ok: scoring success-rate tests passed")

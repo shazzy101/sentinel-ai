@@ -109,6 +109,13 @@ export default function AboutPage() {
             <p className="text-xs text-text-muted pt-2">
               Wallets with fewer than 90 days of history or fewer than 50 trades are excluded. Exchange hot wallets, MEV bots (&gt;100 trades/day), and known custodial addresses are filtered out.
             </p>
+            <p className="text-xs text-text-muted pt-2 border-t border-border-subtle mt-3">
+              <strong className="text-text-secondary">Two scores, two meanings.</strong> The copy-trader score above is
+              profitability-based, computed from realized P&amp;L on Dune <code>dex.trades</code> data. The
+              wallet <em>behavioral</em> score shown when you scan an arbitrary whale measures on-chain
+              <em> activity</em> — recency, transaction frequency, DeFi engagement and tx reliability — and is
+              <strong> not</strong> a measure of profitability. We label it as such everywhere it appears.
+            </p>
           </div>
         </section>
 

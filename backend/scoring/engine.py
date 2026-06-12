@@ -1,19 +1,27 @@
 """
-Sentinel AI — Scoring Engine v4 "Find the Alpha"
+Sentinel AI — Scoring Engine v5 "Honest Behavioral Signal"
 
-Philosophy: a high score means SMART TRADING BEHAVIOR, not raw size.
-An active mid-size trader out-ranks a dormant giant. Balance is a minor
-confidence factor (0-10), never the driver.
+What this score IS: a 0-100 measure of on-chain *behavior* — how recently and
+how actively a wallet trades, how DeFi-native it is, how reliably its txns land.
+What this score is NOT: a profitability or win-rate signal. It cannot see P&L
+(no prices/cost-basis on this path). For real profitability, use the copy-trader
+leaderboard, which is ranked on Dune dex.trades realized P&L.
 
-Weights (total 100):
-  Recency      0-25   How recently active. Dormant whales sink hard.
-  Activity     0-25   Recent transaction frequency (in the fetched window).
-  DeFi engage  0-25   Contract calls + token-transfer diversity = real trading.
-  Success rate 0-15   % of transactions that succeeded.
-  Balance      0-10   Mild log-scaled confidence factor. Not penalizing.
+v5 changes vs v4:
+  • Bands recalibrated so scores SPREAD instead of clustering at ~100. Maxing a
+    component now requires genuinely high activity/engagement, so an S/A grade
+    is rare and meaningful.
+  • Contracts / routers / token addresses are hard-capped as known entities
+    (operational volume, not a trading signal) — see _CONTRACT_ADDRESSES.
+  • The component once surfaced as "win_rate" is now honestly named
+    tx_success_rate (txns that didn't revert — NOT trades that made money).
 
-Known entities (exchanges, custodians, protocol contracts) are capped low —
-they have operational volume, not a trading signal.
+Weights (component maxes unchanged so the UI breakdown bars stay valid):
+  Recency        0-25   How recently active. Dormant wallets sink hard.
+  Activity       0-25   Transaction frequency in the fetched window.
+  DeFi engage    0-25   Contract-call ratio + token diversity = real trading.
+  Tx success     0-15   % of txns that succeeded (reverted txns hurt).
+  Balance        0-10   Mild log-scaled confidence factor. Never the driver.
 """
 
 from datetime import datetime, timezone
@@ -67,6 +75,26 @@ _EXCHANGE_ADDRESSES = {
     "0x236f9f97e0e62388479bf9e5ba4889e46b0273c3",   # Bitfinex
     "0x1151314c646ce4e0efd76d1af4760ae66a9fe30f",   # Bitfinex 2
 }
+
+# DeFi routers, aggregators and major token contracts. These are NOT trading
+# wallets — they're infrastructure that shows up with enormous "trade" volume
+# (e.g. a router is the taker on every swap it forwards). Without this cap they
+# leak into the leaderboard as fake score-100 "whales". Treated as entities.
+_CONTRACT_ADDRESSES = {
+    "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",  # Uniswap V2 router
+    "0xe592427a0aece92de3edee1f18e0157c05861564",  # Uniswap V3 router
+    "0x68b3465833fb59dff930eea164973ecf6cdf4ede",  # Uniswap router 2
+    "0x111111125421ca6dc452d289314280a0f8842a65",  # 1inch v6
+    "0x1111111254eeb25477b68fb85ed929f73a960582",  # 1inch v5
+    "0xdef1c0ded9bec7f1a1670819833240f027b25eff",  # 0x Exchange Proxy
+    "0xba12222222228d8ba445958a75a0704d566bf2c8",  # Balancer Vault
+    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",  # WETH
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",  # USDC
+    "0xdac17f958d2ee523a2206206994597c13d831ec7",  # USDT
+    "0x6b175474e89094c44da98b954eedeac495271d0f",  # DAI
+    "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",  # WBTC
+}
+_EXCHANGE_ADDRESSES |= _CONTRACT_ADDRESSES
 
 # Broad keyword set for named exchanges / custodians / protocols / infra.
 # Matches the seed-file "known-entity" tagging so they rank low consistently.
@@ -163,21 +191,23 @@ def score_wallet(
         recency_score = 0
 
     # ── ACTIVITY (0-25) ──────────────────────────────────────────────
-    # Recent transaction frequency in the fetched window. Smooth scale so
-    # a steady trader (30-50 txns) reaches full marks without a giant needing
-    # thousands of operational transfers to win.
-    if tx_count >= 50:
+    # Recent transaction frequency in the fetched window. v5 raises the bar so
+    # full marks require sustained high activity — a handful of txns no longer
+    # near-maxes this, which is a big reason v4 clustered at ~100.
+    if tx_count >= 120:
         activity_score = 25
-    elif tx_count >= 30:
-        activity_score = 22
-    elif tx_count >= 15:
-        activity_score = 18
-    elif tx_count >= 8:
+    elif tx_count >= 75:
+        activity_score = 21
+    elif tx_count >= 45:
+        activity_score = 17
+    elif tx_count >= 25:
         activity_score = 13
-    elif tx_count >= 4:
-        activity_score = 8
+    elif tx_count >= 12:
+        activity_score = 9
+    elif tx_count >= 5:
+        activity_score = 5
     elif tx_count >= 1:
-        activity_score = 4
+        activity_score = 2
     else:
         activity_score = 0
 
@@ -196,10 +226,13 @@ def score_wallet(
     }
     token_diversity = len(token_symbols)
 
+    # v5: split more evenly between "is DeFi-native" (call ratio) and "trades a
+    # real spread of tokens" (diversity), and require a HIGH bar on both for
+    # full marks. A wallet that just moves one token around no longer maxes this.
     call_ratio = contract_calls / tx_count if tx_count else 0
     engage_points = 0.0
-    engage_points += min(call_ratio * 18, 18)        # up to 18 for being DeFi-heavy
-    engage_points += min(token_diversity * 1.75, 7)  # up to 7 for trading many tokens
+    engage_points += min(call_ratio * 15, 15)        # up to 15 — needs near-all txns to be contract calls
+    engage_points += min(token_diversity * 1.25, 10) # up to 10 — needs ~8 distinct tokens
     defi_score = round(min(engage_points, 25))
 
     # ── SUCCESS RATE (0-15) ──────────────────────────────────────────
@@ -244,8 +277,9 @@ def score_wallet(
             "recency": recency_score,
             "defi": defi_score,
         },
-        "methodology": "v4_alpha",
-        "win_rate": round(success_rate * 100, 1),
+        "methodology": "v5_behavioral",
+        # tx_success_rate = % of txns that didn't revert. NOT a trading win rate.
+        "tx_success_rate": round(success_rate * 100, 1),
         "defi_ratio": round(call_ratio * 100, 1),
         "token_diversity": token_diversity,
         "last_active_days_ago": days_since,
@@ -266,11 +300,11 @@ def _entity_result(label: str) -> dict:
             "recency": 0,
             "defi": 0,
         },
-        "methodology": "v4_entity",
-        "win_rate": 0,
+        "methodology": "v5_entity",
+        "tx_success_rate": 0,
         "defi_ratio": 0,
         "token_diversity": 0,
-        "summary": "Known entity (exchange/custodian/protocol). Operational flow only — no alpha signal.",
+        "summary": "Known entity (exchange / custodian / router / token contract). Operational flow only — not a trading signal.",
         "is_exchange": True,
     }
 
@@ -286,8 +320,8 @@ def _empty_result() -> dict:
             "recency": 0,
             "defi": 0,
         },
-        "methodology": "v4_no_data",
-        "win_rate": 0,
+        "methodology": "v5_no_data",
+        "tx_success_rate": 0,
         "defi_ratio": 0,
         "token_diversity": 0,
         "summary": "No transaction data available yet.",
@@ -335,11 +369,12 @@ def _summary(score: int, tx_count: int, win_rate: float, balance: float,
         else "activity unknown"
     )
     defi = "DeFi-active" if defi_score >= 12 else "low DeFi engagement"
+    # Behavioral language only — this score does not measure profitability.
     if score >= 80:
-        return (f"High-conviction alpha wallet — {active}, {tx_count} recent txns, "
-                f"{win_pct}% success, {defi}, {eth}.")
+        return (f"Highly active on-chain — {active}, {tx_count} recent txns, "
+                f"{win_pct}% landed, {defi}, {eth}. Behavioral signal, not P&L.")
     if score >= 65:
-        return f"Strong trader — {active}, {tx_count} txns tracked, {win_pct}% success, {defi}."
+        return f"Consistently active — {active}, {tx_count} txns tracked, {win_pct}% landed, {defi}."
     if score >= 50:
         return f"Moderate activity — {active}, {tx_count} txns, {eth}."
     if score >= 35:

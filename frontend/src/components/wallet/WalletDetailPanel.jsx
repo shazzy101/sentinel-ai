@@ -49,13 +49,14 @@ function saveUserTags(userId, address, tags) {
   localStorage.setItem(tagsKey(userId, address), JSON.stringify(tags));
 }
 
-// v4 scoring engine weights: Recency/25, Activity/25, DeFi/25, SuccessRate/15, Balance/10
+// v5 behavioral engine weights: Recency/25, Activity/25, DeFi/25, TxSuccess/15, Balance/10.
+// This score measures on-chain BEHAVIOR (activity/recency/DeFi), not profitability.
 const V4_BREAKDOWN = [
-  { key: 'activity',     label: 'Activity',     max: 25 },
-  { key: 'defi',         label: 'DeFi Engage',  max: 25 },
-  { key: 'recency',      label: 'Recency',       max: 25 },
-  { key: 'success_rate', label: 'Success Rate',  max: 15 },
-  { key: 'balance',      label: 'Balance',       max: 10 },
+  { key: 'activity',     label: 'Activity',      max: 25 },
+  { key: 'defi',         label: 'DeFi Engage',   max: 25 },
+  { key: 'recency',      label: 'Recency',        max: 25 },
+  { key: 'success_rate', label: 'Tx Success',     max: 15 },
+  { key: 'balance',      label: 'Balance',        max: 10 },
 ];
 
 function BreakdownBar({ label, value, max }) {
@@ -128,9 +129,10 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
   const analysis = detail?.analysis || {};
   const analysisTags = (detail?.analysis?.tags?.length ? detail.analysis.tags : detail?.tags) || [];
   const autoTags = useMemo(() => {
+    // Behavioral tags only — the score reflects on-chain activity, not P&L.
     const tags = [];
-    if (score > 90) tags.push('High Conviction');
-    if (score > 80) tags.push('Smart Money');
+    if (score > 90) tags.push('Highly Active');
+    if (score > 80) tags.push('DeFi Native');
     return tags;
   }, [score]);
   const allTags = [...new Set([...autoTags, ...analysisTags, ...userTags])];
