@@ -86,7 +86,7 @@ export default function SignalPerformance() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="mb-10">
-            <div className="text-[11px] uppercase tracking-[2px] text-green mb-2">Live Data</div>
+            <div className="text-[11px] uppercase tracking-[2px] text-green mb-2">Verified On-Chain</div>
             <h1 className="font-display text-3xl font-bold text-text-primary mb-2">Signal Performance</h1>
             <p className="text-[14px] text-text-muted">7-day resolved outcomes · Last 90 days · CORRECT = price moved ≥2% in predicted direction</p>
           </div>

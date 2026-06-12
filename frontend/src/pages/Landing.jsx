@@ -25,7 +25,7 @@ const COMPARISON_ROWS = [
   { feature: 'Intelligence score 0–100',  sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✗' },
   { feature: 'Exchange wallet filtering', sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✓' },
   { feature: 'Free tier',                 sentinel: '✓ Full access', nansenVal: '✗ $150/mo',    nansenGood: false, arkham: '✗ Paid' },
-  { feature: 'Real-time alerts',          sentinel: '✓',            nansenVal: '✓',            nansenGood: true,  arkham: '✓' },
+  { feature: 'Instant alerts',            sentinel: '✓',            nansenVal: '✓',            nansenGood: true,  arkham: '✓' },
   { feature: 'Daily AI market brief',     sentinel: '✓',            nansenVal: '✗',            nansenGood: false, arkham: '✗' },
   { feature: 'Pure ETH focus',            sentinel: '✓',            nansenVal: '✗ Multi-chain', nansenGood: false, arkham: '✗' },
   { feature: 'Copy whale trades',           sentinel: '✓ One-click',     nansenVal: '✗',            nansenGood: false, arkham: '✗' },
@@ -127,12 +127,9 @@ function ProductMockup() {
       ))}
 
       <div className="px-5 py-2.5 bg-bg-overlay flex items-center gap-2">
-        <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
-        </span>
+        <span className="inline-flex rounded-full h-1.5 w-1.5 flex-shrink-0 bg-green/70" />
         <span className="text-[10px] text-green font-mono">
-          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}…` : 'live · wallets tracked'}
+          {scanningRow >= 0 ? `scanning ${rows[scanningRow]?.name}…` : 'wallets tracked'}
         </span>
       </div>
     </div>
@@ -162,11 +159,8 @@ function WhaleTicker() {
   return (
     <div className="py-8 border-y border-border-subtle overflow-hidden">
       <div className="flex items-center justify-center gap-2 mb-5">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
-        </span>
-        <span className="text-[9px] uppercase tracking-[2.5px] text-green/70 font-mono">Live whale intelligence · Tracking now</span>
+        <span className="inline-flex rounded-full h-1.5 w-1.5 bg-green/70" />
+        <span className="text-[9px] uppercase tracking-[2.5px] text-green/70 font-mono">On-chain whale intelligence</span>
       </div>
       <div className="relative">
         <div className="flex gap-4" style={{ animation: 'ticker-scroll 36s linear infinite', width: 'max-content' }}>
@@ -516,11 +510,8 @@ function HeroSection({ walletCount }) {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/[0.08] px-3.5 py-1.5 mb-10"
                style={{ backdropFilter: 'blur(12px)', boxShadow: '0 0 0 1px rgba(0,217,146,0.08) inset' }}>
-            <span className="relative h-1.5 w-1.5 flex-shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
-            </span>
-            <span className="text-xs font-medium tracking-wide text-green">{walletCount.toLocaleString()} wallets tracked live</span>
+            <span className="inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green/70" />
+            <span className="text-xs font-medium tracking-wide text-green">{walletCount.toLocaleString()} wallets tracked</span>
           </div>
 
           <h1
@@ -724,7 +715,7 @@ function FeaturesSection() {
 
         {/* Row 2: Alerts + Markets + Invest */}
         <BentoCard
-          tag="Live Alerts"
+          tag="Alerts"
           title="Get the signal the moment it fires."
           body="Set rules: notify me when any wallet goes BULLISH, or when a score crosses 80. Fires instantly — no polling, no lag."
           cta="Set Up Alerts →"
@@ -733,9 +724,9 @@ function FeaturesSection() {
           delay={0.12}
         />
         <BentoCard
-          tag="Live Markets"
-          title="ETH price, ecosystem tokens, live charts."
-          body="Real-time data from CoinGecko. ETH hero charts, top ecosystem tokens, and whale sentiment derived from your tracked wallets."
+          tag="Markets"
+          title="ETH price, ecosystem tokens, on-chain charts."
+          body="Market data from CoinGecko. ETH hero charts, top ecosystem tokens, and whale sentiment derived from your tracked wallets."
           cta="Open Markets →"
           ctaPath="/markets"
           Visual={MarketsVisual}
@@ -784,7 +775,7 @@ function ComparisonSection() {
       </div>
       <p className="text-center text-[12px] text-text-muted mt-4">
         View our{' '}
-        <a href="/wins" className="text-green hover:underline">live detected wins ledger →</a>
+        <a href="/wins" className="text-green hover:underline">detected wins ledger →</a>
         {' '}·{' '}
         <a href="/signals/performance" className="text-green hover:underline">signal accuracy dashboard →</a>
       </p>
@@ -833,9 +824,9 @@ function SocialProofBar() {
           </div>
         ))}
         <div className="flex items-center gap-2">
-          <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green"></span></span>
+          <span className="inline-flex rounded-full h-1.5 w-1.5 bg-green/70" />
           <span className="font-display font-bold text-text-primary text-sm">NEW</span>
-          <span className="text-text-muted text-sm">Invest beta · Copy trades live</span>
+          <span className="text-text-muted text-sm">Invest beta · Copy trades</span>
         </div>
       </div>
     </div>

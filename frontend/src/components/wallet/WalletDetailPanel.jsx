@@ -3,6 +3,7 @@ import {
   AreaChart, Area, Tooltip, ResponsiveContainer,
   XAxis, YAxis, CartesianGrid,
 } from 'recharts';
+import { LineChart, Search, Zap } from 'lucide-react';
 import Button from '../ui/Button';
 import Spinner from '../ui/Spinner';
 import ScoreRing from '../ui/ScoreRing';
@@ -466,7 +467,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
 
             {!loading && sparkData.length < 2 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="text-[28px] mb-2">📈</div>
+                <LineChart className="h-7 w-7 text-text-muted mb-2 opacity-60" strokeWidth={1.5} />
                 <div className="text-[13px] font-medium text-text-secondary mb-1">No {CURRENT_YEAR} history yet</div>
                 <p className="text-[12px] text-text-muted max-w-[260px] leading-[1.6]">
                   Rescan this wallet to compute its YTD balance history from on-chain transactions.
@@ -559,7 +560,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
             </div>
             {recentTxs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="text-[28px] mb-2">🔍</div>
+                <Search className="h-7 w-7 text-text-muted mb-2 opacity-60" strokeWidth={1.5} />
                 <div className="text-[13px] font-medium text-text-secondary mb-1">No transactions loaded</div>
                 <p className="text-[12px] text-text-muted max-w-[240px] leading-[1.6]">
                   Rescan this wallet to fetch its latest on-chain activity.
@@ -613,7 +614,7 @@ export default function WalletDetailPanel({ wallet, onClose, onRescan, onRemove 
       {/* Actions */}
       <div className="flex-shrink-0 px-5 py-4 bg-bg-surface border-t border-border-subtle space-y-2">
         <Button variant="primary" fullWidth onClick={() => setTradeOpen(true)}>
-          ⚡ Trade
+          <Zap className="h-4 w-4" /> Trade
         </Button>
         <Button variant="ghost" fullWidth onClick={onRescan}>Rescan wallet</Button>
         <Button

@@ -124,7 +124,7 @@ function LargeTrades({ trades }) {
               </span>
               {t.is_tracked && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-green/15 text-green border border-green/30 font-medium">
-                  ◈ {t.trader_label || 'Tracked'}{t.trader_score ? ` · ${t.trader_score}` : ''}
+                  {t.trader_label || 'Tracked'}{t.trader_score ? ` · ${t.trader_score}` : ''}
                 </span>
               )}
             </div>
@@ -170,9 +170,9 @@ export default function NetworkDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-full bg-green/70" />
         <span className="font-display text-[15px] font-semibold text-text-primary">Network Intelligence</span>
-        <span className="text-[10px] text-text-muted ml-1">Ethereum · live on-chain</span>
+        <span className="text-[10px] text-text-muted ml-1">Ethereum · on-chain</span>
       </div>
       <PulseStrip pulse={pulse} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

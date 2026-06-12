@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 const JOINED_KEY = 'sentinel_pro_waitlist_joined';
 
 const PRO_PERKS = [
-  'Real-time AI signals on all 2,796 wallets',
+  'AI signals on all 2,796 wallets',
   'Unlimited copy-trading & one-click execution',
   'Instant alerts (email + push)',
   'Full network intelligence + whale moves',
@@ -67,7 +67,7 @@ function WaitlistModal({ source, onClose, joined, onJoined }) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green/15 border border-green/30 mb-4">
               <Check className="h-6 w-6 text-green" />
             </div>
-            <h3 className="font-display text-[18px] font-bold text-text-primary">You're on the list 🎉</h3>
+            <h3 className="font-display text-[18px] font-bold text-text-primary">You're on the list</h3>
             <p className="text-[13px] text-text-secondary mt-2 leading-relaxed">
               We'll email you the moment Hadaleum Pro opens. Early members get launch pricing.
             </p>

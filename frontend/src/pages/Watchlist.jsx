@@ -15,7 +15,7 @@ import AddWalletModal from '../components/wallet/AddWalletModal';
 import TradeModal from '../components/wallet/TradeModal';
 import { BentoGrid, BentoItem } from '../components/primitives/BentoGrid';
 import StatWidget from '../components/primitives/StatWidget';
-import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, BarChart2, Users, Target, Wallet, Lock, Zap } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
 import { api } from '../lib/api';
 import { useAuth } from '@/context/AuthProvider';
@@ -60,10 +60,10 @@ const SIGNAL_FILTER_OPTIONS = [
 
 // Stage messages shown in the filter bar while a scan is running
 const STAGE_MESSAGES = {
-  fetching_onchain: '⛓ Pulling on-chain transactions...',
-  analyzing: '🤖 Running Claude AI analysis...',
-  complete: '✓ Scan complete',
-  error: '✕ Scan failed',
+  fetching_onchain: 'Pulling on-chain transactions...',
+  analyzing: 'Running Claude AI analysis...',
+  complete: 'Scan complete',
+  error: 'Scan failed',
 };
 
 function filterButtonClass(isActive) {
@@ -154,7 +154,7 @@ export default function WatchlistPage() {
 
   // Show alert-fired events as toasts
   useEffect(() => {
-    const onAlert = (e) => addToast(`🔔 ${e.detail.message}`, 'info');
+    const onAlert = (e) => addToast(e.detail.message, 'info');
     window.addEventListener('sentinel-alert-fired', onAlert);
     return () => window.removeEventListener('sentinel-alert-fired', onAlert);
   }, [addToast]);
@@ -418,7 +418,7 @@ export default function WatchlistPage() {
                   : 'border-border-subtle text-text-muted hover:text-text-secondary hover:border-border-default'
               }`}
             >
-              {smartMoneyOnly ? `◈ Smart Money · ${filteredWallets.length}` : 'Show all wallets'}
+              {smartMoneyOnly ? `Smart Money · ${filteredWallets.length}` : 'Show all wallets'}
             </button>
           </>
         )}
@@ -521,7 +521,7 @@ export default function WatchlistPage() {
             onClick={() => setTradeOpen(true)}
             className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary border border-border-default rounded-lg px-2.5 py-1.5 hover:bg-bg-elevated transition-colors"
           >
-            ⚡ Trade
+            <Zap className="h-3 w-3" /> Trade
           </button>
 
           <Button

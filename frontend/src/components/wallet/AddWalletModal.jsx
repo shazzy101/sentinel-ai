@@ -109,7 +109,7 @@ export default function AddWalletModal({ open, onClose, onSubmit, isScanning }) 
           )}
           {!previewLoading && preview && !preview.found && (
             <div className="flex items-center gap-2 mt-2 text-[11px] text-amber">
-              ⚠ Not yet in watchlist — will be scanned fresh
+              Not yet in watchlist — will be scanned fresh
             </div>
           )}
         </div>

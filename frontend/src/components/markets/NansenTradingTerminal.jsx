@@ -158,7 +158,7 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
   };
 
   const handleExecute = async () => {
-    if (!quote || quote._fallback) { setError('Get a live quote before executing.'); return; }
+    if (!quote || quote._fallback) { setError('Get a fresh quote before executing.'); return; }
     setError(null);
     try {
       await tx.execute({ from: wallet.address, quote, fromToken, amount, tradeMeta: { fromToken, toToken, amount, outputAmount } });
@@ -198,7 +198,7 @@ function TradeExecutionPanel({ ethData, selectedToken, wallets, onTradeSuccess }
           </MagneticButton>
         ) : (
           <div className="flex items-center gap-2 rounded-lg border border-green/20 bg-green/5 px-3 py-2 text-[11px] font-mono">
-            <span className="h-1.5 w-1.5 rounded-full bg-green pulse-dot" />
+            <span className="h-1.5 w-1.5 rounded-full bg-green/70" />
             <span className="text-text-secondary truncate">{wallet.address?.slice(0, 8)}…</span>
             <span className="ml-auto text-text-primary">{tokenBal?.toFixed(4) ?? '—'} {fromToken}</span>
           </div>
@@ -292,10 +292,6 @@ export default function NansenTradingTerminal({ ethData, wallets, selectedToken,
           </div>
         </div>
         <div className="font-mono text-xl font-bold text-text-primary">${fmt(price)}</div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-          <span className="text-[11px] text-text-muted">LIVE</span>
-        </div>
         <span className={`text-[12px] font-mono ${change24h >= 0 ? 'text-green' : 'text-red'}`}>
           {change24h >= 0 ? '+' : ''}{change24h.toFixed(2)}% 24h
         </span>

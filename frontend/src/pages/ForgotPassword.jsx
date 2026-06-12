@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { supabase } from '@/lib/supabase'
 import { HexLogo } from '@/components/ui/SentinelLogo'
+import { Mail } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -47,7 +48,9 @@ export default function ForgotPasswordPage() {
         <div className="glass-surface rounded-2xl p-6 shadow-card">
           {sent ? (
             <div className="text-center py-2">
-              <div className="text-3xl mb-3">✉️</div>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue/10 border border-blue/20">
+                <Mail className="h-6 w-6 text-blue" strokeWidth={1.75} />
+              </div>
               <p className="text-sm text-text-secondary leading-relaxed">
                 Check your inbox at <strong>{email}</strong>. Follow the link to reset your password.
               </p>

@@ -24,7 +24,7 @@ import { fadeUp, motionTokens } from '../design/motion';
 
 function InvestProTeaser({ onUpgrade, isTrialing }) {
   const perks = [
-    { Icon: TrendingUp, title: 'Live whale copy-trades', body: 'See exactly what tracked smart-money wallets are buying — prefilled as a ready-to-send trade.' },
+    { Icon: TrendingUp, title: 'Whale copy-trades', body: 'See exactly what tracked smart-money wallets are buying — prefilled as a ready-to-send trade.' },
     { Icon: Route, title: 'Best rate, every DEX', body: 'DefiLlama routes across every aggregator so you never overpay on a swap.' },
     { Icon: Shield, title: 'Your keys, always', body: 'Execute from your own MetaMask. Hadaleum is non-custodial — we never touch your funds.' },
   ];
@@ -200,7 +200,7 @@ export default function InvestPage() {
         _fallback: true,
       });
       setStep('quote');
-      setError('Live quote unavailable — showing estimate. Confirm before executing.');
+      setError('Fresh quote unavailable — showing estimate. Confirm before executing.');
     } finally {
       setQuoteLoading(false);
     }
@@ -208,7 +208,7 @@ export default function InvestPage() {
 
   const handleExecute = async () => {
     if (quote?._fallback) {
-      setError('Get a live quote before executing.');
+      setError('Get a fresh quote before executing.');
       return;
     }
     setStep('executing');
@@ -289,7 +289,7 @@ export default function InvestPage() {
           </MagneticButton>
         ) : (
           <div className="flex items-center gap-2 text-[11px] font-mono text-text-secondary">
-            <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-green/70" />
             {formatWalletAddress(wallet.address)}
           </div>
         )}
@@ -505,7 +505,7 @@ export default function InvestPage() {
                         Confirm in MetaMask →
                       </Button>
                       {quote?._fallback && (
-                        <p className="text-[11px] text-amber text-center">Live quote needed to execute — go back and fetch the best rate.</p>
+                        <p className="text-[11px] text-amber text-center">Fresh quote needed to execute — go back and fetch the best rate.</p>
                       )}
                       <button type="button" onClick={() => setStep('quote')} className="w-full text-xs text-text-muted hover:text-text-secondary py-1">← Back</button>
                     </div>

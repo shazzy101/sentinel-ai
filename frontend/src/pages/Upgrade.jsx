@@ -66,7 +66,9 @@ export default function UpgradePage() {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="text-4xl mb-4">✅</div>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green/15 border border-green/30">
+            <Check className="h-7 w-7 text-green" strokeWidth={2.25} />
+          </div>
           <h2 className="font-display text-2xl font-bold text-text-primary mb-2">You're on Pro</h2>
           <p className="text-text-muted text-sm mb-6">You have full access to all Hadaleum features.</p>
           <button

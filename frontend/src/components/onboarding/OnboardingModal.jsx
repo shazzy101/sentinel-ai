@@ -21,7 +21,7 @@ const STEPS = [
   {
     icon: Shield,
     title: 'How do I copy a trade?',
-    body: 'On the Invest page, you see live whale moves. Click "Copy trade", set your amount, and MetaMask executes the swap on-chain. Hadaleum never holds your funds — you stay in full custody at all times.',
+    body: 'On the Invest page, you see recent whale moves. Click "Copy trade", set your amount, and MetaMask executes the swap on-chain. Hadaleum never holds your funds — you stay in full custody at all times.',
     tip: 'You can simulate copy trades without a wallet by setting your amount and reviewing the quote. Connect MetaMask only when ready to execute.',
   },
 ]

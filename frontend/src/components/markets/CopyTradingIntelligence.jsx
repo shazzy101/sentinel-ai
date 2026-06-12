@@ -197,7 +197,7 @@ function FeaturedTraderCard({ trader, onTrack, onViewMoves }) {
           onClick={onViewMoves}
           className="text-[11px] font-medium px-3 py-2 rounded-lg border border-border-default text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
         >
-          Live moves ↓
+          Recent moves ↓
         </button>
       </div>
     </div>
@@ -305,7 +305,7 @@ export default function CopyTradingIntelligence() {
         <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between gap-3">
           <div>
             <div className="text-[14px] font-medium text-text-primary">Copy-Worthy Moves</div>
-            <div className="text-[10px] text-text-muted mt-0.5">Live swaps from top copy traders · on-chain · no size minimum</div>
+            <div className="text-[10px] text-text-muted mt-0.5">Swaps from top copy traders · on-chain · no size minimum</div>
           </div>
           <button
             type="button"

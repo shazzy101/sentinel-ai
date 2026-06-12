@@ -229,7 +229,7 @@ export default function NewsPage() {
                     : ins.tone === 'bear' ? 'border-red/20 bg-red/[0.04] text-text-secondary'
                     : 'border-border-default bg-bg-surface text-text-secondary'
                   }`}>
-                  <div className="text-[9px] uppercase tracking-widest text-text-muted mb-1.5">◈ Sentinel Insight</div>
+                  <div className="text-[9px] uppercase tracking-widest text-text-muted mb-1.5">Sentinel Insight</div>
                   {ins.text}
                 </motion.div>
               ))}

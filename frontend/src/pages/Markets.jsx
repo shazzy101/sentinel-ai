@@ -173,8 +173,8 @@ export function EthPriceBadge() {
   return (
     <div className="flex items-center gap-2 bg-bg-surface border border-border-default rounded-lg px-3 py-1.5">
       <div className="flex items-center gap-1.5 mr-1">
-        <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-        <span className="text-[10px] text-text-muted uppercase">Live</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-green/70" />
+        <span className="text-[10px] text-text-muted uppercase">On-chain</span>
       </div>
       <img
         src="https://assets.coingecko.com/coins/images/279/small/ethereum.png"

@@ -13,7 +13,7 @@ const PHASES = [
 
 const FEATURE_PILLS = [
   { icon: Fish, label: 'Copy whale trades' },
-  { icon: BarChart3, label: 'Live markets' },
+  { icon: BarChart3, label: 'Markets' },
   { icon: Sparkles, label: 'AI intelligence' },
   { icon: Zap, label: 'DEX aggregation' },
 ];
@@ -24,7 +24,7 @@ function MockSwapUI({ phase }) {
       {/* Mini topbar */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-semibold text-text-primary">Invest</span>
-        <span className="h-1.5 w-1.5 rounded-full bg-green animate-pulse" />
+        <span className="h-1.5 w-1.5 rounded-full bg-green/70" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -230,7 +230,7 @@ export default function InvestShowcase() {
                 <span className="gradient-text-accent">Execute in seconds.</span> <span className="text-text-muted text-3xl md:text-4xl font-semibold">(Beta)</span>
               </h2>
               <p className="text-lg text-text-secondary leading-relaxed mb-8 max-w-lg">
-                When Wintermute moves 847 ETH, you see it instantly. One click copies the trade at your size — routed through every major DEX, signed in MetaMask. Non-custodial. Real-time.
+                When Wintermute moves 847 ETH, it surfaces in your feed. One click copies the trade at your size — routed through every major DEX, signed in MetaMask. Non-custodial.
               </p>
 
               <div className="flex flex-wrap gap-2 mb-8">

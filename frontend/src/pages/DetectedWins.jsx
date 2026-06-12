@@ -211,11 +211,8 @@ export default function DetectedWinsPage() {
       <div className="max-w-5xl mx-auto px-6 py-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <div className="inline-flex items-center gap-2 rounded-full border border-green/25 bg-green/[0.08] px-3 py-1 mb-6">
-            <span className="relative h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green opacity-60" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green" />
-            </span>
-            <span className="text-[11px] font-medium text-green uppercase tracking-wide">Live · Verified on-chain</span>
+            <span className="inline-flex rounded-full h-1.5 w-1.5 bg-green/70" />
+            <span className="text-[11px] font-medium text-green uppercase tracking-wide">Verified on-chain</span>
           </div>
 
           {/* Win-rate hero */}
@@ -308,7 +305,7 @@ export default function DetectedWinsPage() {
               <div className="flex items-center gap-2 mb-3">
                 <Eye className="h-4 w-4 text-amber" />
                 <h2 className="font-display text-[18px] font-semibold text-text-primary">Watching now</h2>
-                <span className="text-[11px] text-text-muted">live return · pending 24h score</span>
+                <span className="text-[11px] text-text-muted">current return · pending 24h score</span>
               </div>
               <div className="rounded-2xl border border-border-default bg-bg-surface overflow-hidden">
                 {watching.map((m) => <ScoredRow key={m.tx_hash} move={m} live />)}
@@ -340,7 +337,7 @@ export default function DetectedWinsPage() {
 
           <p className="text-[11px] text-text-muted leading-relaxed border-t border-border-subtle pt-6">
             {marketing?.methodology} Past results do not guarantee future performance. Not financial advice.
-            Win rate is over decisive (win/loss) outcomes. Updated {marketing?.updated_at ? relTime(marketing.updated_at) : 'live'}.
+            Win rate is over decisive (win/loss) outcomes. Updated {marketing?.updated_at ? relTime(marketing.updated_at) : 'recently'}.
           </p>
         </motion.div>
       </div>

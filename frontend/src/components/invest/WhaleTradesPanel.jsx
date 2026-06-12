@@ -100,7 +100,7 @@ export default function WhaleTradesPanel({ onCopyTrade, activeTradeId }) {
             <div className="text-[11px] text-text-muted">Mirror smart-money moves in one click</div>
           </div>
         </div>
-        <span className="text-[10px] uppercase tracking-widest text-text-muted">Live</span>
+        <span className="text-[10px] uppercase tracking-widest text-text-muted">On-chain</span>
       </div>
 
       <div className="p-4">
