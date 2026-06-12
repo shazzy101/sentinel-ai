@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -344,7 +345,10 @@ _cors_origins = list(set(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_origin_regex=r"https://.*\.pages\.dev",  # Cloudflare Pages previews + production
+    # Scope preview origins to THIS project's Pages subdomain only. The previous
+    # `https://.*\.pages\.dev` allowed any Cloudflare Pages site (any attacker
+    # deploy) to make credentialed requests.
+    allow_origin_regex=r"https://([a-z0-9-]+\.)?sentinel-ai\.pages\.dev",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -359,7 +363,8 @@ async def require_admin(request: Request) -> None:
     if not _ADMIN_API_KEY:
         raise HTTPException(status_code=503, detail="Admin API not configured")
     provided = request.headers.get("X-Admin-Key")
-    if not provided or provided != _ADMIN_API_KEY:
+    # Constant-time comparison to avoid leaking the key via response timing.
+    if not provided or not hmac.compare_digest(provided, _ADMIN_API_KEY):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
