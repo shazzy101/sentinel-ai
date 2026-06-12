@@ -198,3 +198,30 @@ Caption:
 - **IG:** 1 feed + 1 Reel/day. Repurpose TikToks as Reels 1:1.
 - Pin TH2 (founder thread) on X. Pin /wins link everywhere.
 - Engage > broadcast: reply to CT whale-watching / Nansen / copy-trading threads with a value comment + soft mention.
+
+---
+
+## 30-DAY GROWTH ENGINE (30 users / 30 days)
+
+### Buffer reality check (free plan)
+Free Buffer = **3 channels, 10 queued posts total, 100 ideas.** That caps true "spam" cadence.
+Options:
+- **Stage 100 ideas** (free) → manually push to queue daily as the 10 slots clear. Workable but hands-on.
+- **Buffer Essentials (~$5/channel/mo)** → unlimited queue, real auto-cadence. Worth it for 30-day push.
+- Connect **X + TikTok + IG** (3 channels = full free allotment).
+
+### Daily template (repeat, rotate content so it never looks copy-pasted)
+- **Morning (8–9a MST):** 1 X thread (anchor: TH1/TH2/TH3) + pin the day's best single.
+- **Midday (12–1p):** 1 X single (price anchor / transparency / non-custodial) + 1 TikTok (screen-record live `/wins` ledger).
+- **Afternoon (3–4p):** 1 X reply-bait on a trending CT / Nansen / copy-trading thread (value comment + soft mention).
+- **Evening (7–8p):** 1 IG Reel (repurpose the day's TikTok 1:1) + 1 X single recapping a real detected win.
+
+### Weekly rhythm
+- **Mon:** price-anchor angle ($19 vs $150). **Tue:** transparency/`/wins`. **Wed:** non-custodial/security.
+- **Thu:** AI-signal demo. **Fri:** founder build-in-public. **Sat:** community/reply day. **Sun:** "week in review" — real numbers from Trust Pulse (e.g. "X moves tracked, Y% win rate this week").
+
+### Highest-leverage moves
+1. **Post real ledger screenshots** — the live Trust Pulse (Wins 7d, Net P&L, Win rate) is your unfakeable proof. Screenshot weekly, post it.
+2. **Reply > broadcast** — 70% of early users come from value-replies under bigger CT accounts, not your own timeline.
+3. **Pin /wins everywhere** — bio links, pinned tweet, TikTok bio. Transparency is the wedge vs every "alpha group."
+4. **Free-trial CTA in every post** — "7-day free trial, no card" lowers friction harder than the price alone.
