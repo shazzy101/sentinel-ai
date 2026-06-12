@@ -1534,9 +1534,14 @@ async def get_signals():
                 "wallet_label": _copy_trader_label(t),
                 "wallet_address": t.get("address", ""),
                 "chain": "ethereum",
-                "signal": "BULLISH" if (m.get("win_rate_pct") or 0) >= 70 else "NEUTRAL",
+                # Signal/reason lead with the copy score (profitability-weighted)
+                # and unrealized win rate — never realized win rate, which is
+                # gameable and reserved for the watchlist deep-dive.
+                "signal": "BULLISH" if (t.get("copy_trading_score") or 0) >= 70 else "NEUTRAL",
                 "signal_reason": (
-                    f"{m.get('win_rate_pct')}% win rate · PF {m.get('profit_factor')} · "
+                    (f"{m.get('unrealized_win_rate_pct'):.0f}% unrealized win rate · "
+                     if m.get("unrealized_win_rate_pct") is not None else "")
+                    + f"PF {m.get('profit_factor')} · "
                     f"{m.get('track_record_days')}d track · Copy score {t.get('copy_trading_score')}"
                 ),
                 "score": t.get("copy_trading_score") or 0,
@@ -2216,19 +2221,26 @@ def _market_signal() -> str:
 def _ai_copy_score(move: dict, market: str) -> tuple[int, list[str]]:
     """Rank a copy-trader move for how worth-copying it is, with reasons.
 
-    Blends the trader's proven edge (copy score, win rate, profit factor) with
-    alignment to the current ETH market and recency. Returns (0-100, reasons)."""
+    Blends the trader's proven edge (copy score + unrealized win rate) with
+    alignment to the current ETH market and recency. Returns (0-100, reasons).
+
+    Trust rule: we never surface realized win rate or profit factor here. Those
+    are sell-winners-hold-losers gameable (a fake 100%) and belong only in the
+    watchlist deep-dive. A win-rate claim appears only when a real *unrealized*
+    rate (held bags marked to market) exists for the trader."""
     reasons: list[str] = []
     copy_score = float(move.get("copy_score") or 0)
-    wr = float(move.get("win_rate_pct") or 0)
-    pf = float(move.get("profit_factor") or 0)
+    uwr_raw = move.get("unrealized_win_rate_pct")
+    uwr = float(uwr_raw) if uwr_raw is not None else None
     action = (move.get("action") or "").lower()
 
-    score = copy_score * 0.40 + wr * 0.25 + min(pf, 10.0) / 10.0 * 100 * 0.15
-    if wr >= 70:
-        reasons.append(f"{wr:.0f}% historical win rate")
-    if pf >= 3:
-        reasons.append(f"{min(pf, 50):.0f}x profit factor")
+    # Edge is carried by the copy_trading_score (already profitability-weighted)
+    # plus the honest unrealized win rate when we have it.
+    score = copy_score * 0.55
+    if uwr is not None:
+        score += uwr * 0.20
+        if uwr >= 60:
+            reasons.append(f"{uwr:.0f}% unrealized win rate")
     if copy_score >= 85:
         reasons.append("top-ranked trader")
 
@@ -2296,7 +2308,7 @@ async def invest_ai_picks(request: Request, limit: int = 6):
             "whaleAddress": m.get("trader_address"),
             "whaleAction": f"{'Bought' if action in ('buy', 'rotate') else 'Sold'} {m.get('bought') if action != 'take_profit' else m.get('sold')}",
             "token": m.get("bought") if action != "take_profit" else m.get("sold"),
-            "win_rate_pct": m.get("win_rate_pct"),
+            "unrealized_win_rate_pct": m.get("unrealized_win_rate_pct"),
             "copy_score": m.get("copy_score"),
             "amount_usd": m.get("amount_usd"),
             "timestamp": m.get("time"),

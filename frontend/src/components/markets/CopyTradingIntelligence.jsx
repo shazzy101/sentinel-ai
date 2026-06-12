@@ -61,8 +61,14 @@ function MoveRow({ move, onCopy }) {
           <span className="font-mono text-text-secondary">{formatMoveSize(move)}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-2 mt-1 text-[10px] text-text-muted">
-          <span className="font-mono">{Math.round(move.win_rate_pct ?? 0)}% WR</span>
-          <span>·</span>
+          {move.unrealized_win_rate_pct != null && (
+            <>
+              <span className="font-mono" title="Unrealized win rate — held positions marked to market">
+                {Math.round(move.unrealized_win_rate_pct)}% WR
+              </span>
+              <span>·</span>
+            </>
+          )}
           <span className="font-mono">PF {Number(move.profit_factor ?? 0).toFixed(1)}</span>
           <span>·</span>
           <span>Score {Math.round(move.copy_score ?? 0)}</span>
@@ -130,7 +136,9 @@ function TopCopyTraderRow({ wallet, lastMove, onTrack }) {
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-medium text-text-primary truncate">{name}</div>
         <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-text-muted mt-0.5">
-          <span className="font-mono text-green">{m.win_rate_pct ?? '—'}% WR</span>
+          <span className="font-mono text-green" title="Unrealized win rate — held positions marked to market">
+            {m.unrealized_win_rate_pct ?? '—'}% WR
+          </span>
           <span>·</span>
           <span className="font-mono">PF {m.profit_factor != null ? Number(m.profit_factor).toFixed(1) : '—'}</span>
           <span>·</span>
@@ -178,7 +186,7 @@ function FeaturedTraderCard({ trader, onTrack, onViewMoves }) {
         </span>
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-muted font-mono">
-        <span className="text-green">{m.win_rate_pct ?? '—'}% WR</span>
+        <span className="text-green" title="Unrealized win rate — held positions marked to market">{m.unrealized_win_rate_pct ?? '—'}% WR</span>
         <span>PF {m.profit_factor != null ? Number(m.profit_factor).toFixed(1) : '—'}</span>
         <span>{m.track_record_days ?? '—'}d track</span>
         {m.max_drawdown_pct != null && <span>DD {m.max_drawdown_pct}%</span>}

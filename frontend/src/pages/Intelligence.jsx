@@ -68,7 +68,10 @@ function CopyTraderSignalRow({ item }) {
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-green/10 text-green border border-green/20 uppercase tracking-wide">Copy</span>
         </div>
         <p className="text-[11px] text-text-muted mt-0.5 font-mono">
-          {m.win_rate_pct}% WR · PF {Number(m.profit_factor || 0).toFixed(1)} · {m.track_record_days}d
+          {m.unrealized_win_rate_pct != null && (
+            <span title="Unrealized win rate — held positions marked to market">{m.unrealized_win_rate_pct}% WR · </span>
+          )}
+          PF {Number(m.profit_factor || 0).toFixed(1)} · {m.track_record_days}d
         </p>
         {item.signal_reason && (
           <p className="text-[12px] text-text-secondary mt-1 leading-relaxed line-clamp-2">{item.signal_reason}</p>

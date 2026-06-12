@@ -8,11 +8,80 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
 import { useWatchlist } from '../hooks/useWatchlist';
 import Button from '../components/ui/Button';
 import { SignalPill } from '../components/ui/Badge';
 import { TextureButton } from '../components/ui/texture-button';
 import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
+
+/**
+ * Fully-styled wallet picker. Native <select> option lists fall back to OS
+ * rendering (black-on-black on macOS dark mode), which is unreadable — so we
+ * own the dropdown surface here for guaranteed contrast.
+ */
+function WalletSelect({ wallets, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = wallets.find((w) => w.address === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 bg-bg-elevated border border-border-default rounded-lg px-3 py-2 text-[13px] text-left outline-none focus:border-border-focus transition-colors"
+      >
+        <span className={selected ? 'text-text-primary truncate' : 'text-text-muted'}>
+          {selected ? (selected.label || selected.address) : 'Select wallet…'}
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-border-default bg-bg-card shadow-xl py-1"
+        >
+          {wallets.length === 0 && (
+            <li className="px-3 py-2 text-[12px] text-text-muted">No wallets in your watchlist yet.</li>
+          )}
+          {wallets.map((w) => {
+            const isSel = w.address === value;
+            return (
+              <li key={w.address} role="option" aria-selected={isSel}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(w.address); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-[13px] text-left transition-colors ${
+                    isSel ? 'bg-green/10 text-green' : 'text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
+                  }`}
+                >
+                  <span className="truncate">{w.label || w.address}</span>
+                  {isSel && <Check className="h-3.5 w-3.5 shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const RULES_KEY = 'sentinel_alert_rules';
 const FIRED_KEY = 'sentinel_fired_alerts';
@@ -85,17 +154,7 @@ function AddRuleForm({ wallets, onAdd, onCancel }) {
 
       <div>
         <label className="text-[10px] uppercase tracking-[1px] text-text-muted block mb-1.5">Wallet</label>
-        <select
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="w-full bg-bg-elevated border border-border-default rounded-lg px-3 py-2 text-[13px] text-text-primary outline-none focus:border-border-focus transition-colors"
-          required
-        >
-          <option value="">Select wallet…</option>
-          {wallets.map((w) => (
-            <option key={w.address} value={w.address}>{w.label || w.address}</option>
-          ))}
-        </select>
+        <WalletSelect wallets={wallets} value={address} onChange={setAddress} />
       </div>
 
       <div>

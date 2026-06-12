@@ -170,7 +170,11 @@ async def fetch_recent_copy_moves(
                 "trader_label": trader.get("label"),
                 "rank": trader.get("rank"),
                 "copy_score": trader.get("copy_trading_score"),
+                # Realized win rate / PF kept for internal ranking only — never
+                # surfaced as a copy-pick claim (sells-winners-holds-losers reads
+                # a fake 100%). Unrealized is the honest number we display.
                 "win_rate_pct": metrics.get("win_rate_pct"),
+                "unrealized_win_rate_pct": metrics.get("unrealized_win_rate_pct"),
                 "profit_factor": metrics.get("profit_factor"),
             })
 
