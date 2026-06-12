@@ -387,12 +387,18 @@ def _aggregate_stats(rows: list[dict], *, since: datetime | None = None) -> dict
 
 
 def _equity_curve(rows: list[dict]) -> list[dict[str, Any]]:
-    """Cumulative hypothetical P&L (incl. losses) over scored moves, oldest→newest."""
-    decisive = [r for r in rows if r.get("outcome_status") in ("WIN", "LOSS")]
-    decisive.sort(key=lambda r: r.get("outcome_scored_at") or r.get("detected_at") or "")
+    """Cumulative hypothetical P&L over EVERY scored move (win, loss, and the
+    sub-threshold NEUTRAL movers), oldest→newest. Matches net_hypothetical_pnl_usd
+    so the curve endpoint always equals the Net P&L stat."""
+    scored = [
+        r for r in rows
+        if r.get("outcome_status") in ("WIN", "LOSS", "NEUTRAL")
+        and r.get("hypothetical_pnl_usd") is not None
+    ]
+    scored.sort(key=lambda r: r.get("outcome_scored_at") or r.get("detected_at") or "")
     cum = 0.0
     pts: list[dict[str, Any]] = []
-    for i, r in enumerate(decisive, start=1):
+    for i, r in enumerate(scored, start=1):
         cum += float(r.get("hypothetical_pnl_usd") or 0)
         pts.append({
             "n": i,

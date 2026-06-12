@@ -149,7 +149,7 @@ function EquityCurve({ points }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[11px] text-text-muted mt-2">Hypothetical: $1,000 copied into every scored move (wins and losses), in detection order.</p>
+      <p className="text-[11px] text-text-muted mt-2">Hypothetical: $1,000 copied into every scored move — wins, losses, and sub-3% movers — in detection order.</p>
     </section>
   );
 }
