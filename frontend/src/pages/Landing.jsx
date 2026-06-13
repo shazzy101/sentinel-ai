@@ -425,11 +425,11 @@ function Navbar() {
           ))}
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <a href="https://x.com/hadaleum" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
+          <a href="https://x.com/hadaleumai" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10.97 1H12.9L8.78 5.71 13.67 13h-3.92L6.7 9.06 3.27 13H1.34l4.41-5.04L.67 1h4.02L7.6 4.6 10.97 1Zm-.67 10.79h1.07L3.75 2.1H2.6l7.7 9.69Z" fill="currentColor"/></svg>
           </a>
-          <a href="https://discord.gg/hadaleum" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="Discord">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.61 2.92A11.37 11.37 0 0 0 9.02 2a7.76 7.76 0 0 0-.36.74 10.5 10.5 0 0 0-3.32 0A7.49 7.49 0 0 0 5 2 11.42 11.42 0 0 0 2.38 2.92 12.06 12.06 0 0 0 .5 10.5a11.6 11.6 0 0 0 3.54 1.79c.29-.39.54-.8.76-1.24a7.4 7.4 0 0 1-1.18-.57c.1-.07.2-.15.29-.22a8.27 8.27 0 0 0 7.18 0c.1.08.19.15.29.22-.38.22-.78.41-1.19.57.22.43.47.85.76 1.24a11.55 11.55 0 0 0 3.54-1.79A12.03 12.03 0 0 0 11.61 2.92ZM4.9 8.98c-.72 0-1.3-.66-1.3-1.47S4.17 6.04 4.9 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Zm4.2 0c-.71 0-1.3-.66-1.3-1.47S8.38 6.04 9.1 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Z" fill="currentColor"/></svg>
+          <a href="https://www.tiktok.com/@hadaleum" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-white transition-colors" aria-label="TikTok">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.5 1h-2v7.5a1.5 1.5 0 1 1-1.5-1.5h.5V4.9H8A4 4 0 1 0 12 8.9V5.1a5.5 5.5 0 0 0 3 .9V3.6A3.5 3.5 0 0 1 11.5 1Z" fill="currentColor"/></svg>
           </a>
           <Link to="/institutional" className="hidden sm:block text-sm text-text-muted px-3 py-2 rounded-xl hover:text-text-primary transition-colors">
             Enterprise
@@ -994,11 +994,11 @@ function Footer() {
           <Link to="/terms" className="hover:text-text-secondary">Terms</Link>
           <Link to="/about" className="hover:text-text-secondary">About</Link>
           <Link to="/institutional" className="hover:text-text-secondary">Enterprise</Link>
-          <a href="https://x.com/hadaleum" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
+          <a href="https://x.com/hadaleumai" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="X / Twitter">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10.97 1H12.9L8.78 5.71 13.67 13h-3.92L6.7 9.06 3.27 13H1.34l4.41-5.04L.67 1h4.02L7.6 4.6 10.97 1Zm-.67 10.79h1.07L3.75 2.1H2.6l7.7 9.69Z" fill="currentColor"/></svg>
           </a>
-          <a href="https://discord.gg/hadaleum" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="Discord">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.61 2.92A11.37 11.37 0 0 0 9.02 2a7.76 7.76 0 0 0-.36.74 10.5 10.5 0 0 0-3.32 0A7.49 7.49 0 0 0 5 2 11.42 11.42 0 0 0 2.38 2.92 12.06 12.06 0 0 0 .5 10.5a11.6 11.6 0 0 0 3.54 1.79c.29-.39.54-.8.76-1.24a7.4 7.4 0 0 1-1.18-.57c.1-.07.2-.15.29-.22a8.27 8.27 0 0 0 7.18 0c.1.08.19.15.29.22-.38.22-.78.41-1.19.57.22.43.47.85.76 1.24a11.55 11.55 0 0 0 3.54-1.79A12.03 12.03 0 0 0 11.61 2.92ZM4.9 8.98c-.72 0-1.3-.66-1.3-1.47S4.17 6.04 4.9 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Zm4.2 0c-.71 0-1.3-.66-1.3-1.47S8.38 6.04 9.1 6.04c.72 0 1.31.66 1.3 1.47 0 .81-.58 1.47-1.3 1.47Z" fill="currentColor"/></svg>
+          <a href="https://www.tiktok.com/@hadaleum" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center text-text-muted hover:text-white transition-colors" aria-label="TikTok">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.5 1h-2v7.5a1.5 1.5 0 1 1-1.5-1.5h.5V4.9H8A4 4 0 1 0 12 8.9V5.1a5.5 5.5 0 0 0 3 .9V3.6A3.5 3.5 0 0 1 11.5 1Z" fill="currentColor"/></svg>
           </a>
         </div>
       </div>
