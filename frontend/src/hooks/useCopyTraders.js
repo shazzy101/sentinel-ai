@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../lib/apiClient';
 
-// v3: bumped to invalidate pre-deploy payloads cached without unrealized win rate.
-const CACHE_KEY = 'sentinel-copy-traders-v3';
+// v4: bumped to drop stale anon-capped (5-row) payloads after the auth fix.
+const CACHE_KEY = 'sentinel-copy-traders-v4';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function readCache(key) {
@@ -60,7 +60,10 @@ export function useCopyTraders({
         qualified_only: String(qualifiedOnly),
         strict: String(strict),
       });
-      const body = await apiFetch(`/api/copy-trading/top?${params}`, { timeoutMs: 15000 });
+      // auth:true sends the Bearer token so the backend knows the plan — Pro/
+      // trial get the full list, free gets the capped taste. Without it the
+      // server sees anonymous and caps everyone to the free limit.
+      const body = await apiFetch(`/api/copy-trading/top?${params}`, { timeoutMs: 15000, auth: true });
       if (!body.success) {
         throw new Error(body.error?.message || 'Failed to load copy traders');
       }
