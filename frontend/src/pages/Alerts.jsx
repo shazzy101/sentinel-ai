@@ -14,6 +14,7 @@ import Button from '../components/ui/Button';
 import { SignalPill } from '../components/ui/Badge';
 import { TextureButton } from '../components/ui/texture-button';
 import { TextureCard, TextureCardContent } from '../components/ui/texture-card';
+import PaywallGate from '../components/auth/PaywallGate';
 
 /**
  * Fully-styled wallet picker. Native <select> option lists fall back to OS
@@ -376,6 +377,7 @@ export default function AlertsPage() {
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-5 py-6">
+        <PaywallGate feature="Whale alerts" blur>
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="text-[10px] uppercase tracking-[1.2px] text-text-muted mb-1">Alert rules</div>
@@ -451,6 +453,7 @@ export default function AlertsPage() {
         )}
 
         <AlertHistory />
+        </PaywallGate>
       </div>
     </div>
   );

@@ -76,6 +76,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 export default function WatchlistPage() {
   const { isPro, isTrialing, refreshProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('copy'); // copy | watchlist
   const [strictCopyFilter, setStrictCopyFilter] = useState(true);
   const [copySortBy, setCopySortBy] = useState('copy_score');
@@ -641,6 +642,8 @@ export default function WatchlistPage() {
             onRetry={refetchCopy}
             totalQualified={totalQualified}
             trackedAddresses={trackedAddresses}
+            lockedCount={(!isPro && !isTrialing && !searchQuery) ? Math.max(0, (totalQualified || 0) - filteredCopyTraders.length) : 0}
+            onUpgrade={() => navigate('/upgrade')}
           />
         ) : (
           <>

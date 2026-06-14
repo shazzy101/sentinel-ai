@@ -53,6 +53,8 @@ export default function CopyTraderTable({
   onRetry,
   totalQualified,
   trackedAddresses = new Set(),
+  lockedCount = 0,
+  onUpgrade,
 }) {
   if (loading && !wallets.length) {
     return (
@@ -106,7 +108,44 @@ export default function CopyTraderTable({
             onSelect={onSelectWallet}
           />
         ))}
+        {lockedCount > 0 && <CopyLockRow lockedCount={lockedCount} onUpgrade={onUpgrade} />}
       </div>
     </GlassCard>
+  );
+}
+
+function CopyLockRow({ lockedCount, onUpgrade }) {
+  return (
+    <div className="relative">
+      {/* Blurred ghost rows to tease the locked content */}
+      <div className="select-none pointer-events-none opacity-40 blur-[6px]">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="grid gap-x-3 px-4 py-3.5 border-b border-border-subtle items-center min-w-[900px]"
+            style={{ gridTemplateColumns: '36px minmax(140px,1.2fr) 72px 80px 80px 80px 88px 100px 90px' }}>
+            <span className="text-[11px] font-mono text-text-muted">#{i + 6}</span>
+            <span className="text-[12px] text-text-secondary">Elite DEX Trader</span>
+            <span className="text-right text-[12px] text-green font-bold">··%</span>
+            <span className="text-right text-[12px] text-text-secondary">··</span>
+            <span /><span /><span /><span /><span />
+          </div>
+        ))}
+      </div>
+      {/* Upgrade overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 bg-gradient-to-t from-bg-base via-bg-base/90 to-transparent">
+        <div className="text-[14px] font-semibold text-text-primary mb-1">
+          🔒 {lockedCount.toLocaleString()} more elite traders
+        </div>
+        <p className="text-[12px] text-text-muted mb-3 max-w-xs">
+          Free shows the top 5. Unlock the full ranked leaderboard, one-click copy trading, and alerts with Pro.
+        </p>
+        <button
+          type="button"
+          onClick={onUpgrade}
+          className="px-4 py-2 rounded-xl bg-green text-text-inverse text-[13px] font-semibold shadow-glow hover:bg-green-bright transition-colors"
+        >
+          Unlock all — 7-day free trial →
+        </button>
+      </div>
+    </div>
   );
 }

@@ -2341,6 +2341,9 @@ _copy_trading_cache: dict = {"loaded_at": None, "source": None, "freshness": Non
 #    realized losses" sentinel (999) and absurd values never show to users.
 MIN_TRUSTED_TRADES = 25
 PF_DISPLAY_CAP = 50.0
+# Free tier: how many ranked copy traders a non-Pro user can see. The rest are
+# locked behind an upgrade — clearly limited, designed to make people want more.
+FREE_COPY_LIMIT = 5
 
 
 def _load_copy_trading_wallets() -> list[dict]:
@@ -2695,6 +2698,7 @@ async def admin_run_trust_pipeline():
 
 @app.get("/api/copy-trading/top")
 async def copy_trading_top(
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     sort: str = "copy_score",
@@ -2730,9 +2734,21 @@ async def copy_trading_top(
     page = pool[page_offset : page_offset + page_limit]
     enriched = [_enrich_copy_trader(w) for w in page]
 
+    # Free tier: cap the leaderboard to a taste; the rest is locked behind Pro.
+    # Trial users carry plan 'pro' (see _fetch_plan), so they get the full list.
+    user = getattr(request.state, "auth_user", None)
+    is_pro = bool(user and getattr(user, "plan", None) == "pro")
+    locked_count = 0
+    if not is_pro:
+        locked_count = max(0, len(pool) - FREE_COPY_LIMIT)
+        enriched = enriched[:FREE_COPY_LIMIT]
+
     return success({
         "wallets": enriched,
         "count": len(enriched),
+        "is_pro": is_pro,
+        "free_limit": FREE_COPY_LIMIT,
+        "locked_count": locked_count,
         "total_qualified": len(pool),
         "total_in_dataset": len(all_wallets),
         "stats_labels": [
