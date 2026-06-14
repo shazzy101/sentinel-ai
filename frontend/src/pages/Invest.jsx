@@ -64,7 +64,7 @@ function InvestProTeaser({ onUpgrade, isTrialing }) {
           className="w-full rounded-xl bg-green px-6 py-3.5 text-sm font-semibold text-text-inverse hover:bg-green-bright transition-colors"
           style={{ boxShadow: '0 0 0 1px rgba(0,217,146,0.3), 0 4px 24px rgba(0,217,146,0.22)' }}
         >
-          {isTrialing ? 'Upgrade to Pro — $19/mo →' : 'Start 7-day free trial →'}
+          {isTrialing ? 'Upgrade to Pro — $19/mo →' : 'Start 3-day free trial →'}
         </MagneticButton>
         <p className="text-[11px] text-text-muted mt-3">No credit card required · Cancel anytime</p>
       </motion.div>

@@ -143,7 +143,7 @@ function CopyLockRow({ lockedCount, onUpgrade }) {
           onClick={onUpgrade}
           className="px-4 py-2 rounded-xl bg-green text-text-inverse text-[13px] font-semibold shadow-glow hover:bg-green-bright transition-colors"
         >
-          Unlock all — 7-day free trial →
+          Unlock all — 3-day free trial →
         </button>
       </div>
     </div>

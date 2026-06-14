@@ -684,7 +684,7 @@ export default function WatchlistPage() {
                     className="rounded-xl bg-green px-5 py-2.5 text-[13px] font-semibold text-text-inverse hover:bg-green-bright transition-colors"
                     style={{ boxShadow: '0 0 0 1px rgba(0,217,146,0.3), 0 4px 20px rgba(0,217,146,0.2)' }}
                   >
-                    Unlock all wallets — Free for 7 days →
+                    Unlock all wallets — Free for 3 days →
                   </button>
                 </div>
               </div>

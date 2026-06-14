@@ -935,7 +935,7 @@ function PricingSection() {
               onClick={() => navigate('/signup')}
               className="w-full rounded-xl bg-green px-4 py-3 text-sm font-semibold text-text-inverse shadow-glow hover:bg-green-bright transition-colors"
             >
-              Start 7-day free trial
+              Start 3-day free trial
             </MagneticButton>
             <p className="text-center text-[11px] text-text-muted mt-2">No credit card required · Cancel anytime</p>
           </div>
@@ -1053,7 +1053,7 @@ export default function LandingPage() {
               onClick={() => navigate('/signup')}
               className="w-full sm:w-auto bg-green text-text-inverse font-semibold text-base px-8 py-4 rounded-2xl shadow-glow hover:bg-green-bright transition-colors"
             >
-              Start 7-day free trial →
+              Start 3-day free trial →
             </MagneticButton>
             <button
               type="button"

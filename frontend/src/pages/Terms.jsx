@@ -22,7 +22,7 @@ export default function TermsPage() {
           <section>
             <h2 className="font-display text-lg font-bold text-text-primary mb-2">3. Subscription</h2>
             <p>Pro subscriptions are billed monthly or annually via Stripe. You may cancel at any time; access continues until the end of the billing period. Refunds are not provided for partial periods unless required by applicable law.</p>
-            <p className="mt-2">Free trial periods are 7 days. At the end of the trial, you will be charged unless you cancel.</p>
+            <p className="mt-2">Free trial periods are 3 days. At the end of the trial, you will be charged unless you cancel.</p>
           </section>
           <section>
             <h2 className="font-display text-lg font-bold text-text-primary mb-2">4. Non-custodial trading</h2>

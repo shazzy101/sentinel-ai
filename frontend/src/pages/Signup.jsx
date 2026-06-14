@@ -36,13 +36,13 @@ export default function SignupPage() {
         navigate(`/login?notice=exists&email=${encodeURIComponent(email)}`)
         return
       }
-      // Create profile with 7-day trial
+      // Create profile with 3-day trial
       if (data.user) {
         await supabase.from('profiles').upsert({
           id: data.user.id,
           email: data.user.email,
           plan: 'free',
-          trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          trial_ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
         })
       }
       setDone(true)
@@ -73,7 +73,7 @@ export default function SignupPage() {
           <h2 className="font-display text-2xl font-bold text-text-primary mb-3">Check your email</h2>
           <p className="text-text-muted text-sm leading-relaxed mb-6">
             We sent a confirmation link to <strong className="text-text-secondary">{email}</strong>.
-            Click it to activate your 7-day free trial.
+            Click it to activate your 3-day free trial.
           </p>
           <button
             type="button"
@@ -98,7 +98,7 @@ export default function SignupPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4"><HexLogo size={36} /></div>
           <div className="inline-flex items-center gap-2 rounded-full border border-green/20 bg-green/10 px-3 py-1 mb-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-green">7-day free trial</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-green">3-day free trial</span>
           </div>
           <h1 className="font-display text-2xl font-bold text-text-primary">Create your account</h1>
           <p className="text-text-muted text-sm mt-1">Full Pro access. No credit card required.</p>

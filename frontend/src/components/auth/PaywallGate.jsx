@@ -31,7 +31,7 @@ export default function PaywallGate({ children, feature = 'This feature', blur =
       <Lock className="h-8 w-8 text-text-muted mx-auto mb-4" />
       <h3 className="font-display text-lg font-bold text-text-primary mb-2">{feature}</h3>
       <p className="text-sm text-text-muted mb-6 max-w-xs mx-auto">
-        Upgrade to Hadaleum Pro to access this feature. Start your 7-day free trial — no credit card required.
+        Upgrade to Hadaleum Pro to access this feature. Start your 3-day free trial — no credit card required.
       </p>
       <button
         type="button"

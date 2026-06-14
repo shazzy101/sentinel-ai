@@ -204,7 +204,7 @@ export default function UpgradePage() {
             </button>
             {!isTrialing && (
               <p className="text-center text-[11px] text-text-muted mt-2">
-                7-day free trial • cancel anytime
+                3-day free trial • cancel anytime
               </p>
             )}
           </div>
@@ -212,7 +212,7 @@ export default function UpgradePage() {
 
         {/* Risk reversal row */}
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-[12px] text-text-muted">
-          {['7-day free trial', 'No credit card to start', 'Cancel anytime', 'Secured by Stripe'].map((t) => (
+          {['3-day free trial', 'No credit card to start', 'Cancel anytime', 'Secured by Stripe'].map((t) => (
             <span key={t} className="flex items-center gap-1.5">
               <Check className="h-3.5 w-3.5 text-green" /> {t}
             </span>
