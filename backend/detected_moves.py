@@ -529,14 +529,15 @@ async def get_pending_preview(*, limit: int = 40) -> dict[str, Any]:
     }
 
 
-def _marketing_headline(d30: dict, d24: dict, d7: dict, on_track: int) -> str | None:
-    # Lead with the win rate over a meaningful sample — that's the credible hook.
-    wr = d30.get("win_rate_pct")
-    decisive = (d30.get("wins") or 0) + (d30.get("losses") or 0)
+def _marketing_headline(d_all: dict, d24: dict, d7: dict, on_track: int) -> str | None:
+    # Lead with the FULL-RECORD win rate — the honest number over the whole
+    # sample, not a cherry-picked window. A bigger sample is also more credible.
+    wr = d_all.get("win_rate_pct")
+    decisive = (d_all.get("wins") or 0) + (d_all.get("losses") or 0)
     if wr is not None and decisive >= 10:
         return (
-            f"Hadaleum's flagged moves won {wr:.0f}% of the time over the last 30 days "
-            f"({d30.get('wins', 0)} of {decisive} scored, verified on-chain)."
+            f"Hadaleum's flagged moves won {wr:.0f}% of the time across all "
+            f"{decisive} scored outcomes ({d_all.get('wins', 0)} wins), verified on-chain."
         )
     wins = d24.get("wins") or 0
     avg = d24.get("avg_win_return_pct") or 0
@@ -558,17 +559,18 @@ async def get_marketing_snapshot() -> dict[str, Any]:
     d24 = pulse.get("last_24h") or {}
     d7 = pulse.get("last_7d") or {}
     d30 = pulse.get("last_30d") or {}
+    d_all = pulse.get("all_time") or {}
     on_track = pending.get("on_track_count") or 0
-    headline = _marketing_headline(d30, d24, d7, on_track)
+    headline = _marketing_headline(d_all, d24, d7, on_track)
     biggest = pulse.get("biggest_win")
 
     tweet_hooks = []
-    wr30 = d30.get("win_rate_pct")
-    decisive30 = (d30.get("wins") or 0) + (d30.get("losses") or 0)
-    if wr30 is not None and decisive30 >= 10:
+    wra = d_all.get("win_rate_pct")
+    decisive_all = (d_all.get("wins") or 0) + (d_all.get("losses") or 0)
+    if wra is not None and decisive_all >= 10:
         tweet_hooks.append(
-            f"🟢 Hadaleum's flagged ETH copy-trader moves won {wr30:.0f}% of the time "
-            f"over 30d ({d30.get('wins', 0)}/{decisive30}). Every move verifiable on-chain. hadaleum.com/wins"
+            f"🟢 Hadaleum's flagged ETH copy-trader moves: {wra:.0f}% win rate across all "
+            f"{decisive_all} scored outcomes. Every move verifiable on-chain — wins and losses. hadaleum.com/wins"
         )
     if biggest and biggest.get("return_pct_24h"):
         tok = biggest.get("token_bought") or biggest.get("token_sold") or "a token"
@@ -587,6 +589,7 @@ async def get_marketing_snapshot() -> dict[str, Any]:
         "stats_24h": d24,
         "stats_7d": d7,
         "stats_30d": d30,
+        "stats_all": d_all,
         "on_track_count": on_track,
         "pending_total": pending.get("total_pending") or 0,
         "recent_wins": pulse.get("recent_wins") or [],
@@ -624,10 +627,11 @@ async def get_trust_pulse() -> dict[str, Any]:
     since_30d = now - timedelta(days=30)
 
     try:
+        # Fetch all-time (most recent 1000) — not just 30d — so the headline can
+        # show the honest full-record win rate, not a cherry-picked window.
         res = (
             supabase_client.table("detected_moves")
             .select("*")
-            .gte("detected_at", since_30d.isoformat())
             .order("detected_at", desc=True)
             .limit(1000)
             .execute()
@@ -666,6 +670,7 @@ async def get_trust_pulse() -> dict[str, Any]:
         "last_24h": _aggregate_stats(rows, since=since_24h, by="scored"),
         "last_7d": _aggregate_stats(rows, since=since_7d),
         "last_30d": _aggregate_stats(rows, since=since_30d),
+        "all_time": _aggregate_stats(rows, since=None),
         "equity_curve": _equity_curve(rows),
         "recent_losses": recent_losses,
         "recent_scored": recent_scored,

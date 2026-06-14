@@ -37,6 +37,7 @@ function moveLabel(m) {
 }
 
 const WINDOWS = [
+  { key: 'stats_all', label: 'All time' },
   { key: 'stats_24h', label: '24h' },
   { key: 'stats_7d', label: '7d' },
   { key: 'stats_30d', label: '30d' },
@@ -163,7 +164,7 @@ export default function DetectedWinsPage() {
   const [marketing, setMarketing] = useState(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [windowKey, setWindowKey] = useState('stats_30d');
+  const [windowKey, setWindowKey] = useState('stats_all');
 
   useEffect(() => { document.title = 'Detected Wins — Hadaleum'; }, []);
 

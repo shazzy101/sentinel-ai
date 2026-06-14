@@ -2638,7 +2638,8 @@ async def trust_pulse_marketing(request: Request):
 async def trust_og_image(request: Request):
     """Shareable 1200×630 stats card (SVG) for /wins — win rate, net P&L, sample."""
     m = await get_marketing_snapshot()
-    d30 = m.get("stats_30d") or {}
+    # Full record, not a cherry-picked window — honest headline number.
+    d30 = m.get("stats_all") or m.get("stats_30d") or {}
     wr = d30.get("win_rate_pct")
     wins = d30.get("wins") or 0
     losses = d30.get("losses") or 0
@@ -2649,7 +2650,7 @@ async def trust_og_image(request: Request):
     big_tok = biggest.get("token_bought") or biggest.get("token_sold") or ""
 
     wr_str = f"{wr:.0f}%" if (wr is not None and decisive >= 1) else "—"
-    sample = f"{wins} of {decisive} scored moves · 30d" if decisive else "ledger building"
+    sample = f"{wins} of {decisive} scored moves · all-time" if decisive else "ledger building"
     net_str = f"{'+' if net >= 0 else '−'}${abs(net):,.0f}"
     big_str = f"+{float(big_pct):.1f}% on {big_tok}" if big_pct else "—"
 
