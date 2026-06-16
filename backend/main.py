@@ -2231,17 +2231,54 @@ def _ai_copy_score(move: dict, market: str) -> tuple[int, list[str]]:
     if copy_score >= 85:
         reasons.append("top-ranked trader")
 
-    # Move-type edge from the RESOLVED win-ledger (n=246 decisive outcomes):
-    # exits/take-profit resolved ~67%, rotations ~49%, late buys only ~38%
-    # (copying an entry 24h late means buying after the move). Weight toward the
-    # move types that have actually worked. Evidence-based, NOT tuned to a target.
-    if action == "take_profit":
-        score += 12
-        reasons.append("exit signal — historically the highest hit-rate move type")
-    elif action == "rotate":
-        score += 4
-    else:  # buy — late-copying an entry has underperformed
-        score -= 6
+    # ── Evidence-based edges from the RESOLVED win-ledger (n=548 decisive
+    #    outcomes, each scored a win/loss 24h after detection). We weight by NET
+    #    P&L EXPECTANCY, not raw hit-rate — they diverge sharply and hit-rate is
+    #    the misleading one. NOT tuned to a target.
+
+    # Move type. take_profit has the HIGHEST hit-rate (58.6%) but the WORST
+    # expectancy (−$34.9 per copied move — it wins small and loses big). rotate
+    # (+$22.4/move) and buy (+$19.6/move) win less often but are the only
+    # net-positive move types, so they carry the real edge.
+    if action == "rotate":
+        score += 8
+        reasons.append("rotation — net-positive move type in the ledger")
+    elif action == "buy":
+        score += 6
+    else:  # take_profit — high hit-rate, negative expectancy. De-risk weight.
+        score -= 10
+
+    # Trader rank band. The 26-50 band is the profit sweet spot (61% win,
+    # +$72.5/move); rank 100+ is a net loser (−$19.3/move) despite a 53.5%
+    # hit-rate. Top-10 is solid but not the peak.
+    rank = move.get("rank") if move.get("rank") is not None else move.get("trader_rank")
+    if rank is not None:
+        try:
+            rank = int(rank)
+            if 26 <= rank <= 50:
+                score += 10
+                reasons.append("ranked in the highest-expectancy 26-50 band")
+            elif rank <= 25:
+                score += 4
+            elif rank > 100:
+                score -= 8
+        except (TypeError, ValueError):
+            pass
+
+    # Profit-factor shape — used internally for ranking, NEVER surfaced as a
+    # claim (per trust rule above). PF 2-5 traders are the durable earners
+    # (+$3-4K net per band); PF >5 is the overfit / illiquid tail and a net
+    # loser (−$4.4K), so we down-weight it rather than reward the big number.
+    pf = move.get("profit_factor")
+    if pf is not None:
+        try:
+            pf = float(pf)
+            if 2.0 <= pf <= 5.0:
+                score += 6
+            elif pf > 5.0:
+                score -= 6
+        except (TypeError, ValueError):
+            pass
 
     # Market alignment: buying into strength / taking profit into weakness.
     bull = market in ("BULLISH", "ACCUMULATION")
@@ -2254,6 +2291,17 @@ def _ai_copy_score(move: dict, market: str) -> tuple[int, list[str]]:
         reasons.append("de-risking into bearish flow")
     else:
         score += 8
+
+    # Trade size. The $100-250 on-chain band is the single most profitable bucket
+    # in the ledger (+$32.6/move, 58% win); the $500-1K and $1K+ bands flatten or
+    # bleed. Concentrate the nudge on the band that has actually paid.
+    amt = float(move.get("amount_usd") or 0)
+    if 100 <= amt < 250:
+        score += 6
+    elif 500 <= amt < 2000:
+        score -= 4
+    elif amt >= 10000:
+        score -= 2
 
     # Recency — fresher moves are more copyable.
     age_d = _last_active_days({"on_chain_data": {"last_trade": move.get("time")}})
@@ -2290,10 +2338,16 @@ async def invest_ai_picks(request: Request, limit: int = 6):
         moves = []
 
     market = _market_signal()
-    # Liquidity gate: drop sub-size moves. The big swings in the win-ledger
-    # (±190%) came from thin microcap tokens — that's gambling, not edge. A real
-    # whale-size swap is a stronger, less-manipulable signal.
-    MIN_PICK_USD = 1000.0
+    # Liquidity gate: drop dust only. The n=548 ledger is unambiguous about where
+    # the edge lives by on-chain trade size:
+    #   <$100   −$9.3/move   (dust — net loser, this is what we gate out)
+    #   $100-250 +$32.6/move (THE profit engine — 58% win, n=175)
+    #   $250-1K  ~flat→−$28/move
+    #   >$1K     ~−$3/move
+    # The old $1K floor cut out the entire profitable band and kept the flat/
+    # losing tail. Best cumulative floor by net P&L is ≥$100 (+$9.4/move), so we
+    # gate there and let the size nudge in _ai_copy_score concentrate on $100-250.
+    MIN_PICK_USD = 100.0
     moves = [m for m in moves if float(m.get("amount_usd") or 0) >= MIN_PICK_USD]
     picks = []
     for m in moves:
