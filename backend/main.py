@@ -303,6 +303,30 @@ async def _cron_live_metrics():
         await asyncio.sleep(30 * 60)
 
 
+async def _cron_signal_poll():
+    """Every 5 minutes: pull large whale transactions, detect patterns, insert signals."""
+    await asyncio.sleep(3 * 60)  # 3 min startup grace, let DB settle first
+    while True:
+        try:
+            from signals.poller import run_signal_poll
+            run_signal_poll()
+        except Exception:
+            pass
+        await asyncio.sleep(5 * 60)
+
+
+async def _cron_signal_outcomes():
+    """Every 60 minutes: resolve win/loss outcomes for active signals."""
+    await asyncio.sleep(10 * 60)  # 10 min startup grace
+    while True:
+        try:
+            from signals.outcomes import resolve_outcomes
+            await resolve_outcomes()
+        except Exception:
+            pass
+        await asyncio.sleep(60 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
@@ -323,6 +347,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_news())
     asyncio.create_task(_cron_trust_pipeline())
     asyncio.create_task(_cron_live_metrics())
+    asyncio.create_task(_cron_signal_poll())
+    asyncio.create_task(_cron_signal_outcomes())
     yield
 
 
