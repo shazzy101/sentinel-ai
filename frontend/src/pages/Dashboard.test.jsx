@@ -27,6 +27,18 @@ vi.mock('motion/react', async (importOriginal) => {
 // Mock useSignals to control feed rendering
 vi.mock('@/hooks/useSignals', () => ({
   useSignals: vi.fn(),
+}))
+
+// Mock useLearnProgress — return whale_heatmap as unlocked so Dashboard renders normally
+vi.mock('@/hooks/useLearnProgress', () => ({
+  useLearnProgress: vi.fn(() => ({
+    completed: [1],
+    unlocked: ['whale_heatmap'],
+    complete: vi.fn(),
+    isCompleted: (id) => id === 1,
+    isUnlocked: (key) => key === 'whale_heatmap',
+    loading: false,
+  })),
 }));
 
 // Mock apiFetch (used by useTrackRecord inside Dashboard)

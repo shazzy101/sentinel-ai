@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AnimatedCounter from '@/components/primitives/AnimatedCounter';
 import { CardSkeleton, ErrorState, EmptyState } from '@/components/primitives/DataState';
@@ -6,6 +7,7 @@ import SignalCard from '@/components/signals/SignalCard';
 import SignalHistoryTable from '@/components/signals/SignalHistoryTable';
 import WhaleHeatmap from '@/components/signals/WhaleHeatmap';
 import { useSignals } from '@/hooks/useSignals';
+import { useLearnProgress } from '@/hooks/useLearnProgress';
 import { apiFetch } from '@/lib/apiClient';
 
 /* ─── DashboardTopBar ────────────────────────────────────── */
@@ -145,6 +147,8 @@ function useTrackRecord() {
 export default function Dashboard() {
   const { signals, loading: signalsLoading, error: signalsError } = useSignals();
   const trackRecord = useTrackRecord();
+  const { isUnlocked } = useLearnProgress();
+  const whaleHeatmapUnlocked = isUnlocked('whale_heatmap');
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -186,12 +190,34 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* Whale activity heatmap */}
+        {/* Whale activity heatmap — gated behind Module 1 completion */}
         <section aria-label="Whale activity heatmap">
           <h2 className="text-[11px] uppercase tracking-widest text-text-muted mb-3">
             Whale activity
           </h2>
-          <WhaleHeatmap />
+          {whaleHeatmapUnlocked ? (
+            <WhaleHeatmap />
+          ) : (
+            <div
+              className="rounded-2xl border border-white/[0.08] bg-bg-card p-8 flex flex-col items-center gap-3 text-center"
+              data-testid="whale-heatmap-locked"
+            >
+              <span className="text-2xl font-mono text-text-muted">🔒</span>
+              <p className="text-text-secondary text-sm max-w-xs leading-relaxed">
+                Complete{' '}
+                <span className="text-signal font-medium">
+                  &apos;What are crypto whales?&apos;
+                </span>{' '}
+                in Learn to unlock the whale heatmap.
+              </p>
+              <Link
+                to="/learn"
+                className="mt-1 rounded-xl border border-signal/30 px-4 py-2 text-sm font-medium text-signal transition-all duration-200 hover:bg-signal/10"
+              >
+                Go to Learn
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* Signal history table */}

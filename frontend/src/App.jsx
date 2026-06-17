@@ -28,7 +28,8 @@ const InstitutionalPage = lazy(() => import('./pages/Institutional'));
 const SignalPerformancePage = lazy(() => import('./pages/SignalPerformance'));
 const SignalDetailPage = lazy(() => import('./pages/SignalDetail'));
 const DetectedWinsPage = lazy(() => import('./pages/DetectedWins'));
-const TrackRecordPage = lazy(() => import('./pages/TrackRecord'));
+const TrackRecordPage = lazy(() => import('./pages/TrackRecord'))
+const LearnPage = lazy(() => import('./pages/Learn'));
 const WatchlistPage = lazy(() => import('./pages/Watchlist'));
 const IntelligencePage = lazy(() => import('./pages/Intelligence'));
 const AlertsPage = lazy(() => import('./pages/Alerts'));
@@ -152,6 +153,7 @@ function AnimatedRoutes() {
         <Route path="/wins" element={<MotionPage><Suspense fallback={<PageLoader />}><DetectedWinsPage /></Suspense></MotionPage>} />
         <Route path="/track-record" element={<MotionPage><Suspense fallback={<PageLoader />}><TrackRecordPage /></Suspense></MotionPage>} />
         <Route path="/institutional" element={<MotionPage><Suspense fallback={<PageLoader />}><InstitutionalPage /></Suspense></MotionPage>} />
+        <Route path="/learn" element={<MotionPage><Suspense fallback={<PageLoader />}><LearnPage /></Suspense></MotionPage>} />
 
         {/* Protected app routes */}
         <Route path="/watchlist" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><WatchlistRoute /></Suspense></AuthGuard></MotionPage>} />
