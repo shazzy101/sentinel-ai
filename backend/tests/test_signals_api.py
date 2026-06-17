@@ -49,6 +49,20 @@ _mock_result.data = []
 _mock_supa.execute.return_value = _mock_result
 _supa_mod.supabase_client = _mock_supa
 
+# Remember whether ai.analyst was already imported for real, so we can restore
+# it after the app is built (see below). main.py binds the names it needs from
+# ai.analyst at import time, but signals/engine.py imports ai.analyst.get_client
+# lazily per-call — leaving the bare-MagicMock stub in sys.modules globally would
+# make that lazy import return a mock instead of raising/falling back, leaking
+# into other test modules (e.g. test_signal_engine) during collection.
+_real_ai_analyst = sys.modules.get("ai.analyst")
+
+# Same leak risk for copy_trader_moves: main.py binds fetch_recent_copy_moves at
+# import time, but test_copy_trader_moves does a bare `import copy_trader_moves`
+# and would otherwise pick up the leftover MagicMock stub. Remember the real
+# module (or its absence) so we can restore/drop the stub after the app is built.
+_real_copy_trader_moves = sys.modules.get("copy_trader_moves")
+
 # Stub other heavy backend modules that main.py imports.
 for _mod in (
     "sentry_sdk",
@@ -156,7 +170,12 @@ sys.modules["copy_traders_store"].is_exchange_trader = MagicMock(return_value=Fa
 sys.modules["copy_traders_store"].load_copy_traders = MagicMock()
 sys.modules["copy_traders_store"].sync_copy_traders_to_db = MagicMock(return_value={"synced": 0, "total": 0})
 
-# copy_trader_moves
+# copy_trader_moves — force a fresh stub for the import window. If a test module
+# collected earlier already imported the real module, the conditional stub loop
+# above leaves it in place; mutating its attribute here would corrupt the real
+# module for everyone (the leak that broke test_copy_trader_moves). Replace it
+# outright instead, then restore the original below after the app is built.
+sys.modules["copy_trader_moves"] = MagicMock()
 sys.modules["copy_trader_moves"].fetch_recent_copy_moves = MagicMock()
 
 # detected_moves
@@ -190,6 +209,22 @@ os.environ.setdefault("SUPABASE_KEY", "fake-key")
 from fastapi.testclient import TestClient  # noqa: E402
 import main  # noqa: E402  — triggers app + router registration
 import signals_api  # noqa: E402
+
+# main has now bound the ai.analyst names it needs (analyze_wallet, etc.) at
+# import time, so the global stub is no longer required. Restore the real module
+# (or drop the stub so a later import gets the real one) to avoid leaking a bare
+# MagicMock into sys.modules for the rest of the test session.
+if _real_ai_analyst is not None:
+    sys.modules["ai.analyst"] = _real_ai_analyst
+else:
+    sys.modules.pop("ai.analyst", None)
+
+# Drop/restore the copy_trader_moves stub so test_copy_trader_moves imports the
+# real module instead of the bare MagicMock left here during collection.
+if _real_copy_trader_moves is not None:
+    sys.modules["copy_trader_moves"] = _real_copy_trader_moves
+else:
+    sys.modules.pop("copy_trader_moves", None)
 
 client = TestClient(main.app, raise_server_exceptions=False)
 
