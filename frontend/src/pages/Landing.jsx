@@ -422,7 +422,7 @@ function Navbar() {
       >
         <SentinelLogo size={24} showWordmark />
         <div className="hidden md:flex items-center gap-8 mx-auto">
-          {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
+          {[['Track Record', '/track-record'], ['Learn', '/learn'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
             <Link key={label} to={to} className="text-sm text-text-muted hover:text-text-primary transition-colors duration-200">
               {label}
             </Link>

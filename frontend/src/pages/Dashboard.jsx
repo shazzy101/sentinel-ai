@@ -225,7 +225,7 @@ export default function Dashboard() {
           <h2 className="text-[11px] uppercase tracking-widest text-text-muted mb-3">
             Signal history
           </h2>
-          <div className="rounded-2xl bg-bg-card border border-border-subtle overflow-hidden">
+          <div className="rounded-2xl bg-bg-card border border-border-subtle overflow-x-auto">
             <SignalHistoryTable signals={signals} loading={signalsLoading} />
           </div>
         </section>

@@ -334,7 +334,7 @@ export default function TrackRecordPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-2xl border border-border-default bg-bg-surface overflow-hidden mb-12">
+        <div className="rounded-2xl border border-border-default bg-bg-surface overflow-x-auto mb-12">
           <SignalHistoryTable signals={filteredSignals} loading={loading} />
         </div>
 
