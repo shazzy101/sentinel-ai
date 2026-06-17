@@ -34,7 +34,7 @@ export function useSignal(id) {
     apiFetch(`/api/signals/${id}`, { timeoutMs: 10000 })
       .then((body) => {
         if (cancelled) return;
-        const raw = body.data ?? body;
+        const raw = body.data?.signal ?? body.signal ?? body.data ?? body;
         // Normalise: augment with on-chain fields that normaliseSignal may not carry
         const base = normaliseSignal(raw);
         setSignal({

@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ─── Mock apiFetch (used for public /api/signals fetch) ──────────────────────
 
 vi.mock('@/lib/apiClient', () => ({
-  apiFetch: vi.fn().mockResolvedValue({ data: [] }),
+  apiFetch: vi.fn().mockResolvedValue({ signals: [], count: 0 }),
   getApiBase: vi.fn(() => ''),
   apiUrl: vi.fn((p) => p),
 }));
@@ -79,9 +79,9 @@ describe('Admin page — unlock flow', () => {
     // Mock global.fetch for admin API calls
     const fetchMock = vi.fn((url) => {
       if (url.includes('/api/admin/signals/pending')) {
-        return mockResponse({ data: [] });
+        return mockResponse({ signals: [], count: 0 });
       }
-      return mockResponse({ data: [] });
+      return mockResponse({ signals: [], count: 0 });
     });
     global.fetch = fetchMock;
 
@@ -101,7 +101,7 @@ describe('Admin page — unlock flow', () => {
   });
 
   it('stores the key in sessionStorage after unlock', async () => {
-    const fetchMock = vi.fn(() => mockResponse({ data: [] }));
+    const fetchMock = vi.fn(() => mockResponse({ signals: [], count: 0 }));
     global.fetch = fetchMock;
 
     renderAdmin();
@@ -120,7 +120,7 @@ describe('Admin page — unlock flow', () => {
   it('skips the gate if a key is already in sessionStorage', async () => {
     sessionStorage.setItem(ADMIN_KEY_SESSION, 'pre-stored-key');
 
-    const fetchMock = vi.fn(() => mockResponse({ data: [] }));
+    const fetchMock = vi.fn(() => mockResponse({ signals: [], count: 0 }));
     global.fetch = fetchMock;
 
     await act(async () => {
@@ -166,12 +166,13 @@ describe('Admin page — approve', () => {
       calls.push({ url, opts });
       if (url.includes('/api/admin/signals/pending')) {
         // First call returns one signal; subsequent calls return empty
-        return mockResponse({ data: calls.filter((c) => c.url.includes('/pending')).length === 1 ? [PENDING_SIGNAL] : [] });
+        const isPendingFirst = calls.filter((c) => c.url.includes('/pending')).length === 1;
+        return mockResponse({ signals: isPendingFirst ? [PENDING_SIGNAL] : [], count: isPendingFirst ? 1 : 0 });
       }
       if (url.includes('/approve')) {
         return mockResponse({ success: true });
       }
-      return mockResponse({ data: [] });
+      return mockResponse({ signals: [], count: 0 });
     });
     global.fetch = fetchMock;
 
@@ -213,7 +214,7 @@ describe('Admin page — 401 re-gates', () => {
       if (url.includes('/api/admin/signals/pending')) {
         return mockResponse({ detail: 'Unauthorized' }, 401);
       }
-      return mockResponse({ data: [] });
+      return mockResponse({ signals: [], count: 0 });
     });
     global.fetch = fetchMock;
 
@@ -241,7 +242,7 @@ describe('Admin page — lock button', () => {
   });
 
   it('clicking Lock returns to the gate and clears sessionStorage', async () => {
-    const fetchMock = vi.fn(() => mockResponse({ data: [] }));
+    const fetchMock = vi.fn(() => mockResponse({ signals: [], count: 0 }));
     global.fetch = fetchMock;
 
     await act(async () => {

@@ -585,3 +585,65 @@ class TestRunSignalPollMultiWallet:
             )
 
         assert len(result) == 2, "One signal per distinct wallet"
+
+
+# ─────────────────────────────────────────
+# run_signal_poll — within-run dedupe
+# ─────────────────────────────────────────
+
+class TestRunSignalPollWithinRunDedupe:
+    """Two candidates with the same wallet+asset+pattern_type in a single poll
+    run must result in only ONE insert, even though recent_signals is fetched
+    once at the start and not refreshed mid-run."""
+
+    def test_same_identity_in_one_run_inserts_only_once(self):
+        """
+        Two detectors that both fire the exact same wallet/asset/pattern_type
+        within a single run_signal_poll call should produce exactly one insert.
+        """
+        # One wallet, two detectors that both fire the same identity.
+        txs = [_make_tx(wallet="0xWHALE", asset="ETH", usd_value=1_500_000.0)]
+        inserted = []
+
+        def detector_a(inp):
+            return PatternHit(
+                pattern_type="stablecoin_staging",
+                asset="ETH",
+                wallets=["0xWHALE"],
+                tx_hashes=["0xTX_001"],
+                strength=0.8,
+            )
+        detector_a.__name__ = "detector_a"
+
+        def detector_b(inp):
+            # Same identity as detector_a — should be deduped within the run
+            return PatternHit(
+                pattern_type="stablecoin_staging",
+                asset="ETH",
+                wallets=["0xWHALE"],
+                tx_hashes=["0xTX_001"],
+                strength=0.7,
+            )
+        detector_b.__name__ = "detector_b"
+
+        def fake_insert(signal_data):
+            result = {**signal_data, "id": f"sig-{len(inserted)}"}
+            inserted.append(result)
+            return result
+
+        with patch("data.wallets.SMART_MONEY_WALLETS", [{"address": "0xWHALE"}]):
+            result = run_signal_poll(
+                fetch_large_txs=lambda wallets: txs,
+                # Three detectors: A fires, B fires same identity, C is silent
+                detectors=[detector_a, detector_b, _fake_detector_silent()],
+                insert_fn=fake_insert,
+                list_signals_fn=lambda status=None, limit=200: [],  # no prior signals
+            )
+
+        assert len(result) == 1, (
+            "Same wallet+asset+pattern_type from two detectors in one run must "
+            f"insert only once, got {len(result)}"
+        )
+        assert len(inserted) == 1, (
+            f"insert_fn must be called exactly once, was called {len(inserted)} times"
+        )

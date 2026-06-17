@@ -287,6 +287,7 @@ def detect_coordinated_accumulation(wallets_activity: list[dict]) -> Optional[Pa
         asset_records[asset].append(record)
 
     best_hit: Optional[PatternHit] = None
+    best_hit_wallet_count: int = 0
     best_wallet_count = 0
 
     for asset, records in asset_records.items():
@@ -346,7 +347,8 @@ def detect_coordinated_accumulation(wallets_activity: list[dict]) -> Optional[Pa
         wallets = [r.get("wallet", "") for r in best_window_records if r.get("wallet")]
         tx_hashes = [r.get("tx_hash", "") for r in best_window_records if r.get("tx_hash")]
 
-        if best_wallet_count > (best_hit.strength if best_hit else -1):
+        if best_wallet_count > best_hit_wallet_count:
+            best_hit_wallet_count = best_wallet_count
             best_hit = PatternHit(
                 pattern_type="coordinated_accumulation",
                 asset=asset,

@@ -271,7 +271,7 @@ async def resolve_outcomes(
         )
 
     # 3. Recompute and persist track record summary (always, even if nothing resolved)
-    if stats["resolved"] > 0 or True:  # run every time so track record stays fresh
+    if True:  # run every time so track record stays fresh
         try:
             from db.supabase import list_signals as _ls
             all_resolved = _ls(status=None, limit=1000)

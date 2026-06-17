@@ -164,7 +164,7 @@ export default function AdminPage() {
         return;
       }
       const body = await res.json();
-      setPending(body.data ?? body ?? []);
+      setPending(body.data?.signals ?? body.signals ?? (Array.isArray(body) ? body : []));
     } catch {
       setPendingError('Network error loading pending signals.');
     } finally {
@@ -179,7 +179,7 @@ export default function AdminPage() {
     setPostedLoading(true);
     try {
       const body = await apiFetch('/api/signals');
-      const all = body.data ?? body ?? [];
+      const all = body.data?.signals ?? body.signals ?? (Array.isArray(body) ? body : []);
       setPostedSignals(all.filter((s) => s.tweet_id));
     } catch {
       // Non-fatal; just show empty

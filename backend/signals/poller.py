@@ -233,6 +233,11 @@ def run_signal_poll(
         _log.warning("poller: list_signals failed (dedupe disabled): %s", exc)
         recent_signals = []
 
+    # Within-run seen set: keyed by (wallet_lower, asset_upper, pattern_type)
+    # so two detectors/wallets producing the same identity in one run don't
+    # both insert (recent_signals is fetched once and never refreshed).
+    _seen_this_run: set[tuple[str, str, str]] = set()
+
     # 3. Group by wallet for per-wallet detectors (A, B, D)
     wallet_txs: dict[str, list[dict]] = {}
     for tx in raw_txs:
@@ -295,9 +300,10 @@ def run_signal_poll(
             if hit is None:
                 continue
 
-            # Dedupe
+            # Dedupe — check both DB-loaded recent signals and within-run inserts
             primary_wallet = hit.wallets[0] if hit.wallets else wallet_addr
-            if _is_duplicate(primary_wallet, hit.asset, hit.pattern_type, recent_signals):
+            run_key = (primary_wallet.lower(), (hit.asset or "").upper(), hit.pattern_type)
+            if run_key in _seen_this_run or _is_duplicate(primary_wallet, hit.asset, hit.pattern_type, recent_signals):
                 _log.info(
                     "poller: deduped %s/%s/%s",
                     primary_wallet,
@@ -318,6 +324,14 @@ def run_signal_poll(
                 )
                 created = _insert(signal_data)
                 inserted.append(created)
+                _seen_this_run.add(run_key)
+                # Also append to recent_signals so _is_duplicate sees it for later candidates
+                recent_signals.append({
+                    "pattern_type": hit.pattern_type,
+                    "asset": hit.asset,
+                    "whale_wallets": list(hit.wallets),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
                 _log.info(
                     "poller: inserted signal id=%s pattern=%s asset=%s",
                     created.get("id"),
@@ -348,7 +362,8 @@ def run_signal_poll(
 
         if coord_hit is not None:
             primary_wallet = coord_hit.wallets[0] if coord_hit.wallets else ""
-            if not _is_duplicate(primary_wallet, coord_hit.asset, coord_hit.pattern_type, recent_signals):
+            coord_run_key = (primary_wallet.lower(), (coord_hit.asset or "").upper(), coord_hit.pattern_type)
+            if coord_run_key not in _seen_this_run and not _is_duplicate(primary_wallet, coord_hit.asset, coord_hit.pattern_type, recent_signals):
                 entry = raw_txs[0].get("usd_value", _FALLBACK_ENTRY_PRICE) if raw_txs else _FALLBACK_ENTRY_PRICE
                 entry = max(entry, _FALLBACK_ENTRY_PRICE)
                 try:
@@ -360,6 +375,13 @@ def run_signal_poll(
                     )
                     created = _insert(signal_data)
                     inserted.append(created)
+                    _seen_this_run.add(coord_run_key)
+                    recent_signals.append({
+                        "pattern_type": coord_hit.pattern_type,
+                        "asset": coord_hit.asset,
+                        "whale_wallets": list(coord_hit.wallets),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
                     _log.info(
                         "poller: inserted coordinated signal id=%s asset=%s",
                         created.get("id"),
