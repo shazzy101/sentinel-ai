@@ -69,6 +69,7 @@ from ai.analyst import analyze_wallet, calls_remaining, get_market_summary, init
 from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transactions, get_eth_transactions_since, get_eth_token_transfers, discover_whale_addresses
 from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
 from integrations import dune
+from signals_api import router as signals_router
 
 _SENTRY_DSN = os.getenv("SENTRY_DSN")
 if _SENTRY_DSN and sentry_sdk is not None:
@@ -480,6 +481,15 @@ async def value_error_handler(_request: Request, exc: ValueError):
 @app.exception_handler(RuntimeError)
 async def runtime_error_handler(_request: Request, exc: RuntimeError):
     return error("SERVICE_UNAVAILABLE", str(exc), status_code=503)
+
+
+# ─────────────────────────────────────────
+# SIGNALS ROUTER (Task 13)
+# ─────────────────────────────────────────
+# Mounts public /api/signals + /api/track-record routes and admin
+# /api/admin/signals/* routes. Must be included AFTER require_admin
+# is defined above so the lazy import in signals_api.py can resolve it.
+app.include_router(signals_router)
 
 
 # ─────────────────────────────────────────

@@ -17,7 +17,7 @@ create table if not exists signals (
   whale_wallets    text[],
   tx_hashes        text[],
   status           text not null default 'pending_review'
-                     check (status in ('pending_review', 'active', 'win', 'loss')),
+                     check (status in ('pending_review', 'active', 'win', 'loss', 'rejected')),
   outcome_return   numeric,
   tweet_id         text,
   approved_at      timestamptz,
@@ -83,3 +83,20 @@ create policy "Service role full access track record"
   to service_role
   using (true)
   with check (true);
+
+-- ─────────────────────────────────────────
+-- Add 'rejected' to status check constraint (Task 13 — signals REST API)
+-- If the table already exists and the old constraint is in place, run this:
+-- ─────────────────────────────────────────
+alter table signals
+  drop constraint if exists signals_status_check;
+
+alter table signals
+  add constraint signals_status_check
+    check (status in ('pending_review', 'active', 'win', 'loss', 'rejected'));
+
+-- NOTE: This migration must be re-run (or the ALTER TABLE block above must be
+-- run standalone) on any existing Supabase project that already has the signals
+-- table, because the CREATE TABLE … CHECK uses IF NOT EXISTS and won't update
+-- an existing constraint. The ALTER TABLE block is idempotent (DROP IF EXISTS
+-- + ADD) and safe to re-run.
