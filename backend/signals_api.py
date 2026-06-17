@@ -218,11 +218,8 @@ async def list_pending(request: Request):
 async def approve_signal(signal_id: str, request: Request):
     """
     Admin — approve a pending signal.
-    Sets status='active' and approved_at=now().
-
-    TODO(twitter): After status is set active, call the Twitter/X posting
-    integration here to tweet the signal. This hook is intentionally left
-    empty — wiring the tweet call is a LATER task. Preserve this comment.
+    Sets status='active' and approved_at=now(), then tweets the signal.
+    Tweet failure never blocks approval — the signal is always returned.
     """
     require_admin = _get_require_admin()
     await require_admin(request)
@@ -236,8 +233,18 @@ async def approve_signal(signal_id: str, request: Request):
         "approved_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    # TODO(twitter): tweet the signal here once the Twitter integration is ready.
-    # Example: await post_signal_tweet(updated)
+    # Tweet the signal (fire-and-forget; never raises into approval).
+    try:
+        from integrations.twitter import post_signal as _post_signal
+        tweet_id = _post_signal(updated or existing)
+        if tweet_id:
+            updated = update_signal(signal_id, {"tweet_id": tweet_id})
+    except Exception:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "signals_api: twitter post_signal failed for id=%s (approval still succeeds)",
+            signal_id,
+        )
 
     return {"signal": updated}
 

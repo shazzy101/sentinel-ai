@@ -255,9 +255,13 @@ async def resolve_outcomes(
         else:
             stats["losses"] += 1
 
-        # TODO: Outcome tweet reply hook — wire up when Twitter reply function exists.
-        # if sig.get("tweet_id"):
-        #     await reply_to_tweet(sig["tweet_id"], outcome["status"], outcome["outcome_return"])
+        # Tweet the outcome reply (fire-and-forget; never breaks resolution).
+        try:
+            from integrations.twitter import reply_outcome as _reply_outcome
+            resolved_sig = {**sig, **update_payload}
+            _reply_outcome(resolved_sig)
+        except Exception as _exc:
+            _log.warning("outcomes: twitter reply_outcome failed for id=%s: %s", sig_id, _exc)
 
         _log.info(
             "outcomes: resolved signal id=%s status=%s return=%.4f",
