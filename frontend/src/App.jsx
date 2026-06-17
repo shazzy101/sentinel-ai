@@ -26,6 +26,7 @@ const DisclaimerPage = lazy(() => import('./pages/Disclaimer'));
 const SignalsLeaderboardPage = lazy(() => import('./pages/SignalsLeaderboard'));
 const InstitutionalPage = lazy(() => import('./pages/Institutional'));
 const SignalPerformancePage = lazy(() => import('./pages/SignalPerformance'));
+const SignalDetailPage = lazy(() => import('./pages/SignalDetail'));
 const DetectedWinsPage = lazy(() => import('./pages/DetectedWins'));
 const WatchlistPage = lazy(() => import('./pages/Watchlist'));
 const IntelligencePage = lazy(() => import('./pages/Intelligence'));
@@ -146,6 +147,7 @@ function AnimatedRoutes() {
         <Route path="/disclaimer" element={<MotionPage><Suspense fallback={<PageLoader />}><DisclaimerPage /></Suspense></MotionPage>} />
         <Route path="/signals" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalsLeaderboardPage /></Suspense></MotionPage>} />
         <Route path="/signals/performance" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalPerformancePage /></Suspense></MotionPage>} />
+        <Route path="/signal/:id" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalDetailPage /></Suspense></MotionPage>} />
         <Route path="/wins" element={<MotionPage><Suspense fallback={<PageLoader />}><DetectedWinsPage /></Suspense></MotionPage>} />
         <Route path="/institutional" element={<MotionPage><Suspense fallback={<PageLoader />}><InstitutionalPage /></Suspense></MotionPage>} />
 
