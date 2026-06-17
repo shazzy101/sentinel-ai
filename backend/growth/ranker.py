@@ -69,4 +69,16 @@ def select_top(signals: list[Signal], n: int = 5, now: str | None = None) -> lis
         score, reasons = tweetability_score(s, now=now)
         ranked.append(RankedSignal(signal=s, tweetability=score, reasons=reasons))
     ranked.sort(key=lambda r: r.tweetability, reverse=True)
-    return ranked[:n]
+
+    # Dedupe by token (keep highest-scoring) so one token doesn't fill the brief.
+    # Win-ledger signals carry an empty token; never dedupe those against each other.
+    deduped: list[RankedSignal] = []
+    seen: set[str] = set()
+    for r in ranked:
+        tok = (r.signal.token or "").upper()
+        if tok and tok in seen:
+            continue
+        if tok:
+            seen.add(tok)
+        deduped.append(r)
+    return deduped[:n]

@@ -23,7 +23,9 @@ def make_content(rs: RankedSignal) -> ContentPiece:
                             cta=CTA, signal_token=s.token or "")
 
     tok = (s.token or "").upper()
-    size = f"${s.amount_usd:,.0f}" if s.amount_usd else "a position"
+    # Only surface a dollar figure when it's large enough to read as conviction.
+    # Tiny swaps ("$222") undercut the smart-money framing, so show them qualitatively.
+    size = f"${s.amount_usd:,.0f}" if (s.amount_usd and s.amount_usd >= 1000) else "a position"
     wr = f" ({s.unrealized_win_rate_pct:.0f}% win rate)" if s.unrealized_win_rate_pct else ""
     rank = f"#{s.rank} " if s.rank else ""
     verb = _verb(s.action)
