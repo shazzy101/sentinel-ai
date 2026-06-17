@@ -236,10 +236,7 @@ export default function TrackRecordPage() {
     <div className="min-h-screen bg-bg-base">
       {/* Minimal public nav */}
       <nav className="border-b border-border-subtle px-6 py-4 flex items-center justify-between max-w-5xl mx-auto">
-        <Link to="/" className="flex items-center gap-2 text-text-primary hover:opacity-80 transition-opacity">
-          <SentinelLogo size={22} />
-          <span className="font-display font-semibold text-[15px]">Hadaleum</span>
-        </Link>
+        <SentinelLogo size={22} showWordmark className="text-text-primary" />
         <MagneticButton
           type="button"
           onClick={() => { window.location.href = '/signup'; }}
