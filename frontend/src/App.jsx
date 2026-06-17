@@ -28,6 +28,7 @@ const InstitutionalPage = lazy(() => import('./pages/Institutional'));
 const SignalPerformancePage = lazy(() => import('./pages/SignalPerformance'));
 const SignalDetailPage = lazy(() => import('./pages/SignalDetail'));
 const DetectedWinsPage = lazy(() => import('./pages/DetectedWins'));
+const TrackRecordPage = lazy(() => import('./pages/TrackRecord'));
 const WatchlistPage = lazy(() => import('./pages/Watchlist'));
 const IntelligencePage = lazy(() => import('./pages/Intelligence'));
 const AlertsPage = lazy(() => import('./pages/Alerts'));
@@ -149,6 +150,7 @@ function AnimatedRoutes() {
         <Route path="/signals/performance" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalPerformancePage /></Suspense></MotionPage>} />
         <Route path="/signal/:id" element={<MotionPage><Suspense fallback={<PageLoader />}><SignalDetailPage /></Suspense></MotionPage>} />
         <Route path="/wins" element={<MotionPage><Suspense fallback={<PageLoader />}><DetectedWinsPage /></Suspense></MotionPage>} />
+        <Route path="/track-record" element={<MotionPage><Suspense fallback={<PageLoader />}><TrackRecordPage /></Suspense></MotionPage>} />
         <Route path="/institutional" element={<MotionPage><Suspense fallback={<PageLoader />}><InstitutionalPage /></Suspense></MotionPage>} />
 
         {/* Protected app routes */}
