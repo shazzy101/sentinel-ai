@@ -4,6 +4,7 @@ import AnimatedCounter from '@/components/primitives/AnimatedCounter';
 import { CardSkeleton, ErrorState, EmptyState } from '@/components/primitives/DataState';
 import SignalCard from '@/components/signals/SignalCard';
 import SignalHistoryTable from '@/components/signals/SignalHistoryTable';
+import WhaleHeatmap from '@/components/signals/WhaleHeatmap';
 import { useSignals } from '@/hooks/useSignals';
 import { apiFetch } from '@/lib/apiClient';
 
@@ -183,6 +184,14 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Whale activity heatmap */}
+        <section aria-label="Whale activity heatmap">
+          <h2 className="text-[11px] uppercase tracking-widest text-text-muted mb-3">
+            Whale activity
+          </h2>
+          <WhaleHeatmap />
         </section>
 
         {/* Signal history table */}
