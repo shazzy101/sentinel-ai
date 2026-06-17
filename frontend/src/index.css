@@ -140,6 +140,14 @@
     --glass-inset: rgba(130, 130, 200, 0.04);
     --surface-hover: rgba(130, 130, 200, 0.04);
     color-scheme: dark;
+
+    /* ── Hadaleum spec palette tokens ── */
+    /* Canonical spec values — additive, do not remove existing vars above */
+    --hd-bg: #0a0a0a;
+    --signal: #00ff88;
+    --loss: #ff4444;
+    --glow-signal: 0 0 24px rgba(0,255,136,.25);
+    --glow-loss: 0 0 24px rgba(255,68,68,.25);
   }
 
   /* ── Force-dark scope (marketing/landing keeps its dark design in any theme) ── */

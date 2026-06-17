@@ -42,6 +42,9 @@ export default {
         card: '0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.24), 0 0 0 1px rgba(255,255,255,0.04)',
         'card-hover': '0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06)',
         elevated: '0 16px 48px rgba(0,0,0,0.48), 0 0 0 1px rgba(255,255,255,0.06)',
+        // Hadaleum spec glow tokens
+        'glow-signal': 'var(--glow-signal)',
+        'glow-loss': 'var(--glow-loss)',
       },
       backdropBlur: {
         xs: '4px',
@@ -136,6 +139,9 @@ export default {
           mid: '#F59E0B',
           low: '#EF4444',
         },
+        // Hadaleum spec aliases
+        signal: 'var(--signal)',
+        loss: 'var(--loss)',
       },
       keyframes: {
         'fade-up': {

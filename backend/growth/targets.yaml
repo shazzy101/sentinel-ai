@@ -1,0 +1,12 @@
+# Big crypto-X accounts to borrow audience from. Reply under their FRESH posts
+# (first 5-15 min) with matched alpha. Edit freely. 'beat' helps the planner
+# match a signal to the account. 'handle' is display-only (you watch manually).
+accounts:
+  - handle: "@AltcoinGordon"
+    beat: "altcoins"
+  - handle: "@CryptoKaleo"
+    beat: "majors"
+  - handle: "@inversebrah"
+    beat: "memecoins"
+  - handle: "@DegenSpartan"
+    beat: "defi"

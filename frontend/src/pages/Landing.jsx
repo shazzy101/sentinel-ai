@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { Radio, Bell, BarChart2 } from 'lucide-react';
 import ScrollWhalePaths from '../components/landing/ScrollWhalePaths';
 import InvestShowcase from '../components/landing/InvestShowcase';
+import SignalTicker from '../components/landing/SignalTicker';
+import TrackRecordStats from '../components/landing/TrackRecordStats';
 import AppBackground from '../components/primitives/AppBackground';
 import MagneticButton from '../components/primitives/MagneticButton';
 import AnimatedCounter from '../components/primitives/AnimatedCounter';
 import SentinelLogo from '../components/ui/SentinelLogo';
 import ProWaitlist from '../components/ui/ProWaitlist';
 import TrustPulse from '../components/trust/TrustPulse';
+import { apiFetch } from '../lib/apiClient';
 
 /* ─── Static mock data for the animated product preview ─── */
 const MOCK_ROWS = [
@@ -418,7 +422,7 @@ function Navbar() {
       >
         <SentinelLogo size={24} showWordmark />
         <div className="hidden md:flex items-center gap-8 mx-auto">
-          {[['Watchlist', '/watchlist'], ['Intelligence', '/intelligence'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
+          {[['Track Record', '/track-record'], ['Learn', '/learn'], ['Markets', '/markets'], ['Invest', '/invest']].map(([label, to]) => (
             <Link key={label} to={to} className="text-sm text-text-muted hover:text-text-primary transition-colors duration-200">
               {label}
             </Link>
@@ -516,14 +520,15 @@ function HeroSection({ walletCount }) {
 
           <h1
             className="font-display font-bold leading-[0.92] tracking-tight text-text-primary mb-8"
-            style={{ fontSize: 'clamp(54px, 8.5vw, 116px)' }}
+            style={{ fontSize: 'clamp(42px, 6.5vw, 88px)' }}
           >
-            Copy smart<br />
-            <span className="gradient-text-accent glow-text-accent">money.</span>
+            Erase the doubt.<br />
+            <span className="text-signal" style={{ textShadow: 'var(--glow-signal)' }}>Every call,</span><br />
+            proven on-chain.
           </h1>
 
           <p className="text-[17px] text-text-secondary leading-relaxed max-w-[480px] mb-2">
-            Hadaleum tracks <strong className="text-text-primary font-semibold">2,796 elite Ethereum wallets</strong> from the depths no one else reaches.
+            Hadaleum tracks <strong className="text-text-primary font-semibold">2,796 elite Ethereum wallets</strong>. Every signal logged, scored, and verifiable on-chain — no hiding losses.
           </p>
           <p className="text-[15px] text-text-muted max-w-[480px] mb-10">
             AI signals · Non-custodial copy trading · Your keys, always.
@@ -836,19 +841,22 @@ function SocialProofBar() {
 function HowItWorksSection() {
   const steps = [
     {
-      num: '01',
-      title: 'We monitor the depths',
-      desc: '2,796 elite ETH wallets tracked 24/7. Every transaction, every move. Scored 0–100 by our proprietary algorithm.',
+      id: 'detect',
+      Icon: Radio,
+      title: 'Detect',
+      desc: '2,796 elite ETH wallets tracked 24/7. Every transaction scored 0–100 the moment it hits the chain.',
     },
     {
-      num: '02',
-      title: 'Claude AI reads the signals',
-      desc: 'Every wallet analyzed by Claude. Get BULLISH / BEARISH / NEUTRAL with reasoning — updated every 6 hours automatically.',
+      id: 'alert',
+      Icon: Bell,
+      title: 'Alert',
+      desc: 'Claude AI reads the move and fires BULLISH / BEARISH / NEUTRAL with reasoning directly to you — no noise, just signal.',
     },
     {
-      num: '03',
-      title: 'You copy. You keep the keys.',
-      desc: 'One click executes the trade at your size via MetaMask. Best-rate DEX routing. You never give us custody.',
+      id: 'track',
+      Icon: BarChart2,
+      title: 'Track',
+      desc: 'Every call logged on-chain. Wins and losses scored 24h later against real DEX prices — verifiable, forever.',
     },
   ];
 
@@ -857,24 +865,129 @@ function HowItWorksSection() {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
           <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-3 font-mono">How It Works</div>
-          <h2 className="font-display text-[36px] md:text-[44px] font-bold text-text-primary leading-[1.05]">Three steps to copy<br className="hidden md:block" /> smart money.</h2>
+          <h2 className="font-display text-[36px] md:text-[44px] font-bold text-text-primary leading-[1.05]">
+            Three steps to copy<br className="hidden md:block" /> smart money.
+          </h2>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
-          {steps.map((s, index) => (
+          {steps.map(({ id, Icon, title, desc }, index) => (
             <motion.div
-              key={s.num}
+              key={id}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ delay: index * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="rounded-2xl border border-border-default bg-bg-surface p-8 flex flex-col gap-3 hover:border-border-strong transition-colors"
+              className="rounded-2xl border border-border-default bg-bg-surface p-8 flex flex-col gap-4 hover:border-green/30 transition-colors group"
             >
-              <div className="font-display text-[56px] font-bold text-green/[0.15] leading-none tabular-nums">{s.num}</div>
-              <h3 className="font-display text-[18px] font-bold text-text-primary">{s.title}</h3>
-              <p className="text-[14px] text-text-secondary leading-relaxed">{s.desc}</p>
+              <div className="w-10 h-10 rounded-xl bg-green/[0.08] border border-green/20 flex items-center justify-center group-hover:bg-green/[0.12] transition-colors">
+                <Icon className="w-5 h-5 text-green" strokeWidth={1.5} />
+              </div>
+              <h3 className="font-display text-[20px] font-bold text-text-primary">{title}</h3>
+              <p className="text-[14px] text-text-secondary leading-relaxed">{desc}</p>
             </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Track-record stats section (wraps the TrackRecordStats component) ─── */
+function TrackRecordSection() {
+  return (
+    <section className="py-16 px-6 md:px-10 border-y border-border-subtle bg-bg-base">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-3 font-mono">Track Record</div>
+          <h2 className="font-display text-[28px] md:text-[36px] font-bold text-text-primary leading-[1.1]">
+            Every signal, scored and verified on-chain.
+          </h2>
+          <p className="text-[14px] text-text-muted mt-3 max-w-md mx-auto">
+            All-time numbers pulled live from our public ledger. No cherry-picking — wins and losses counted equally.
+          </p>
+        </div>
+        <TrackRecordStats />
+        <p className="text-center text-[11px] text-text-muted mt-8">
+          <Link to="/wins" className="text-green/70 hover:text-green transition-colors">
+            View the full on-chain ledger →
+          </Link>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Inline waitlist CTA section ─────────────────────── */
+function WaitlistSection() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const value = email.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+      setStatus('error');
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      await apiFetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value, source: 'landing_inline' }),
+      });
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err.message || 'Something went wrong. Please try again.');
+    }
+  };
+
+  return (
+    <section className="py-20 px-6" id="waitlist">
+      <div className="max-w-xl mx-auto text-center">
+        <div className="text-[10px] uppercase tracking-[2.5px] text-green mb-4 font-mono">Early Access</div>
+        <h2 className="font-display text-[30px] md:text-[38px] font-bold text-text-primary leading-[1.1] mb-3">
+          Get notified when Pro opens.
+        </h2>
+        <p className="text-[14px] text-text-muted mb-8">
+          Join the waitlist and lock in launch pricing. No spam — one email when it&apos;s ready.
+        </p>
+
+        {status === 'success' ? (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <div className="w-12 h-12 rounded-full bg-green/15 border border-green/30 flex items-center justify-center">
+              <svg className="w-6 h-6 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-[15px] font-semibold text-text-primary">You&apos;re on the list.</p>
+            <p className="text-[13px] text-text-muted">We&apos;ll email you the moment Pro opens. Early members get launch pricing.</p>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle'); }}
+              placeholder="you@email.com"
+              className="flex-1 bg-bg-surface border border-border-default rounded-xl px-4 py-3 text-[14px] text-text-primary placeholder:text-text-muted outline-none focus:border-green/40 transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="sm:flex-shrink-0 bg-green text-text-inverse font-semibold text-[14px] px-6 py-3 rounded-xl shadow-glow hover:bg-green-bright transition-colors disabled:opacity-60"
+            >
+              {status === 'loading' ? 'Joining…' : 'Join waitlist →'}
+            </button>
+          </form>
+        )}
+        {status === 'error' && (
+          <p className="text-[12px] text-red mt-2 text-left">{errorMsg}</p>
+        )}
       </div>
     </section>
   );
@@ -1009,6 +1122,7 @@ function Footer() {
 export default function LandingPage() {
   // Hardcoded to full Dune dataset size — consistent with all other copy on the page
   const walletCount = 2796;
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = 'Hadaleum — Ethereum Whale Intelligence';
@@ -1018,8 +1132,10 @@ export default function LandingPage() {
     <div className="force-dark min-h-screen bg-bg-base text-text-primary relative">
       <AppBackground variant="landing" />
       <ScrollWhalePaths />
+      <SignalTicker />
       <Navbar />
       <HeroSection walletCount={walletCount} />
+      <TrackRecordSection />
       <WhaleTicker />
       <SocialProofBar />
       <TrustStrip />
@@ -1029,6 +1145,7 @@ export default function LandingPage() {
       <FeaturesSection />
       <ComparisonSection />
       <PricingSection />
+      <WaitlistSection />
       <TestimonialsSection />
 
       {/* Final CTA */}

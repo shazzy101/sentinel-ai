@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import {
   LayoutGrid, Sparkles, BarChart3,
   Bell, ExternalLink, Search, Zap, Newspaper, LogIn, LogOut, Star,
-  Settings as SettingsIcon, Moon, Sun,
+  Settings as SettingsIcon, Moon, Sun, LayoutDashboard, Trophy, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
@@ -17,12 +17,15 @@ import { useTheme } from '@/context/ThemeProvider';
 import { apiFetch } from '@/lib/apiClient';
 
 const NAV_ITEMS = [
-  { label: 'Copy', icon: BarChart3, path: '/markets' },
-  { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist' },
-  { label: 'Invest', icon: Zap, path: '/invest' },
-  { label: 'News Intelligence', icon: Newspaper, path: '/news' },
-  { label: 'AI Signals', icon: Sparkles, path: '/intelligence' },
-  { label: 'Alerts', icon: Bell, path: '/alerts' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', authRequired: true },
+  { label: 'Copy', icon: BarChart3, path: '/markets', authRequired: true },
+  { label: 'Watchlist', icon: LayoutGrid, path: '/watchlist', authRequired: true },
+  { label: 'Invest', icon: Zap, path: '/invest', authRequired: true },
+  { label: 'News Intelligence', icon: Newspaper, path: '/news', authRequired: true },
+  { label: 'AI Signals', icon: Sparkles, path: '/intelligence', authRequired: true },
+  { label: 'Alerts', icon: Bell, path: '/alerts', authRequired: true },
+  { label: 'Track Record', icon: Trophy, path: '/track-record', authRequired: false },
+  { label: 'Learn', icon: BookOpen, path: '/learn', authRequired: false },
 ];
 
 function useAlertBadge() {

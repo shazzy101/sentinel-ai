@@ -124,6 +124,80 @@ async def get_cached_analysis(wallet_address: str) -> dict:
         return None
 
 
+# ─────────────────────────────────────────
+# SIGNALS HELPERS
+# ─────────────────────────────────────────
+
+# Explicit column list — never SELECT *.
+_SIGNAL_COLS = (
+    "id, signal_number, created_at, asset, direction, confidence, "
+    "entry_low, entry_high, target, stop_loss, explanation, pattern_type, "
+    "whale_wallets, tx_hashes, status, outcome_return, tweet_id, "
+    "approved_at, resolved_at"
+)
+
+
+def insert_signal(data: dict) -> dict:
+    """Insert a new signal row and return the created record."""
+    result = (
+        supabase_client.table("trade_signals")
+        .insert(data)
+        .select(_SIGNAL_COLS)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        raise RuntimeError(f"[DB] insert_signal returned no data: {result}")
+    return rows[0]
+
+
+def list_signals(status: str | None = None, limit: int = 50) -> list[dict]:
+    """Return signals ordered newest-first. Optionally filter by status."""
+    query = (
+        supabase_client.table("trade_signals")
+        .select(_SIGNAL_COLS)
+        .order("created_at", desc=True)
+        .limit(limit)
+    )
+    if status is not None:
+        query = query.eq("status", status)
+    result = query.execute()
+    return result.data or []
+
+
+def get_signal(signal_id: str) -> dict | None:
+    """Fetch a single signal by id. Returns None if not found."""
+    result = (
+        supabase_client.table("trade_signals")
+        .select(_SIGNAL_COLS)
+        .eq("id", signal_id)
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+    return rows[0] if rows else None
+
+
+def update_signal(signal_id: str, data: dict) -> dict:
+    """Partial update a signal row. Returns the updated record."""
+    result = (
+        supabase_client.table("trade_signals")
+        .update(data)
+        .eq("id", signal_id)
+        .select(_SIGNAL_COLS)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        raise RuntimeError(f"[DB] update_signal returned no data for id={signal_id}")
+    return rows[0]
+
+
+def list_pending_signals() -> list[dict]:
+    """Convenience wrapper — returns all signals awaiting review."""
+    return list_signals(status="pending_review", limit=200)
+
+
 async def save_analysis_cache(wallet_address: str, analysis: dict) -> None:
     """Save analysis result to cache keyed by wallet_address."""
     try:
