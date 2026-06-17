@@ -14,6 +14,7 @@ import LoginPage from './pages/Login';
 import SignupPage from './pages/Signup';
 
 // Lazily loaded (code split per route)
+const DashboardPage = lazy(() => import('./pages/Dashboard'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallback'));
@@ -70,6 +71,14 @@ function IntelligenceRoute() {
       }
     >
       <IntelligencePage />
+    </Shell>
+  );
+}
+
+function DashboardRoute() {
+  return (
+    <Shell title="Dashboard">
+      <DashboardPage />
     </Shell>
   );
 }
@@ -142,6 +151,9 @@ function AnimatedRoutes() {
 
         {/* Protected app routes */}
         <Route path="/watchlist" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><WatchlistRoute /></Suspense></AuthGuard></MotionPage>} />
+        <Route path="/dashboard" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><DashboardRoute /></Suspense></AuthGuard></MotionPage>} />
+        {/* /intelligence kept alive — existing deep-links, nav items, and Sidebar refs still work.
+            Sidebar/nav can point to /dashboard going forward; both routes are valid. */}
         <Route path="/intelligence" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><IntelligenceRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/markets" element={<MotionPage><AuthGuard><MarketsRoute /></AuthGuard></MotionPage>} />
         <Route path="/copy" element={<Navigate to="/markets" replace />} />
