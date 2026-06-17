@@ -25,6 +25,15 @@ if "tweepy" not in sys.modules:
 
 import tweepy as _tweepy_mod  # noqa: E402 — after sys.modules stub
 
+# Another test module (test_signals_api) stubs the whole `integrations` package
+# as a bare MagicMock in sys.modules. That stub has no __path__, so importing the
+# real `integrations.twitter` here would fail with "'integrations' is not a
+# package". Drop any non-package stub so the real package loads for this test.
+for _name in ("integrations", "integrations.twitter"):
+    _stub = sys.modules.get(_name)
+    if _stub is not None and not hasattr(_stub, "__path__"):
+        del sys.modules[_name]
+
 from integrations.twitter import (  # noqa: E402
     _get_client,
     _render_stars,
