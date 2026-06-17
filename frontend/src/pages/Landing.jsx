@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import ScrollWhalePaths from '../components/landing/ScrollWhalePaths';
 import InvestShowcase from '../components/landing/InvestShowcase';
+import SignalTicker from '../components/landing/SignalTicker';
 import AppBackground from '../components/primitives/AppBackground';
 import MagneticButton from '../components/primitives/MagneticButton';
 import AnimatedCounter from '../components/primitives/AnimatedCounter';
@@ -516,14 +517,15 @@ function HeroSection({ walletCount }) {
 
           <h1
             className="font-display font-bold leading-[0.92] tracking-tight text-text-primary mb-8"
-            style={{ fontSize: 'clamp(54px, 8.5vw, 116px)' }}
+            style={{ fontSize: 'clamp(42px, 6.5vw, 88px)' }}
           >
-            Copy smart<br />
-            <span className="gradient-text-accent glow-text-accent">money.</span>
+            Erase the doubt.<br />
+            <span className="text-signal" style={{ textShadow: 'var(--glow-signal)' }}>Every call,</span><br />
+            proven on-chain.
           </h1>
 
           <p className="text-[17px] text-text-secondary leading-relaxed max-w-[480px] mb-2">
-            Hadaleum tracks <strong className="text-text-primary font-semibold">2,796 elite Ethereum wallets</strong> from the depths no one else reaches.
+            Hadaleum tracks <strong className="text-text-primary font-semibold">2,796 elite Ethereum wallets</strong>. Every signal logged, scored, and verifiable on-chain — no hiding losses.
           </p>
           <p className="text-[15px] text-text-muted max-w-[480px] mb-10">
             AI signals · Non-custodial copy trading · Your keys, always.
@@ -1018,6 +1020,7 @@ export default function LandingPage() {
     <div className="force-dark min-h-screen bg-bg-base text-text-primary relative">
       <AppBackground variant="landing" />
       <ScrollWhalePaths />
+      <SignalTicker />
       <Navbar />
       <HeroSection walletCount={walletCount} />
       <WhaleTicker />
