@@ -140,7 +140,7 @@ _SIGNAL_COLS = (
 def insert_signal(data: dict) -> dict:
     """Insert a new signal row and return the created record."""
     result = (
-        supabase_client.table("signals")
+        supabase_client.table("trade_signals")
         .insert(data)
         .select(_SIGNAL_COLS)
         .execute()
@@ -154,7 +154,7 @@ def insert_signal(data: dict) -> dict:
 def list_signals(status: str | None = None, limit: int = 50) -> list[dict]:
     """Return signals ordered newest-first. Optionally filter by status."""
     query = (
-        supabase_client.table("signals")
+        supabase_client.table("trade_signals")
         .select(_SIGNAL_COLS)
         .order("created_at", desc=True)
         .limit(limit)
@@ -168,7 +168,7 @@ def list_signals(status: str | None = None, limit: int = 50) -> list[dict]:
 def get_signal(signal_id: str) -> dict | None:
     """Fetch a single signal by id. Returns None if not found."""
     result = (
-        supabase_client.table("signals")
+        supabase_client.table("trade_signals")
         .select(_SIGNAL_COLS)
         .eq("id", signal_id)
         .limit(1)
@@ -181,7 +181,7 @@ def get_signal(signal_id: str) -> dict | None:
 def update_signal(signal_id: str, data: dict) -> dict:
     """Partial update a signal row. Returns the updated record."""
     result = (
-        supabase_client.table("signals")
+        supabase_client.table("trade_signals")
         .update(data)
         .eq("id", signal_id)
         .select(_SIGNAL_COLS)

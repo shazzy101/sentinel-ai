@@ -77,7 +77,7 @@ class TestInsertSignal:
         with patch.object(supa, "supabase_client", client):
             row = supa.insert_signal({"asset": "ETH", "direction": "long", "confidence": 4})
 
-        client.table.assert_called_once_with("signals")
+        client.table.assert_called_once_with("trade_signals")
         chain.insert.assert_called_once_with({"asset": "ETH", "direction": "long", "confidence": 4})
         chain.select.assert_called_once_with(supa._SIGNAL_COLS)
         assert row["asset"] == "ETH"
@@ -99,7 +99,7 @@ class TestListSignals:
         with patch.object(supa, "supabase_client", client):
             rows = supa.list_signals()
 
-        client.table.assert_called_once_with("signals")
+        client.table.assert_called_once_with("trade_signals")
         chain.select.assert_called_once_with(supa._SIGNAL_COLS)
         chain.order.assert_called_once_with("created_at", desc=True)
         chain.limit.assert_called_once_with(50)
@@ -129,7 +129,7 @@ class TestGetSignal:
         with patch.object(supa, "supabase_client", client):
             row = supa.get_signal("uuid-1")
 
-        client.table.assert_called_once_with("signals")
+        client.table.assert_called_once_with("trade_signals")
         chain.eq.assert_called_once_with("id", "uuid-1")
         chain.limit.assert_called_once_with(1)
         assert row["id"] == "uuid-1"
@@ -154,7 +154,7 @@ class TestUpdateSignal:
         with patch.object(supa, "supabase_client", client):
             row = supa.update_signal("uuid-1", {"status": "active"})
 
-        client.table.assert_called_once_with("signals")
+        client.table.assert_called_once_with("trade_signals")
         chain.update.assert_called_once_with({"status": "active"})
         chain.eq.assert_called_once_with("id", "uuid-1")
         chain.select.assert_called_once_with(supa._SIGNAL_COLS)

@@ -1,7 +1,11 @@
--- Hadaleum signals table — core data model for trade signals published to Twitter.
+-- Hadaleum trade-signals table — core data model for trade signals published to Twitter.
+-- Named `trade_signals` (NOT `signals`) to avoid colliding with the pre-existing
+-- `signals` table from 20260610_hadaleum_schema.sql, which is a different model
+-- (ETH directional accuracy: signal_type/outcome_24h/price-after) backing the old
+-- /signals/performance widget. That old table is left untouched.
 -- Run in Supabase SQL Editor: https://supabase.com/dashboard/project/wuszhfqznudawpsjkgwv/sql
 
-create table if not exists signals (
+create table if not exists trade_signals (
   id               uuid primary key default gen_random_uuid(),
   signal_number    bigserial not null,
   created_at       timestamptz not null default now(),
@@ -24,30 +28,39 @@ create table if not exists signals (
   resolved_at      timestamptz
 );
 
-create index if not exists signals_created_at_idx    on signals (created_at desc);
-create index if not exists signals_status_idx        on signals (status, created_at desc);
-create index if not exists signals_signal_number_idx on signals (signal_number desc);
+create index if not exists trade_signals_created_at_idx    on trade_signals (created_at desc);
+create index if not exists trade_signals_status_idx        on trade_signals (status, created_at desc);
+create index if not exists trade_signals_signal_number_idx on trade_signals (signal_number desc);
 
 -- ─────────────────────────────────────────
 -- Row Level Security
 -- ─────────────────────────────────────────
 
-alter table signals enable row level security;
+alter table trade_signals enable row level security;
 
 -- Public/anon: SELECT only where status is not pending_review
-drop policy if exists "Public read signals" on signals;
-create policy "Public read signals"
-  on signals for select
+drop policy if exists "Public read trade signals" on trade_signals;
+create policy "Public read trade signals"
+  on trade_signals for select
   to anon, authenticated
   using (status != 'pending_review');
 
 -- Service role: full access (INSERT, UPDATE, DELETE)
-drop policy if exists "Service role full access signals" on signals;
-create policy "Service role full access signals"
-  on signals for all
+drop policy if exists "Service role full access trade signals" on trade_signals;
+create policy "Service role full access trade signals"
+  on trade_signals for all
   to service_role
   using (true)
   with check (true);
+
+-- If an earlier version of this table was created without 'rejected' in the
+-- status check, this idempotent block updates the constraint. Safe to re-run.
+alter table trade_signals
+  drop constraint if exists trade_signals_status_check;
+
+alter table trade_signals
+  add constraint trade_signals_status_check
+    check (status in ('pending_review', 'active', 'win', 'loss', 'rejected'));
 
 -- ─────────────────────────────────────────
 -- Track Record Summary (aggregate cache)
@@ -83,20 +96,3 @@ create policy "Service role full access track record"
   to service_role
   using (true)
   with check (true);
-
--- ─────────────────────────────────────────
--- Add 'rejected' to status check constraint (Task 13 — signals REST API)
--- If the table already exists and the old constraint is in place, run this:
--- ─────────────────────────────────────────
-alter table signals
-  drop constraint if exists signals_status_check;
-
-alter table signals
-  add constraint signals_status_check
-    check (status in ('pending_review', 'active', 'win', 'loss', 'rejected'));
-
--- NOTE: This migration must be re-run (or the ALTER TABLE block above must be
--- run standalone) on any existing Supabase project that already has the signals
--- table, because the CREATE TABLE … CHECK uses IF NOT EXISTS and won't update
--- an existing constraint. The ALTER TABLE block is idempotent (DROP IF EXISTS
--- + ADD) and safe to re-run.
