@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-06-22T17:01:42.735394+00:00",
+  "source": "detected_moves win-ledger (field-tested)",
+  "criteria": {
+    "whitelist": ">=20 decisive, win% >= 52.0, net P&L > $0",
+    "blacklist": ">=12 decisive, net P&L < $-200"
+  },
+  "wallets_with_data": 27,
+  "whitelist": [
+    {
+      "address": "0x65a8f07bd9a8598e1b5b6c0a88f4779dbc077675",
+      "rank": 46,
+      "label": "DEX Trader #46",
+      "win_rate_pct": 62.5,
+      "decisive": 80,
+      "net_pnl_usd": 4924.9,
+      "pnl_per_move": 61.6
+    },
+    {
+      "address": "0xa0d000409b9c505af8ce2b0bb11ec2cc69e08879",
+      "rank": 150,
+      "label": "DEX Trader #150",
+      "win_rate_pct": 67.5,
+      "decisive": 40,
+      "net_pnl_usd": 2899.2,
+      "pnl_per_move": 72.5
+    },
+    {
+      "address": "0xc852922b95b6b19850046d42db28ac09a1cfde70",
+      "rank": 7,
+      "label": "DEX Trader #7",
+      "win_rate_pct": 54.5,
+      "decisive": 66,
+      "net_pnl_usd": 2047.6,
+      "pnl_per_move": 31.0
+    },
+    {
+      "address": "0x00000000008d5f1200332af8a6813cb8377b5bfd",
+      "rank": 122,
+      "label": "DEX Trader #122",
+      "win_rate_pct": 54.5,
+      "decisive": 22,
+      "net_pnl_usd": 319.6,
+      "pnl_per_move": 14.5
+    }
+  ],
+  "blacklist": [
+    {
+      "address": "0x8678f58ac6c4748b5289d0db70e627eef395dead",
+      "rank": 133,
+      "label": "DEX Trader #133",
+      "win_rate_pct": 23.7,
+      "decisive": 59,
+      "net_pnl_usd": -4658.5,
+      "pnl_per_move": -79.0
+    },
+    {
+      "address": "0x49719d256a5ea16bfa579ea16e95bea9fa41a452",
+      "rank": 134,
+      "label": "DEX Trader #134",
+      "win_rate_pct": 51.3,
+      "decisive": 437,
+      "net_pnl_usd": -4656.0,
+      "pnl_per_move": -10.7
+    },
+    {
+      "address": "0xbb97e044fdda625f054f5f9fe5dcf58fb0316104",
+      "rank": 66,
+      "label": "DEX Trader #66",
+      "win_rate_pct": 36.8,
+      "decisive": 19,
+      "net_pnl_usd": -387.6,
+      "pnl_per_move": -20.4
+    },
+    {
+      "address": "0x925b332d6c56558fa207881c44ca613857534b04",
+      "rank": 109,
+      "label": "DEX Trader #109",
+      "win_rate_pct": 16.7,
+      "decisive": 12,
+      "net_pnl_usd": -345.9,
+      "pnl_per_move": -28.8
+    },
+    {
+      "address": "0xa072a49b9df8b07f493e38ee4991b7cba7296593",
+      "rank": 1,
+      "label": "DEX Trader #1",
+      "win_rate_pct": 45.0,
+      "decisive": 40,
+      "net_pnl_usd": -263.7,
+      "pnl_per_move": -6.6
+    }
+  ]
+}
