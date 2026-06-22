@@ -122,6 +122,81 @@ function ScoredRow({ move, live = false }) {
   );
 }
 
+const BREAKDOWN_GROUPS = [
+  { key: 'by_action', title: 'By move type', hint: 'buy · rotate · take-profit' },
+  { key: 'by_rank', title: 'By trader rank', hint: 'leaderboard position' },
+  { key: 'by_size', title: 'By trade size', hint: 'on-chain notional' },
+  { key: 'by_profit_factor', title: 'By profit factor', hint: 'trader edge quality' },
+  { key: 'by_hour', title: 'By time of day', hint: 'detection hour (UTC)' },
+];
+
+function BreakdownTable({ title, hint, rows }) {
+  if (!rows || rows.length === 0) return null;
+  // Highlight the best row by P&L-per-move so the winning segment pops.
+  const best = rows.reduce((a, b) => ((b.pnl_per_move ?? -1e9) > (a.pnl_per_move ?? -1e9) ? b : a), rows[0]);
+  const maxN = Math.max(...rows.map((r) => r.n || 0), 1);
+  return (
+    <div className="rounded-2xl border border-border-default bg-bg-surface p-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <h3 className="text-[13px] font-semibold text-text-primary">{title}</h3>
+        <span className="text-[10px] text-text-muted">{hint}</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {rows.map((r) => {
+          const wr = r.win_rate_pct;
+          const ppm = r.pnl_per_move ?? 0;
+          const isBest = r.label === best.label && ppm > 0;
+          return (
+            <div key={r.label} className={`grid grid-cols-[1fr_auto] gap-x-3 items-center px-2 py-1.5 rounded-lg ${isBest ? 'bg-green/[0.07] border border-green/20' : ''}`}>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-text-primary truncate">{r.label}</span>
+                  <span className="text-[10px] text-text-muted tabular-nums">n={r.n}</span>
+                  {isBest && <span className="text-[8px] font-bold uppercase tracking-wide text-green bg-green/15 px-1 rounded">best</span>}
+                </div>
+                <div className="mt-1 h-1 rounded-full bg-bg-elevated overflow-hidden">
+                  <div className="h-full rounded-full bg-text-muted/40" style={{ width: `${Math.round(((r.n || 0) / maxN) * 100)}%` }} />
+                </div>
+              </div>
+              <div className="text-right tabular-nums">
+                <div className={`text-[12px] font-bold font-mono ${wr == null ? 'text-text-muted' : wr >= 50 ? 'text-green' : 'text-red'}`}>
+                  {wr == null ? '—' : `${wr.toFixed(0)}%`}
+                </div>
+                <div className={`text-[10px] font-mono ${ppm >= 0 ? 'text-green/80' : 'text-red/80'}`}>
+                  {ppm >= 0 ? '+' : ''}{fmtUsd(ppm)}/mv
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Breakdowns({ data }) {
+  if (!data || !data.decisive_total) return null;
+  return (
+    <section className="mb-10">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp className="h-4 w-4 text-green" />
+        <h2 className="font-display text-[18px] font-semibold text-text-primary">What's winning</h2>
+        <span className="text-[11px] text-text-muted">
+          {data.decisive_total} decisive moves · win% over win/loss · net $ at $1K/move
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {BREAKDOWN_GROUPS.map((g) => (
+          <BreakdownTable key={g.key} title={g.title} hint={g.hint} rows={data[g.key]} />
+        ))}
+      </div>
+      <p className="text-[11px] text-text-muted mt-2">
+        Segmented from the full resolved ledger. Highlighted row = highest P&L per move in that cut.
+      </p>
+    </section>
+  );
+}
+
 function EquityCurve({ points }) {
   const data = useMemo(() => (points || []).map((p) => ({ n: p.n, pnl: p.cum_pnl })), [points]);
   if (data.length < 2) return null;
@@ -305,6 +380,8 @@ export default function DetectedWinsPage() {
           )}
 
           <EquityCurve points={marketing?.equity_curve} />
+
+          <Breakdowns data={marketing?.breakdowns} />
 
           {watching.length > 0 && (
             <section className="mb-10">

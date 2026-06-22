@@ -420,6 +420,87 @@ def _aggregate_stats(rows: list[dict], *, since: datetime | None = None, by: str
     }
 
 
+def _seg_stat(label: str, rows: list[dict]) -> dict[str, Any]:
+    """Win% (decisive) + net hypothetical P&L for one segment of moves."""
+    wins = sum(1 for r in rows if r.get("outcome_status") == "WIN")
+    n = len(rows)
+    pnl = sum(float(r.get("hypothetical_pnl_usd") or 0) for r in rows)
+    return {
+        "label": label,
+        "n": n,
+        "win_rate_pct": round(wins / n * 100, 1) if n else None,
+        "net_pnl_usd": round(pnl, 2),
+        "pnl_per_move": round(pnl / n, 1) if n else None,
+    }
+
+
+def _breakdowns(rows: list[dict]) -> dict[str, Any]:
+    """Segment the DECISIVE (win/loss) ledger every way that matters for
+    analysis — by move type, trader rank, trade size, profit-factor band, and
+    time of day — so the wins page can show WHAT is actually winning, not just
+    the headline rate. Win% is over win/loss; P&L is net hypothetical $."""
+    dec = [r for r in rows if r.get("outcome_status") in ("WIN", "LOSS")]
+
+    def fnum(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def grouped(order, keyfn):
+        buckets: dict[str, list[dict]] = {lab: [] for lab in order}
+        for r in dec:
+            lab = keyfn(r)
+            if lab in buckets:
+                buckets[lab].append(r)
+        return [_seg_stat(lab, buckets[lab]) for lab in order if buckets[lab]]
+
+    def rank_band(r):
+        rk = r.get("trader_rank")
+        if rk is None:
+            return "unranked"
+        rk = int(rk)
+        if rk <= 10: return "Top 10"
+        if rk <= 25: return "11-25"
+        if rk <= 50: return "26-50"
+        if rk <= 100: return "51-100"
+        return "100+"
+
+    def size_band(r):
+        a = fnum(r.get("amount_usd")) or 0
+        if a < 100: return "<$100"
+        if a < 250: return "$100-250"
+        if a < 1000: return "$250-1K"
+        if a < 10000: return "$1K-10K"
+        return "$10K+"
+
+    def pf_band(r):
+        v = fnum(r.get("profit_factor"))
+        if v is None: return "unknown"
+        if v < 2: return "<2"
+        if v <= 5: return "2-5"
+        return "5+"
+
+    def hour_band(r):
+        ts = _parse_ts(r.get("detected_at"))
+        if not ts:
+            return "?"
+        h = ts.hour
+        if h < 6: return "00-06 UTC"
+        if h < 12: return "06-12 UTC"
+        if h < 18: return "12-18 UTC"
+        return "18-24 UTC"
+
+    return {
+        "decisive_total": len(dec),
+        "by_action": grouped(["buy", "rotate", "take_profit"], lambda r: (r.get("action") or "").lower()),
+        "by_rank": grouped(["Top 10", "11-25", "26-50", "51-100", "100+"], rank_band),
+        "by_size": grouped(["<$100", "$100-250", "$250-1K", "$1K-10K", "$10K+"], size_band),
+        "by_profit_factor": grouped(["<2", "2-5", "5+"], pf_band),
+        "by_hour": grouped(["00-06 UTC", "06-12 UTC", "12-18 UTC", "18-24 UTC"], hour_band),
+    }
+
+
 def _equity_curve(rows: list[dict]) -> list[dict[str, Any]]:
     """Cumulative hypothetical P&L over EVERY scored move (win, loss, and the
     sub-threshold NEUTRAL movers), oldest→newest. Matches net_hypothetical_pnl_usd
@@ -596,6 +677,7 @@ async def get_marketing_snapshot() -> dict[str, Any]:
         "recent_losses": pulse.get("recent_losses") or [],
         "recent_scored": pulse.get("recent_scored") or [],
         "biggest_win": biggest,
+        "breakdowns": pulse.get("breakdowns") or {},
         "equity_curve": pulse.get("equity_curve") or [],
         "watching": (pending.get("moves") or [])[:8],
         "methodology": pulse.get("methodology"),
@@ -671,6 +753,7 @@ async def get_trust_pulse() -> dict[str, Any]:
         "last_7d": _aggregate_stats(rows, since=since_7d),
         "last_30d": _aggregate_stats(rows, since=since_30d),
         "all_time": _aggregate_stats(rows, since=None),
+        "breakdowns": _breakdowns(rows),
         "equity_curve": _equity_curve(rows),
         "recent_losses": recent_losses,
         "recent_scored": recent_scored,
