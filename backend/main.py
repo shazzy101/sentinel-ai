@@ -46,9 +46,11 @@ from copy_traders_store import (
 )
 from copy_trader_moves import fetch_recent_copy_moves
 from detected_moves import (
+    HIGH_CONVICTION_PROFILE,
     get_marketing_snapshot,
     get_pending_preview,
     get_trust_pulse,
+    is_high_conviction,
     run_trust_pipeline,
 )
 from scoring.engine import score_wallet
@@ -2350,39 +2352,6 @@ def _ai_copy_score(move: dict, market: str) -> tuple[int, list[str]]:
     return min(100, round(score)), reasons
 
 
-# The profile that has WON THE MOST in the resolved win-ledger, validated
-# out-of-sample (trained on the older 70% of the ledger, tested on the unseen
-# recent 30%): rotations from ranked traders with a sane — not overfit —
-# profit factor, in the size band that has actually paid. Held 62-68% win and
-# ~+4%/trade expectancy on data it never saw. This is the personal high-
-# conviction feed; the public picks default to the broader, honest pool.
-HIGH_CONVICTION = {
-    "win_rate_pct": 63,        # robust out-of-sample, NOT a tuned target
-    "expectancy_pct": 4.1,     # avg %/trade at the trader's on-chain size
-    "filter": "rotate · rank ≤100 · profit-factor 2-8 · $100-2K on-chain",
-}
-
-
-def _is_high_conviction(move: dict) -> bool:
-    """True for the highest-win-rate move profile in the ledger (see above)."""
-    if (move.get("action") or "").lower() != "rotate":
-        return False
-    rank = move.get("rank") if move.get("rank") is not None else move.get("trader_rank")
-    try:
-        if rank is None or int(rank) > 100:
-            return False
-    except (TypeError, ValueError):
-        return False
-    try:
-        pf = float(move.get("profit_factor"))
-    except (TypeError, ValueError):
-        return False
-    if not (2.0 <= pf <= 8.0):
-        return False
-    amt = float(move.get("amount_usd") or 0)
-    return 100.0 <= amt < 2000.0
-
-
 @limiter.limit("20/minute")
 @app.get("/api/invest/ai-picks")
 async def invest_ai_picks(request: Request, limit: int = 6, conviction: str = "all"):
@@ -2424,7 +2393,7 @@ async def invest_ai_picks(request: Request, limit: int = 6, conviction: str = "a
     # qualifies. That is correct: no edge present = no trade.
     high_conviction = conviction.lower() in ("high", "true", "1")
     if high_conviction:
-        moves = [m for m in moves if _is_high_conviction(m)]
+        moves = [m for m in moves if is_high_conviction(m)]
 
     picks = []
     for m in moves:
@@ -2459,7 +2428,7 @@ async def invest_ai_picks(request: Request, limit: int = 6, conviction: str = "a
         "market_signal": market,
         "count": len(picks),
         "conviction": "high" if high_conviction else "all",
-        "high_conviction_profile": HIGH_CONVICTION if high_conviction else None,
+        "high_conviction_profile": HIGH_CONVICTION_PROFILE if high_conviction else None,
     })
 
 

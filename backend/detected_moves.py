@@ -434,11 +434,50 @@ def _seg_stat(label: str, rows: list[dict]) -> dict[str, Any]:
     }
 
 
-def _breakdowns(rows: list[dict]) -> dict[str, Any]:
+# The move profile that has WON THE MOST in the resolved win-ledger, validated
+# out-of-sample (trained on the older 70%, tested on the unseen recent 30%):
+# rotations from ranked traders with a sane — not overfit — profit factor, in
+# the size band that has actually paid. Held ~63% win and ~+4%/trade on data it
+# never saw. Canonical home so both the picks engine and the wins page agree.
+HIGH_CONVICTION_PROFILE = {
+    "robust_win_rate_pct": 63,  # robust out-of-sample, NOT a tuned target
+    "expectancy_pct": 4.1,      # avg %/trade at the trader's on-chain size
+    "filter": "rotate · rank ≤100 · profit-factor 2-8 · $100-2K on-chain",
+}
+
+
+def is_high_conviction(move: dict) -> bool:
+    """True for the highest-win-rate move profile in the ledger (see above).
+    Accepts both picks-engine moves (`rank`) and ledger rows (`trader_rank`)."""
+    if (move.get("action") or "").lower() != "rotate":
+        return False
+    rank = move.get("rank") if move.get("rank") is not None else move.get("trader_rank")
+    try:
+        if rank is None or int(rank) > 100:
+            return False
+    except (TypeError, ValueError):
+        return False
+    try:
+        pf = float(move.get("profit_factor"))
+    except (TypeError, ValueError):
+        return False
+    if not (2.0 <= pf <= 8.0):
+        return False
+    amt = float(move.get("amount_usd") or 0)
+    return 100.0 <= amt < 2000.0
+
+
+def _breakdowns(rows: list[dict], *, since: datetime | None = None, by: str = "detected") -> dict[str, Any]:
     """Segment the DECISIVE (win/loss) ledger every way that matters for
     analysis — by move type, trader rank, trade size, profit-factor band, and
     time of day — so the wins page can show WHAT is actually winning, not just
-    the headline rate. Win% is over win/loss; P&L is net hypothetical $."""
+    the headline rate. Win% is over win/loss; P&L is net hypothetical $.
+
+    Optional time window (`since` + `by`) matches _aggregate_stats: the 24h cut
+    windows on outcome_scored_at, longer cuts on detected_at."""
+    ts_field = "outcome_scored_at" if by == "scored" else "detected_at"
+    if since:
+        rows = [r for r in rows if _parse_ts(r.get(ts_field)) and _parse_ts(r[ts_field]) >= since]
     dec = [r for r in rows if r.get("outcome_status") in ("WIN", "LOSS")]
 
     def fnum(v):
@@ -491,6 +530,7 @@ def _breakdowns(rows: list[dict]) -> dict[str, Any]:
         if h < 18: return "12-18 UTC"
         return "18-24 UTC"
 
+    hc_rows = [r for r in dec if is_high_conviction(r)]
     return {
         "decisive_total": len(dec),
         "by_action": grouped(["buy", "rotate", "take_profit"], lambda r: (r.get("action") or "").lower()),
@@ -498,6 +538,9 @@ def _breakdowns(rows: list[dict]) -> dict[str, Any]:
         "by_size": grouped(["<$100", "$100-250", "$250-1K", "$1K-10K", "$10K+"], size_band),
         "by_profit_factor": grouped(["<2", "2-5", "5+"], pf_band),
         "by_hour": grouped(["00-06 UTC", "06-12 UTC", "12-18 UTC", "18-24 UTC"], hour_band),
+        # The high-conviction profile measured live on this same window — ties
+        # the wins page back to the conviction=high picks feed.
+        "high_conviction": {**_seg_stat("High-conviction", hc_rows), **HIGH_CONVICTION_PROFILE},
     }
 
 
@@ -753,7 +796,14 @@ async def get_trust_pulse() -> dict[str, Any]:
         "last_7d": _aggregate_stats(rows, since=since_7d),
         "last_30d": _aggregate_stats(rows, since=since_30d),
         "all_time": _aggregate_stats(rows, since=None),
-        "breakdowns": _breakdowns(rows),
+        # Breakdowns per window, keyed to match the wins-page toggle so one
+        # control drives both the hero stats and the segment tables.
+        "breakdowns": {
+            "stats_all": _breakdowns(rows),
+            "stats_30d": _breakdowns(rows, since=since_30d),
+            "stats_7d": _breakdowns(rows, since=since_7d),
+            "stats_24h": _breakdowns(rows, since=since_24h, by="scored"),
+        },
         "equity_curve": _equity_curve(rows),
         "recent_losses": recent_losses,
         "recent_scored": recent_scored,

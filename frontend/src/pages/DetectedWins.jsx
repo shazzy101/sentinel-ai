@@ -174,7 +174,45 @@ function BreakdownTable({ title, hint, rows }) {
   );
 }
 
-function Breakdowns({ data }) {
+function HighConvictionCard({ hc }) {
+  if (!hc) return null;
+  const wr = hc.win_rate_pct;
+  const ppm = hc.pnl_per_move ?? 0;
+  const up = (hc.net_pnl_usd ?? 0) >= 0;
+  return (
+    <div className="rounded-2xl border border-green/25 bg-gradient-to-br from-green/[0.10] to-transparent p-5 mb-4">
+      <div className="flex items-center gap-2 mb-1">
+        <Trophy className="h-4 w-4 text-green" />
+        <span className="text-[10px] uppercase tracking-widest text-green">My high-conviction edge</span>
+        <span className="text-[9px] font-bold uppercase tracking-wide text-green bg-green/15 px-1.5 py-0.5 rounded">conviction=high</span>
+      </div>
+      <div className="font-mono text-[12px] text-text-secondary mb-3">{hc.filter}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-text-muted">Win rate (this window)</div>
+          <div className={`font-display text-2xl font-bold tabular-nums ${wr != null && wr >= 50 ? 'text-green' : 'text-text-primary'}`}>{wr != null ? `${wr.toFixed(0)}%` : '—'}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-text-muted">Net P&L</div>
+          <div className={`font-display text-2xl font-bold tabular-nums ${up ? 'text-green' : 'text-red'}`}>{fmtUsd(hc.net_pnl_usd)}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-text-muted">Per move</div>
+          <div className={`font-display text-2xl font-bold tabular-nums ${ppm >= 0 ? 'text-green' : 'text-red'}`}>{ppm >= 0 ? '+' : ''}{fmtUsd(ppm)}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-text-muted">n · robust OOS</div>
+          <div className="font-display text-2xl font-bold tabular-nums text-text-primary">{hc.n}<span className="text-[12px] text-text-muted font-normal"> · {hc.robust_win_rate_pct}%</span></div>
+        </div>
+      </div>
+      <p className="text-[10px] text-text-muted mt-3">
+        Robust out-of-sample: ~{hc.robust_win_rate_pct}% win · +{hc.expectancy_pct}%/trade (trained on older ledger, tested on unseen recent). This is the profile the <code className="text-green/80">conviction=high</code> picks feed surfaces.
+      </p>
+    </div>
+  );
+}
+
+function Breakdowns({ data, windowLabel }) {
   if (!data || !data.decisive_total) return null;
   return (
     <section className="mb-10">
@@ -182,16 +220,17 @@ function Breakdowns({ data }) {
         <TrendingUp className="h-4 w-4 text-green" />
         <h2 className="font-display text-[18px] font-semibold text-text-primary">What's winning</h2>
         <span className="text-[11px] text-text-muted">
-          {data.decisive_total} decisive moves · win% over win/loss · net $ at $1K/move
+          {windowLabel ? `${windowLabel} · ` : ''}{data.decisive_total} decisive moves · win% over win/loss · net $ at $1K/move
         </span>
       </div>
+      <HighConvictionCard hc={data.high_conviction} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {BREAKDOWN_GROUPS.map((g) => (
           <BreakdownTable key={g.key} title={g.title} hint={g.hint} rows={data[g.key]} />
         ))}
       </div>
       <p className="text-[11px] text-text-muted mt-2">
-        Segmented from the full resolved ledger. Highlighted row = highest P&L per move in that cut.
+        Segmented from the resolved ledger for the selected window. Highlighted row = highest P&L per move in that cut.
       </p>
     </section>
   );
@@ -381,7 +420,7 @@ export default function DetectedWinsPage() {
 
           <EquityCurve points={marketing?.equity_curve} />
 
-          <Breakdowns data={marketing?.breakdowns} />
+          <Breakdowns data={marketing?.breakdowns?.[windowKey] || marketing?.breakdowns?.stats_all} windowLabel={WINDOWS.find((w) => w.key === windowKey)?.label} />
 
           {watching.length > 0 && (
             <section className="mb-10">
