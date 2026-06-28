@@ -135,12 +135,14 @@ def monitor_positions() -> dict:
             _log.error("monitor_positions %s failed: %s", p.get("id"), exc)
             store.log("error", "monitor_cron", f"position {p.get('id')} failed: {exc}")
 
-    # end-of-run equity snapshot
-    try:
-        cap = store.current_capital()
-        dd = (cap - PAPER_STARTING_CAPITAL) / PAPER_STARTING_CAPITAL * 100
-        store.insert_equity_snapshot(cap, min(0.0, dd), len(store.open_positions()))
-    except Exception as exc:
-        _log.error("equity snapshot failed: %s", exc)
+    # Equity snapshot only when something actually closed — avoids ~1440 rows/day
+    # of no-op snapshots from the 1-minute monitor cadence.
+    if closed:
+        try:
+            cap = store.current_capital()
+            dd = (cap - PAPER_STARTING_CAPITAL) / PAPER_STARTING_CAPITAL * 100
+            store.insert_equity_snapshot(cap, min(0.0, dd), len(store.open_positions()))
+        except Exception as exc:
+            _log.error("equity snapshot failed: %s", exc)
 
     return {"closed": closed, "checked": len(positions)}
