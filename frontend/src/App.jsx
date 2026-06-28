@@ -38,6 +38,17 @@ const InvestPage = lazy(() => import('./pages/Invest'));
 const NewsPage = lazy(() => import('./pages/News'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 
+// APEX trading module (Trading Lab) — code-split per page.
+import TradingLayout from './pages/trading/TradingLayout';
+const TradingDashboard = lazy(() => import('./pages/trading/TradingDashboard'));
+const PaperTerminal = lazy(() => import('./pages/trading/PaperTerminal'));
+const BacktestPage = lazy(() => import('./pages/trading/BacktestPage'));
+const SignalsFeedPage = lazy(() => import('./pages/trading/SignalsFeedPage'));
+const StrategiesPage = lazy(() => import('./pages/trading/StrategiesPage'));
+const JournalPage = lazy(() => import('./pages/trading/JournalPage'));
+const TradingTrackRecord = lazy(() => import('./pages/trading/TradingTrackRecord'));
+const TradingAdmin = lazy(() => import('./pages/trading/TradingAdmin'));
+
 // Markets is eagerly loaded because EthPriceBadge is used as a Shell prop
 import MarketsPage, { EthPriceBadge } from './pages/Markets';
 
@@ -170,6 +181,16 @@ function AnimatedRoutes() {
         <Route path="/alerts" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><AlertsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/settings" element={<MotionPage><AuthGuard><Suspense fallback={<PageLoader />}><SettingsRoute /></Suspense></AuthGuard></MotionPage>} />
         <Route path="/scoring" element={<Navigate to="/watchlist" replace />} />
+
+        {/* APEX Trading Lab. track-record public; rest gated (full tiering in Step 34). */}
+        <Route path="/trading/track-record" element={<MotionPage><TradingLayout><Suspense fallback={<PageLoader />}><TradingTrackRecord /></Suspense></TradingLayout></MotionPage>} />
+        <Route path="/trading" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><TradingDashboard /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/paper" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><PaperTerminal /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/backtest" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><BacktestPage /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/signals" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><SignalsFeedPage /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/strategies" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><StrategiesPage /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/journal" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><JournalPage /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
+        <Route path="/trading/admin" element={<MotionPage><AuthGuard><TradingLayout><Suspense fallback={<PageLoader />}><TradingAdmin /></Suspense></TradingLayout></AuthGuard></MotionPage>} />
         <Route path="/enterprise" element={<Navigate to="/institutional" replace />} />
         {/* Catch-all: unknown URLs rendered a blank root div. Send them home. */}
         <Route path="*" element={<Navigate to="/" replace />} />

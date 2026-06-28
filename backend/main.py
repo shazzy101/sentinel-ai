@@ -72,6 +72,7 @@ from chains.ethereum import ChainAdapterError, get_eth_balance, get_eth_transact
 from db.supabase import supabase_client, prune_wallet_transactions, MAX_TXS_PER_WALLET
 from integrations import dune
 from signals_api import router as signals_router
+from trading_api import router as trading_router
 
 _SENTRY_DSN = os.getenv("SENTRY_DSN")
 if _SENTRY_DSN and sentry_sdk is not None:
@@ -518,6 +519,8 @@ async def runtime_error_handler(_request: Request, exc: RuntimeError):
 # /api/admin/signals/* routes. Must be included AFTER require_admin
 # is defined above so the lazy import in signals_api.py can resolve it.
 app.include_router(signals_router)
+# APEX paper-trading module (/api/trading/*).
+app.include_router(trading_router)
 
 
 # ─────────────────────────────────────────

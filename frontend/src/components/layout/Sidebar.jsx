@@ -5,6 +5,7 @@ import {
   LayoutGrid, Sparkles, BarChart3,
   Bell, ExternalLink, Search, Zap, Newspaper, LogIn, LogOut, Star,
   Settings as SettingsIcon, Moon, Sun, LayoutDashboard, Trophy, BookOpen,
+  CandlestickChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motionTokens } from '@/design/motion';
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: 'Alerts', icon: Bell, path: '/alerts', authRequired: true },
   { label: 'Track Record', icon: Trophy, path: '/track-record', authRequired: false },
   { label: 'Learn', icon: BookOpen, path: '/learn', authRequired: false },
+  { label: 'Trading Lab', icon: CandlestickChart, path: '/trading', authRequired: false, tag: 'PAPER' },
 ];
 
 function useAlertBadge() {
@@ -98,6 +100,11 @@ function NavItem({ item, isActive, badge }) {
       >
         <Icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2 : 1.75} />
         <span className="font-medium">{item.label}</span>
+        {item.tag ? (
+          <span className="ml-auto rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">
+            {item.tag}
+          </span>
+        ) : null}
         {badge ? (
           <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-green px-1 text-[9px] font-bold text-text-inverse">
             {badge > 9 ? '9+' : badge}
