@@ -1,8 +1,41 @@
+import { useState } from 'react';
 import { useTradingData } from '@/hooks/useTradingData';
+import { getApiBase } from '@/lib/apiClient';
+
+const ADMIN_KEY_SESSION = 'hadaleum_admin_key';
+
+async function adminPost(path, key, body) {
+  const res = await fetch(`${getApiBase()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  return data;
+}
 
 export default function TradingAdmin() {
-  const { data: health } = useTradingData('/api/trading/health', { intervalMs: 15000 });
+  const { data: health, refresh } = useTradingData('/api/trading/health', { intervalMs: 15000 });
   const { data: pf } = useTradingData('/api/trading/portfolio', { intervalMs: 30000 });
+  const [key, setKey] = useState(() => sessionStorage.getItem(ADMIN_KEY_SESSION) || '');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState('');
+
+  function saveKey(v) { setKey(v); sessionStorage.setItem(ADMIN_KEY_SESSION, v); }
+
+  async function run(label, path, body) {
+    setBusy(label); setMsg('');
+    try {
+      const res = await adminPost(path, key, body);
+      setMsg(`${label}: ${JSON.stringify(res)}`);
+      refresh();
+    } catch (e) {
+      setMsg(`${label} failed: ${e.message}`);
+    } finally {
+      setBusy('');
+    }
+  }
 
   const ok = health?.status === 'ok';
   return (
@@ -32,10 +65,27 @@ export default function TradingAdmin() {
         </div>
       </div>
 
-      <p className="text-xs text-text-muted">
-        Force-run controls + portfolio reset are wired to admin-gated endpoints in Step 27.
-        Crons run automatically server-side (signals 5m / monitor 1m).
-      </p>
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="mb-3 text-sm font-semibold">Controls</div>
+        <input type="password" value={key} onChange={(e) => saveKey(e.target.value)} placeholder="Admin key (X-Admin-Key)"
+               className="mb-3 w-full max-w-sm rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm outline-none" />
+        <div className="flex flex-wrap gap-2">
+          <button disabled={!key || busy} onClick={() => run('Scan', '/api/trading/admin/run-signals')}
+                  className="rounded-lg bg-emerald-500/90 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50">
+            {busy === 'Scan' ? '…' : 'Force Scan'}
+          </button>
+          <button disabled={!key || busy} onClick={() => run('Monitor', '/api/trading/admin/run-monitor')}
+                  className="rounded-lg bg-white/[0.08] px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            {busy === 'Monitor' ? '…' : 'Force Monitor'}
+          </button>
+          <button disabled={!key || busy}
+                  onClick={() => { if (window.prompt('Type RESET to wipe paper data') === 'RESET') run('Reset', '/api/trading/admin/reset', { confirm: 'RESET' }); }}
+                  className="rounded-lg bg-red-500/80 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            Reset Paper
+          </button>
+        </div>
+        {msg && <pre className="mt-3 overflow-x-auto rounded-lg bg-black/30 p-3 text-xs text-text-muted">{msg}</pre>}
+      </div>
     </div>
   );
 }

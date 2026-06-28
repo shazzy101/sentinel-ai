@@ -12,7 +12,9 @@ import time
 from dataclasses import asdict
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query
+import re
+
+from fastapi import APIRouter, Body, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
 from trading.api_clients import fetch_ohlcv, is_market_open
@@ -27,6 +29,12 @@ def _require_cron(secret: Optional[str]) -> None:
     expected = os.getenv("CRON_SECRET")
     if not expected or secret != expected:
         raise HTTPException(status_code=401, detail="invalid cron secret")
+
+
+def _get_require_admin():
+    """Lazy import of main.require_admin (same pattern as signals_api)."""
+    import main as _main
+    return _main.require_admin
 
 
 # ── Step 7: prices ─────────────────────────────────────────────────────────
@@ -188,6 +196,63 @@ async def backtest(body: BacktestBody, compare: bool = False):
 
     _BT_CACHE[key] = (now, payload)
     return {**payload, "cached": False}
+
+
+# ── Admin (X-Admin-Key gated) ──────────────────────────────────────────────
+@router.post("/admin/run-signals")
+async def admin_run_signals(request: Request):
+    await _get_require_admin()(request)
+    return runner.generate_signals()
+
+
+@router.post("/admin/run-monitor")
+async def admin_run_monitor(request: Request):
+    await _get_require_admin()(request)
+    return runner.monitor_positions()
+
+
+@router.post("/admin/reset")
+async def admin_reset(request: Request, body: dict = Body(default={})):
+    await _get_require_admin()(request)
+    if body.get("confirm") != "RESET":
+        raise HTTPException(400, "type RESET to confirm")
+    store.reset_paper()
+    return {"reset": True}
+
+
+# ── Waitlist (top-of-funnel for monetization) ──────────────────────────────
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class WaitlistBody(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def _valid(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("invalid email")
+        return v
+
+
+@router.post("/waitlist")
+async def join_waitlist(body: WaitlistBody):
+    added = store.add_waitlist(body.email)
+    # best-effort welcome email if Resend is configured
+    try:
+        from integrations import resend
+        if added and resend.is_configured():
+            await resend.send_email(body.email, "You're on the APEX waitlist",
+                                    resend.waitlist_welcome_html())
+    except Exception:
+        pass
+    return {"ok": True, "added": added, "count": store.waitlist_count()}
+
+
+@router.get("/waitlist/count")
+async def waitlist_count():
+    return {"count": store.waitlist_count()}
 
 
 # ── Step 12: health ────────────────────────────────────────────────────────

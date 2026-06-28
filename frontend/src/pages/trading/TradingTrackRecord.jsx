@@ -2,6 +2,7 @@ import { useTradingData } from '@/hooks/useTradingData';
 import EdgeQualityBadge from '@/components/trading/EdgeQualityBadge';
 import EquityChart from '@/components/trading/EquityChart';
 import KpiCard from '@/components/trading/KpiCard';
+import WaitlistForm from '@/components/trading/WaitlistForm';
 
 export default function TradingTrackRecord() {
   const { data } = useTradingData('/api/trading/portfolio', { intervalMs: 60000 });
@@ -43,6 +44,8 @@ export default function TradingTrackRecord() {
           <div className="text-sm text-text-muted">No closed trades yet.</div>
         )}
       </div>
+
+      <WaitlistForm />
 
       <div className="grid gap-4 md:grid-cols-4">
         <KpiCard label="Total Trades" value={stats?.total_trades ?? '—'} />

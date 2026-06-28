@@ -191,6 +191,28 @@ def is_expired(opened_at_iso: str) -> bool:
         return False
 
 
+# ── waitlist ───────────────────────────────────────────────────────────────
+def add_waitlist(email: str) -> bool:
+    """Insert email; returns False if duplicate or on error."""
+    try:
+        existing = _client().table("trading_waitlist").select("id").eq("email", email).limit(1).execute()
+        if existing.data:
+            return False
+        _client().table("trading_waitlist").insert({"email": email}).execute()
+        return True
+    except Exception as exc:
+        _log.error("add_waitlist failed: %s", exc)
+        return False
+
+
+def waitlist_count() -> int:
+    try:
+        res = _client().table("trading_waitlist").select("id").execute()
+        return len(res.data or [])
+    except Exception:
+        return 0
+
+
 # ── admin ────────────────────────────────────────────────────────────────
 def reset_paper() -> None:
     """Wipe all paper data back to a fresh $10k start. Admin only."""
