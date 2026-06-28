@@ -126,6 +126,147 @@ def gap_go(bars: list[OHLCV], indicators: dict, i: int) -> Optional[StrategyResu
     return None
 
 
+def donchian_breakout(bars: list[OHLCV], indicators: dict, i: int, period: int = 20) -> Optional[StrategyResult]:
+    """Turtle-style channel breakout: close clears the N-bar high/low."""
+    if i < period:
+        return None
+    window = bars[i - period:i]  # excludes current bar
+    hi = max(b.high for b in window)
+    lo = min(b.low for b in window)
+    c = bars[i].close
+    if c > hi:
+        return StrategyResult("DONCHIAN_BREAKOUT", "LONG", 0.65, f"{period}-bar high break")
+    if c < lo:
+        return StrategyResult("DONCHIAN_BREAKOUT", "SHORT", 0.65, f"{period}-bar low break")
+    return None
+
+
+def keltner_breakout(bars: list[OHLCV], indicators: dict, i: int, mult: float = 1.5) -> Optional[StrategyResult]:
+    """Close breaks outside the Keltner channel (EMA20 ± mult·ATR)."""
+    closes = [b.close for b in bars[: i + 1]]
+    mid = ind.ema(closes, 20)
+    atr = indicators.get("atr")
+    if mid is None or atr is None:
+        return None
+    c = bars[i].close
+    if c > mid + mult * atr:
+        return StrategyResult("KELTNER_BREAKOUT", "LONG", 0.6, "break above upper Keltner")
+    if c < mid - mult * atr:
+        return StrategyResult("KELTNER_BREAKOUT", "SHORT", 0.6, "break below lower Keltner")
+    return None
+
+
+def zscore_reversion(bars: list[OHLCV], indicators: dict, i: int, z: float = 2.0) -> Optional[StrategyResult]:
+    """Statistical mean-reversion: fade a >2σ stretch from the 20-bar mean."""
+    bb = indicators.get("bollinger")
+    if not bb:
+        return None
+    mid = bb["mid"]
+    sd = (bb["upper"] - mid) / 2.0  # bands are mid ± 2σ
+    if sd <= 0:
+        return None
+    score = (bars[i].close - mid) / sd
+    if score <= -z:
+        return StrategyResult("ZSCORE_REVERSION", "LONG", 0.6, f"z={score:.1f} oversold")
+    if score >= z:
+        return StrategyResult("ZSCORE_REVERSION", "SHORT", 0.6, f"z={score:.1f} overbought")
+    return None
+
+
+def roc_momentum(bars: list[OHLCV], indicators: dict, i: int, lookback: int = 10, thresh: float = 0.02) -> Optional[StrategyResult]:
+    """Rate-of-change momentum confirmed by EMA alignment."""
+    if i < lookback:
+        return None
+    past = bars[i - lookback].close
+    if past == 0:
+        return None
+    roc = (bars[i].close - past) / past
+    e9, e21 = indicators.get("ema9"), indicators.get("ema21")
+    if e9 is None or e21 is None:
+        return None
+    if roc > thresh and e9 > e21:
+        return StrategyResult("ROC_MOMENTUM", "LONG", 0.6, f"+{roc*100:.1f}% momentum")
+    if roc < -thresh and e9 < e21:
+        return StrategyResult("ROC_MOMENTUM", "SHORT", 0.6, f"{roc*100:.1f}% momentum")
+    return None
+
+
+def adx_trend(bars: list[OHLCV], indicators: dict, i: int) -> Optional[StrategyResult]:
+    """Trend-follow ONLY when ADX confirms a strong trend (>25)."""
+    adx = indicators.get("adx")
+    e9, e21 = indicators.get("ema9"), indicators.get("ema21")
+    if adx is None or e9 is None or e21 is None or adx < 25:
+        return None
+    if e9 > e21:
+        return StrategyResult("ADX_TREND", "LONG", 0.7, f"strong uptrend ADX={adx:.0f}")
+    if e9 < e21:
+        return StrategyResult("ADX_TREND", "SHORT", 0.7, f"strong downtrend ADX={adx:.0f}")
+    return None
+
+
+def rel_volume_breakout(bars: list[OHLCV], indicators: dict, i: int, period: int = 20, mult: float = 1.5) -> Optional[StrategyResult]:
+    """Directional bar on relative-volume spike."""
+    if i < period:
+        return None
+    avg_vol = sum(b.volume for b in bars[i - period:i]) / period
+    if avg_vol <= 0:
+        return None
+    cur = bars[i]
+    if cur.volume < mult * avg_vol:
+        return None
+    if cur.close > cur.open:
+        return StrategyResult("REL_VOLUME_BREAKOUT", "LONG", 0.6, "volume spike up")
+    if cur.close < cur.open:
+        return StrategyResult("REL_VOLUME_BREAKOUT", "SHORT", 0.6, "volume spike down")
+    return None
+
+
+def stochrsi_turn(bars: list[OHLCV], indicators: dict, i: int) -> Optional[StrategyResult]:
+    """Stochastic-RSI exiting extreme zones."""
+    sr = indicators.get("stoch_rsi")
+    if sr is None:
+        return None
+    if sr <= 0.2:
+        return StrategyResult("STOCHRSI_TURN", "LONG", 0.55, "stochRSI oversold")
+    if sr >= 0.8:
+        return StrategyResult("STOCHRSI_TURN", "SHORT", 0.55, "stochRSI overbought")
+    return None
+
+
+def supertrend(bars: list[OHLCV], indicators: dict, i: int, mult: float = 1.0) -> Optional[StrategyResult]:
+    """ATR-trend confirmation: price decisively beyond a fast EMA by >mult·ATR."""
+    closes = [b.close for b in bars[: i + 1]]
+    fast = ind.ema(closes, 10)
+    atr = indicators.get("atr")
+    if fast is None or atr is None or i < 1:
+        return None
+    c, prev = bars[i].close, bars[i - 1].close
+    if c > fast + mult * atr and c > prev:
+        return StrategyResult("SUPERTREND", "LONG", 0.65, "above ATR trend band")
+    if c < fast - mult * atr and c < prev:
+        return StrategyResult("SUPERTREND", "SHORT", 0.65, "below ATR trend band")
+    return None
+
+
+def market_regime(indicators: dict) -> str:
+    """'trend' when ADX is high, 'range' when low, else 'mixed'. Used to weight votes."""
+    adx = indicators.get("adx")
+    if adx is None:
+        return "mixed"
+    if adx >= 25:
+        return "trend"
+    if adx < 18:
+        return "range"
+    return "mixed"
+
+
+# strategies that thrive in trending vs ranging regimes (for confidence weighting)
+TREND_STRATEGIES = {"EMA_CROSS", "MACD_MOMENTUM", "ROC_MOMENTUM", "ADX_TREND",
+                    "SUPERTREND", "DONCHIAN_BREAKOUT", "KELTNER_BREAKOUT", "GAP_GO", "ORB"}
+RANGE_STRATEGIES = {"VWAP_REVERSION", "ZSCORE_REVERSION", "RSI_DIVERGENCE",
+                    "BB_SQUEEZE", "STOCHRSI_TURN"}
+
+
 # registry — keys match constants.STRATEGIES
 STRATEGY_FNS = {
     "ORB": orb,
@@ -135,4 +276,12 @@ STRATEGY_FNS = {
     "BB_SQUEEZE": bb_squeeze,
     "RSI_DIVERGENCE": rsi_divergence,
     "GAP_GO": gap_go,
+    "DONCHIAN_BREAKOUT": donchian_breakout,
+    "KELTNER_BREAKOUT": keltner_breakout,
+    "ZSCORE_REVERSION": zscore_reversion,
+    "ROC_MOMENTUM": roc_momentum,
+    "ADX_TREND": adx_trend,
+    "REL_VOLUME_BREAKOUT": rel_volume_breakout,
+    "STOCHRSI_TURN": stochrsi_turn,
+    "SUPERTREND": supertrend,
 }

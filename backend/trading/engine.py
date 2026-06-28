@@ -17,7 +17,9 @@ from trading.types import (
 from trading.constants import (
     RISK_PARAMS, TOTAL_STRATEGIES, HIGH_CONVICTION_VOTES,
 )
-from trading.strategies import STRATEGY_FNS
+from trading.strategies import (
+    STRATEGY_FNS, market_regime, TREND_STRATEGIES, RANGE_STRATEGIES,
+)
 from trading import indicators as ind
 
 _DISTRIBUTED_THRESHOLD = 0.30   # one trade > 30% of P&L → not a distributed edge
@@ -105,6 +107,19 @@ def run_strategies_on_bar(
             r = None
         if r is not None:
             results.append(r)
+
+    # Regime weighting: boost strategies aligned with the current regime, dampen
+    # those fighting it. Adjusts confidence (→ confluence_score), not vote count.
+    regime = market_regime(indicators)
+    if regime in ("trend", "range"):
+        aligned = TREND_STRATEGIES if regime == "trend" else RANGE_STRATEGIES
+        opposed = RANGE_STRATEGIES if regime == "trend" else TREND_STRATEGIES
+        for r in results:
+            if r.strategy in aligned:
+                r.confidence = min(1.0, r.confidence * 1.2)
+            elif r.strategy in opposed:
+                r.confidence *= 0.7
+
     atr_val = indicators.get("atr") or 0.0
     if atr_val <= 0:
         return None

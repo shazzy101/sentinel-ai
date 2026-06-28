@@ -6,7 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from trading.types import OHLCV, StrategyResult, Trade  # noqa: E402
-from trading.strategies import orb  # noqa: E402
+from trading.strategies import (  # noqa: E402
+    orb, donchian_breakout, market_regime, STRATEGY_FNS,
+)
 from trading import engine  # noqa: E402
 
 
@@ -103,6 +105,32 @@ def test_empty_trades_safe():
 
 def test_run_strategies_on_bar_empty():
     assert engine.run_strategies_on_bar([], 0) is None
+
+
+def test_strategy_registry_has_15():
+    assert len(STRATEGY_FNS) == 15
+
+
+def test_donchian_breakout_long():
+    bars = [_bar(100, bar=i, high=101, low=99) for i in range(20)]
+    bars.append(_bar(110, bar=20, high=111, low=109))  # breaks 20-bar high
+    res = donchian_breakout(bars, {}, 20)
+    assert res is not None and res.dir == "LONG" and res.strategy == "DONCHIAN_BREAKOUT"
+
+
+def test_market_regime_classification():
+    assert market_regime({"adx": 30}) == "trend"
+    assert market_regime({"adx": 10}) == "range"
+    assert market_regime({"adx": 20}) == "mixed"
+    assert market_regime({}) == "mixed"
+
+
+def test_all_strategies_safe_on_insufficient_data():
+    # engine guards index bounds; strategies must return None (not throw) when given
+    # a valid index but not enough history.
+    one = [_bar(100, bar=0)]
+    for fn in STRATEGY_FNS.values():
+        assert fn(one, {}, 0) is None
 
 
 def test_run_backtest_returns_result():
