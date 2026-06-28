@@ -330,6 +330,30 @@ async def _cron_signal_outcomes():
         await asyncio.sleep(60 * 60)
 
 
+async def _cron_apex_signals():
+    """APEX: every 5 minutes scan assets and generate paper signals."""
+    await asyncio.sleep(4 * 60)  # startup grace
+    while True:
+        try:
+            from trading.runner import generate_signals
+            generate_signals()
+        except Exception:
+            pass
+        await asyncio.sleep(5 * 60)
+
+
+async def _cron_apex_monitor():
+    """APEX: every minute check open paper positions for SL/TP/expiry."""
+    await asyncio.sleep(2 * 60)  # startup grace
+    while True:
+        try:
+            from trading.runner import monitor_positions
+            monitor_positions()
+        except Exception:
+            pass
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_analyst()
@@ -352,6 +376,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_cron_live_metrics())
     asyncio.create_task(_cron_signal_poll())
     asyncio.create_task(_cron_signal_outcomes())
+    asyncio.create_task(_cron_apex_signals())
+    asyncio.create_task(_cron_apex_monitor())
     yield
 
 
