@@ -9,17 +9,25 @@ and routes fetch_ohlcv through them, cache-first.
 from __future__ import annotations
 
 import hashlib
-import math
+import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
+
+import httpx
 
 from trading.types import OHLCV
 from trading.constants import ASSETS_BY_SYMBOL
 
+_log = logging.getLogger("apex.data")
 _ET = ZoneInfo("America/New_York")
+_ALPACA_DATA = "https://data.alpaca.markets/v2/stocks"
+_COINGECKO = "https://api.coingecko.com/api/v3"
+_ALPACA_TF = {"1m": "1Min", "5m": "5Min", "15m": "15Min", "1h": "1Hour", "4h": "4Hour", "1d": "1Day"}
+_CACHE_TTL = 60  # seconds — in-memory rate-limit guard
+_MEM: dict[str, tuple[float, list]] = {}
 _BARS_PER_DAY = 78          # ~6.5h session in 5m bars
 _TF_MS = {
     "1m": 60_000, "5m": 300_000, "15m": 900_000,
@@ -91,20 +99,104 @@ def _simulated_bars(asset: str, timeframe: str, limit: int) -> list[OHLCV]:
     return bars
 
 
-def fetch_ohlcv(asset: str, timeframe: str = "5m", limit: int = 100) -> list[OHLCV]:
-    """Return up to `limit` OHLCV bars (oldest→newest).
+def _rows_to_ohlcv(rows: list[tuple]) -> list[OHLCV]:
+    """rows: (ts_ms, open, high, low, close, volume), oldest→newest.
 
-    TODO(Step 23): route crypto→CoinGecko, stocks/etf→Alpaca, cache-first via price_cache.
-    For now: deterministic simulated bars.
+    Derives day ordinal / bar-in-day / day_open from UTC calendar days.
     """
-    if asset not in ASSETS_BY_SYMBOL or limit <= 0:
-        return []
-    return _simulated_bars(asset, timeframe, limit)
+    out: list[OHLCV] = []
+    prev_ord: Optional[int] = None
+    day = -1
+    bar = 0
+    day_open = 0.0
+    for ts, o, h, l, c, v in rows:
+        d_ord = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).date().toordinal()
+        if d_ord != prev_ord:
+            day += 1
+            bar = 0
+            day_open = float(o)
+            prev_ord = d_ord
+        # guard OHLC sanity
+        hi = max(o, h, c)
+        lo = min(o, l, c)
+        out.append(OHLCV(ts=int(ts), open=float(o), high=float(hi), low=float(lo),
+                         close=float(c), volume=float(v), bar=bar, day=day, day_open=day_open))
+        bar += 1
+    return out
 
 
 def fetch_alpaca_bars(symbol: str, timeframe: str, limit: int) -> list[OHLCV]:
-    raise NotImplementedError("Alpaca client wired in Step 23")
+    """Real stock/ETF bars via Alpaca market data (IEX feed on free/paper)."""
+    key, secret = os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_API_SECRET")
+    if not key or not secret:
+        raise RuntimeError("ALPACA keys not configured")
+    tf = _ALPACA_TF.get(timeframe, "5Min")
+    # Free IEX feed requires an explicit start; look back enough to cover `limit`
+    # intraday bars across weekends/holidays.
+    from datetime import timedelta
+    lookback_days = 20 if timeframe in ("1m", "5m", "15m") else 120
+    start = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r = httpx.get(
+        f"{_ALPACA_DATA}/{symbol}/bars",
+        params={"timeframe": tf, "limit": min(limit, 1000), "feed": "iex",
+                "sort": "desc", "start": start},
+        headers={"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret},
+        timeout=12,
+    )
+    r.raise_for_status()
+    bars = list(reversed(r.json().get("bars") or []))  # desc → oldest→newest
+    rows = []
+    for b in bars:
+        ts = int(datetime.fromisoformat(b["t"].replace("Z", "+00:00")).timestamp() * 1000)
+        rows.append((ts, b["o"], b["h"], b["l"], b["c"], b.get("v", 0)))
+    return _rows_to_ohlcv(rows)
 
 
 def fetch_coingecko_bars(coingecko_id: str, timeframe: str, limit: int) -> list[OHLCV]:
-    raise NotImplementedError("CoinGecko client wired in Step 23")
+    """Real crypto OHLC via CoinGecko (keyless). Free tier granularity:
+    days=1→30m, days=30→4h candles. We use 30d for enough history; volume is not
+    provided by /ohlc so it is set to a neutral constant."""
+    r = httpx.get(
+        f"{_COINGECKO}/coins/{coingecko_id}/ohlc",
+        params={"vs_currency": "usd", "days": 30},
+        timeout=12,
+    )
+    r.raise_for_status()
+    raw = r.json() or []
+    rows = [(int(c[0]), c[1], c[2], c[3], c[4], 1000.0) for c in raw]
+    return _rows_to_ohlcv(rows)[-limit:]
+
+
+def fetch_ohlcv(asset: str, timeframe: str = "5m", limit: int = 100) -> list[OHLCV]:
+    """Up to `limit` OHLCV bars (oldest→newest), cache-first.
+
+    crypto → CoinGecko (keyless); stocks/etf → Alpaca during market hours.
+    Falls back to deterministic simulated bars when the market is closed, keys are
+    missing, or a provider call fails — so the engine never starves.
+    """
+    a = ASSETS_BY_SYMBOL.get(asset)
+    if not a or limit <= 0:
+        return []
+
+    ck = f"{asset}|{timeframe}|{limit}"
+    hit = _MEM.get(ck)
+    if hit and time.time() - hit[0] < _CACHE_TTL:
+        return hit[1]
+
+    bars: list[OHLCV] = []
+    try:
+        if a.kind == "crypto":
+            bars = fetch_coingecko_bars(a.coingecko_id, timeframe, limit)
+        elif is_market_open():
+            bars = fetch_alpaca_bars(a.alpaca_symbol, timeframe, limit)
+        else:
+            bars = _simulated_bars(asset, timeframe, limit)  # market closed
+    except Exception as exc:
+        _log.warning("real fetch failed for %s (%s) — using simulated: %s", asset, a.kind, exc)
+        bars = _simulated_bars(asset, timeframe, limit)
+
+    if not bars:
+        bars = _simulated_bars(asset, timeframe, limit)
+
+    _MEM[ck] = (time.time(), bars)
+    return bars
