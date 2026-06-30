@@ -86,6 +86,18 @@ def latest_signals(n: int = 10) -> list[dict]:
     return list_signals(limit=n)
 
 
+def recent_signal_exists(asset: str, direction: str, minutes: int = 30) -> bool:
+    """Dedupe guard: a same-asset+direction signal within the lookback window."""
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        res = (_client().table("trading_signals").select("id")
+               .eq("asset", asset).eq("direction", direction)
+               .gte("created_at", since).limit(1).execute())
+        return bool(res.data)
+    except Exception:
+        return False
+
+
 def daily_signal_count() -> int:
     try:
         since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()

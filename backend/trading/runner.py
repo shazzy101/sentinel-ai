@@ -54,6 +54,9 @@ def generate_signals() -> dict:
             sig = run_strategies_on_bar(bars, len(bars) - 1, asset=asset.symbol)
             if sig is None:
                 continue
+            # dedupe: don't re-fire the same asset+direction within 30 min
+            if store.recent_signal_exists(sig.asset, sig.dir, minutes=30):
+                continue
 
             row = store.insert_signal(store.signal_to_row(sig))
             if not row:

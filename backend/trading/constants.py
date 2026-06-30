@@ -6,14 +6,30 @@ from trading.types import Asset
 
 # ── Tradeable universe (8) ──────────────────────────────────────────────
 ASSETS: list[Asset] = [
+    # crypto (CoinGecko, keyless) — always-on
     Asset("BTC/USD", "Bitcoin", "crypto", coingecko_id="bitcoin"),
     Asset("ETH/USD", "Ethereum", "crypto", coingecko_id="ethereum"),
     Asset("SOL/USD", "Solana", "crypto", coingecko_id="solana"),
+    Asset("AVAX/USD", "Avalanche", "crypto", coingecko_id="avalanche-2"),
+    Asset("LINK/USD", "Chainlink", "crypto", coingecko_id="chainlink"),
+    Asset("DOGE/USD", "Dogecoin", "crypto", coingecko_id="dogecoin"),
+    Asset("ADA/USD", "Cardano", "crypto", coingecko_id="cardano"),
+    Asset("DOT/USD", "Polkadot", "crypto", coingecko_id="polkadot"),
+    Asset("XRP/USD", "XRP", "crypto", coingecko_id="ripple"),
+    Asset("LTC/USD", "Litecoin", "crypto", coingecko_id="litecoin"),
+    # stocks (Alpaca) — market hours only
     Asset("NVDA", "NVIDIA", "stock", alpaca_symbol="NVDA"),
     Asset("TSLA", "Tesla", "stock", alpaca_symbol="TSLA"),
     Asset("AAPL", "Apple", "stock", alpaca_symbol="AAPL"),
+    Asset("AMD", "AMD", "stock", alpaca_symbol="AMD"),
+    Asset("MSFT", "Microsoft", "stock", alpaca_symbol="MSFT"),
+    Asset("AMZN", "Amazon", "stock", alpaca_symbol="AMZN"),
+    Asset("META", "Meta", "stock", alpaca_symbol="META"),
+    Asset("GOOGL", "Alphabet", "stock", alpaca_symbol="GOOGL"),
+    # ETFs (Alpaca)
     Asset("SPY", "S&P 500 ETF", "etf", alpaca_symbol="SPY"),
     Asset("QQQ", "Nasdaq 100 ETF", "etf", alpaca_symbol="QQQ"),
+    Asset("IWM", "Russell 2000 ETF", "etf", alpaca_symbol="IWM"),
 ]
 
 ASSETS_BY_SYMBOL: dict[str, Asset] = {a.symbol: a for a in ASSETS}
@@ -132,8 +148,8 @@ STRATEGIES: dict[str, dict] = {
 RISK_PARAMS: dict[str, float] = {
     "default_risk_pct": 0.02,     # 2% of capital risked per trade
     "max_daily_drawdown": 0.05,   # stop trading if down 5% on the day
-    "max_daily_trades": 3,
-    "min_confluences": 2,         # min agreeing strategies to fire a signal
+    "max_daily_trades": 20,       # raised — wider universe, more volume
+    "min_confluences": 2,         # min agreeing strategies (quality gate — kept tight)
     "atr_sl_mult": 1.5,           # SL = price ∓ ATR * 1.5
     "atr_tp_mult": 3.0,           # TP = price ± ATR * 3.0
 }
