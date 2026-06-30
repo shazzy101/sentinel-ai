@@ -1,10 +1,11 @@
 import { useTradingData } from '@/hooks/useTradingData';
+import { SkeletonBlock, ErrorState } from '@/components/primitives/DataState';
 import EdgeQualityBadge from '@/components/trading/EdgeQualityBadge';
 import EquityChart from '@/components/trading/EquityChart';
 import KpiCard from '@/components/trading/KpiCard';
 
 export default function TradingDashboard() {
-  const { data, loading, error } = useTradingData('/api/trading/portfolio', { intervalMs: 30000 });
+  const { data, loading, error, refresh } = useTradingData('/api/trading/portfolio', { intervalMs: 30000 });
   const { data: sigData } = useTradingData('/api/trading/signals/latest', { intervalMs: 30000 });
 
   const stats = data?.stats;
@@ -12,14 +13,15 @@ export default function TradingDashboard() {
   const open = data?.open_positions || [];
   const signals = sigData?.signals || [];
 
+  if (loading && !data) return <SkeletonBlock rows={8} className="max-w-4xl" />;
+  if (error && !data) return <ErrorState message={error} onRetry={refresh} />;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         {edge && <EdgeQualityBadge edge={edge} size="lg" />}
       </div>
-
-      {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <KpiCard label="Total Return" value={stats ? `${stats.total_return_pct >= 0 ? '+' : ''}${stats.total_return_pct.toFixed(2)}%` : '—'}

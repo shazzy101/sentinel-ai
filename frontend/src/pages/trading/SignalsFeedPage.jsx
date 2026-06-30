@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTradingData } from '@/hooks/useTradingData';
+import { ErrorState } from '@/components/primitives/DataState';
 
 const STATUSES = ['', 'PENDING', 'WIN', 'LOSS', 'EXPIRED'];
 
@@ -8,7 +9,9 @@ export default function SignalsFeedPage() {
   const [dir, setDir] = useState('');
   const [hcOnly, setHcOnly] = useState(false);
   const qs = status ? `?status=${status}&limit=200` : '?limit=200';
-  const { data, loading } = useTradingData(`/api/trading/signals${qs}`, { intervalMs: 30000 });
+  const { data, loading, error, refresh } = useTradingData(`/api/trading/signals${qs}`, { intervalMs: 30000 });
+
+  if (error && !data) return <ErrorState message={error} onRetry={refresh} />;
 
   let signals = data?.signals || [];
   if (dir) signals = signals.filter((s) => s.direction === dir);

@@ -2,6 +2,7 @@ import {
   Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell,
 } from 'recharts';
 import { useTradingData } from '@/hooks/useTradingData';
+import { ErrorState } from '@/components/primitives/DataState';
 
 function confluenceBuckets(signals) {
   // win rate vs number of confluences (votes) — the core thesis
@@ -19,10 +20,12 @@ function confluenceBuckets(signals) {
 }
 
 export default function StrategiesPage() {
-  const { data: pf } = useTradingData('/api/trading/portfolio', { intervalMs: 60000 });
+  const { data: pf, error, refresh } = useTradingData('/api/trading/portfolio', { intervalMs: 60000 });
   const { data: sig } = useTradingData('/api/trading/signals?limit=200', { intervalMs: 60000 });
   const breakdown = pf?.strategy_breakdown || [];
   const conf = confluenceBuckets(sig?.signals || []);
+
+  if (error && !pf) return <ErrorState message={error} onRetry={refresh} />;
 
   return (
     <div className="space-y-6">

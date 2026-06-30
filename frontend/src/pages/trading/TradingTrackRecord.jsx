@@ -1,14 +1,35 @@
+import { useEffect } from 'react';
 import { useTradingData } from '@/hooks/useTradingData';
+import { SkeletonBlock, ErrorState } from '@/components/primitives/DataState';
 import EdgeQualityBadge from '@/components/trading/EdgeQualityBadge';
 import EquityChart from '@/components/trading/EquityChart';
 import KpiCard from '@/components/trading/KpiCard';
 import WaitlistForm from '@/components/trading/WaitlistForm';
 
+function useSeo(stats) {
+  useEffect(() => {
+    const prevTitle = document.title;
+    const wr = stats ? `${stats.win_rate.toFixed(0)}% win rate` : 'Live paper track record';
+    document.title = `APEX Trading — ${wr} | Hadaleum`;
+    const desc = stats
+      ? `APEX paper-trading: ${stats.win_rate.toFixed(0)}% win rate, ${stats.total_trades} trades, ${stats.total_return_pct >= 0 ? '+' : ''}${stats.total_return_pct.toFixed(1)}% return. Edge-quality verified — no one-trade-luck.`
+      : 'Live, honest paper-trading track record with edge-quality verification.';
+    let m = document.querySelector('meta[name="description"]');
+    const prevDesc = m?.getAttribute('content');
+    if (m) m.setAttribute('content', desc);
+    return () => { document.title = prevTitle; if (m && prevDesc) m.setAttribute('content', prevDesc); };
+  }, [stats]);
+}
+
 export default function TradingTrackRecord() {
-  const { data } = useTradingData('/api/trading/portfolio', { intervalMs: 60000 });
+  const { data, loading, error, refresh } = useTradingData('/api/trading/portfolio', { intervalMs: 60000 });
   const stats = data?.stats;
   const edge = data?.edge_quality;
   const breakdown = data?.strategy_breakdown || [];
+  useSeo(stats);
+
+  if (loading && !data) return <SkeletonBlock rows={8} className="max-w-4xl" />;
+  if (error && !data) return <ErrorState message={error} onRetry={refresh} />;
 
   return (
     <div className="space-y-6">
