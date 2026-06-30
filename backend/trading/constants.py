@@ -17,6 +17,7 @@ ASSETS: list[Asset] = [
     Asset("DOT/USD", "Polkadot", "crypto", coingecko_id="polkadot"),
     Asset("XRP/USD", "XRP", "crypto", coingecko_id="ripple"),
     Asset("LTC/USD", "Litecoin", "crypto", coingecko_id="litecoin"),
+    Asset("PAXG/USD", "PAX Gold (24/7 gold)", "crypto", coingecko_id="pax-gold"),
     # stocks (Alpaca) — market hours only
     Asset("NVDA", "NVIDIA", "stock", alpaca_symbol="NVDA"),
     Asset("TSLA", "Tesla", "stock", alpaca_symbol="TSLA"),
@@ -26,10 +27,14 @@ ASSETS: list[Asset] = [
     Asset("AMZN", "Amazon", "stock", alpaca_symbol="AMZN"),
     Asset("META", "Meta", "stock", alpaca_symbol="META"),
     Asset("GOOGL", "Alphabet", "stock", alpaca_symbol="GOOGL"),
-    # ETFs (Alpaca)
+    # ETFs + commodities (Alpaca) — market hours only
     Asset("SPY", "S&P 500 ETF", "etf", alpaca_symbol="SPY"),
     Asset("QQQ", "Nasdaq 100 ETF", "etf", alpaca_symbol="QQQ"),
     Asset("IWM", "Russell 2000 ETF", "etf", alpaca_symbol="IWM"),
+    Asset("DIA", "Dow 30 ETF", "etf", alpaca_symbol="DIA"),
+    Asset("GLD", "Gold ETF", "etf", alpaca_symbol="GLD"),
+    Asset("SLV", "Silver ETF", "etf", alpaca_symbol="SLV"),
+    Asset("USO", "Oil ETF", "etf", alpaca_symbol="USO"),
 ]
 
 ASSETS_BY_SYMBOL: dict[str, Asset] = {a.symbol: a for a in ASSETS}
