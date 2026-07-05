@@ -90,22 +90,36 @@ def build_signal(
     )
 
 
+# Indicators only need ~52 bars of lookback; cap the window so long backtests
+# don't go O(n^2) on prefix recomputation (stoch_rsi especially). Prod fetches
+# 100 bars, so live behavior is unchanged.
+_INDICATOR_WINDOW = 150
+
+
 def run_strategies_on_bar(
     bars: list[OHLCV], i: int, *, asset: str = "", timeframe: str = "5m",
     min_confluences: Optional[int] = None,
+    allowed_strategies: Optional[set] = None,
+    long_only: bool = False,
 ) -> Optional[Signal]:
-    """Run all 7 strategies on bar i and aggregate into a Signal (or None)."""
+    """Run strategies on bar i and aggregate into a Signal (or None).
+
+    allowed_strategies: restrict to a subset (research/isolation runs).
+    long_only: drop SHORT votes before aggregation.
+    """
     if not bars or i < 0 or i >= len(bars):
         return None
-    window = bars[: i + 1]
+    window = bars[max(0, i + 1 - _INDICATOR_WINDOW): i + 1]
     indicators = ind.run_all_indicators(window)
     results: list[StrategyResult] = []
-    for fn in STRATEGY_FNS.values():
+    for key, fn in STRATEGY_FNS.items():
+        if allowed_strategies is not None and key not in allowed_strategies:
+            continue
         try:
             r = fn(bars, indicators, i)
         except Exception:
             r = None
-        if r is not None:
+        if r is not None and not (long_only and r.dir == "SHORT"):
             results.append(r)
 
     # Regime weighting: boost strategies aligned with the current regime, dampen
@@ -145,10 +159,18 @@ def run_backtest(
     *,
     asset: str = "",
     timeframe: str = "5m",
+    allowed_strategies: Optional[set] = None,
+    long_only: bool = False,
+    fee_pct: float = 0.0,        # per-side exchange fee, e.g. 0.0015 = 0.15%
+    slippage_pct: float = 0.0,   # per-side slippage, e.g. 0.0005 = 0.05%
+    entry_filter=None,           # optional (bars, i) -> bool gate on new entries
 ) -> BacktestResult:
     """Single-position-at-a-time simulation using R-multiple accounting.
 
     Risk a fixed % of capital per trade. TP hit → +risk*RR; SL hit → -risk.
+    Friction (fee+slippage, both sides) is charged on POSITION NOTIONAL, not on
+    risk — with SL at 1.5·ATR the notional is entry/(1.5·ATR) × risk, so a 0.4%
+    round trip can eat 10-25% of an R. This is why paper flatters everyone.
     Deterministic given bars.
     """
     result = BacktestResult(
@@ -185,6 +207,12 @@ def run_backtest(
                 risk_amt = open_pos["risk_amt"]
                 rr = abs(tp - entry) / abs(entry - sl) if entry != sl else 0
                 pnl = risk_amt * rr if exit_reason == "TP" else -risk_amt
+                # friction on notional: units = risk / per-unit-risk; both sides
+                friction = fee_pct + slippage_pct
+                if friction > 0 and entry != sl:
+                    units = risk_amt / abs(entry - sl)
+                    notional = units * entry
+                    pnl -= notional * friction * 2
                 capital += pnl
                 move = (exit_price - entry) / entry * (1 if is_long else -1)
                 trades.append(Trade(
@@ -198,7 +226,12 @@ def run_backtest(
                 open_pos = None
 
         if open_pos is None:
-            sig = run_strategies_on_bar(bars, i, asset=asset, timeframe=timeframe, min_confluences=min_votes)
+            if entry_filter is not None and not entry_filter(bars, i):
+                continue
+            sig = run_strategies_on_bar(
+                bars, i, asset=asset, timeframe=timeframe, min_confluences=min_votes,
+                allowed_strategies=allowed_strategies, long_only=long_only,
+            )
             if sig is not None:
                 open_pos = {
                     "id": sig.id, "entry": sig.price, "sl": sig.sl, "tp": sig.tp,

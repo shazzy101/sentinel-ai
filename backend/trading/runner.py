@@ -14,7 +14,7 @@ from trading import store
 from trading.engine import run_strategies_on_bar
 from trading.api_clients import fetch_ohlcv, is_market_open
 from trading.constants import (
-    ASSETS, ASSETS_BY_SYMBOL, RISK_PARAMS, PAPER_STARTING_CAPITAL,
+    ASSETS, ASSETS_BY_SYMBOL, RISK_PARAMS, PAPER_STARTING_CAPITAL, APEX_CONFIG,
 )
 
 _log = logging.getLogger("apex.runner")
@@ -48,10 +48,23 @@ def generate_signals() -> dict:
                 continue
             if store.has_open_position(asset.symbol):
                 continue
-            bars = fetch_ohlcv(asset.symbol, "5m", 100)
-            if len(bars) < 53:
+            cfg = APEX_CONFIG
+            bars = fetch_ohlcv(asset.symbol, cfg["timeframe"], cfg["bars_needed"])
+            ma_n = cfg["ma_gate_period"]
+            if len(bars) < ma_n + 20:
+                continue  # not enough history for the MA gate — sit out
+            # MA200 trend gate: long-only momentum needs a confirmed uptrend.
+            # In the 2022 bear replays this gate was the difference between
+            # sitting out (~0%) and bleeding double digits.
+            ma = sum(b.close for b in bars[-ma_n:]) / ma_n
+            if bars[-1].close <= ma:
                 continue
-            sig = run_strategies_on_bar(bars, len(bars) - 1, asset=asset.symbol)
+            sig = run_strategies_on_bar(
+                bars, len(bars) - 1, asset=asset.symbol,
+                timeframe=cfg["timeframe"],
+                allowed_strategies=cfg["strategies"],
+                long_only=cfg["long_only"],
+            )
             if sig is None:
                 continue
             # dedupe: don't re-fire the same asset+direction within 30 min

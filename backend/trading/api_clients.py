@@ -152,6 +152,49 @@ def fetch_alpaca_bars(symbol: str, timeframe: str, limit: int) -> list[OHLCV]:
     return _rows_to_ohlcv(rows)
 
 
+_ALPACA_CRYPTO = "https://data.alpaca.markets/v1beta3/crypto/us/bars"
+_ALPACA_CRYPTO_TF = {"1m": "1Min", "5m": "5Min", "15m": "15Min",
+                     "1h": "1Hour", "4h": "4Hour", "1d": "1Day"}
+
+
+def fetch_alpaca_crypto_bars(symbol: str, timeframe: str, limit: int) -> list[OHLCV]:
+    """Real crypto bars via Alpaca (proper OHLCV incl. volume, deep history).
+
+    Preferred over CoinGecko: native 4H granularity and real volume, so
+    volume-dependent strategies actually see flow. Supported pairs only
+    (BTC, ETH, SOL, AVAX, LINK, DOGE, LTC, DOT ...).
+    """
+    key, secret = os.getenv("ALPACA_API_KEY"), os.getenv("ALPACA_API_SECRET")
+    if not key or not secret:
+        raise RuntimeError("ALPACA keys not configured")
+    from datetime import timedelta
+    tf = _ALPACA_CRYPTO_TF.get(timeframe, "4Hour")
+    hours = {"1Min": 1/60, "5Min": 1/12, "15Min": 0.25, "1Hour": 1, "4Hour": 4, "1Day": 24}[tf]
+    start = (datetime.now(timezone.utc) - timedelta(hours=hours * limit * 1.3 + 24)) \
+        .strftime("%Y-%m-%dT%H:%M:%SZ")
+    raw: list[dict] = []
+    page = None
+    while len(raw) < limit:  # Alpaca paginates aggressively; follow tokens
+        params = {"symbols": symbol, "timeframe": tf, "start": start,
+                  "limit": min(limit, 10000), "sort": "desc"}
+        if page:
+            params["page_token"] = page
+        r = httpx.get(_ALPACA_CRYPTO, params=params,
+                      headers={"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret},
+                      timeout=12)
+        r.raise_for_status()
+        data = r.json()
+        raw.extend(data.get("bars", {}).get(symbol, []))
+        page = data.get("next_page_token")
+        if not page:
+            break
+    rows = []
+    for b in reversed(raw[:limit]):  # desc pages → newest-first; restore asc
+        ts = int(datetime.fromisoformat(b["t"].replace("Z", "+00:00")).timestamp() * 1000)
+        rows.append((ts, b["o"], b["h"], b["l"], b["c"], b.get("v", 0)))
+    return _rows_to_ohlcv(rows)[-limit:]
+
+
 def fetch_coingecko_bars(coingecko_id: str, timeframe: str, limit: int) -> list[OHLCV]:
     """Real crypto OHLC via CoinGecko (keyless). Free tier granularity:
     days=1→30m, days=30→4h candles. We use 30d for enough history; volume is not
@@ -186,7 +229,11 @@ def fetch_ohlcv(asset: str, timeframe: str = "5m", limit: int = 100) -> list[OHL
     bars: list[OHLCV] = []
     try:
         if a.kind == "crypto":
-            bars = fetch_coingecko_bars(a.coingecko_id, timeframe, limit)
+            # Alpaca first (real volume + native timeframe), CoinGecko fallback.
+            try:
+                bars = fetch_alpaca_crypto_bars(asset, timeframe, limit)
+            except Exception:
+                bars = fetch_coingecko_bars(a.coingecko_id, timeframe, limit)
         elif is_market_open():
             bars = fetch_alpaca_bars(a.alpaca_symbol, timeframe, limit)
         else:

@@ -17,7 +17,8 @@ ASSETS: list[Asset] = [
     Asset("DOT/USD", "Polkadot", "crypto", coingecko_id="polkadot"),
     Asset("XRP/USD", "XRP", "crypto", coingecko_id="ripple"),
     Asset("LTC/USD", "Litecoin", "crypto", coingecko_id="litecoin"),
-    Asset("PAXG/USD", "PAX Gold (24/7 gold)", "crypto", coingecko_id="pax-gold"),
+    # PAXG cut 2026-07: 0/6 wins live. Tokenized gold doesn't trend — momentum
+    # strategies have nothing to grab. Documented in the stress-test audit.
     # stocks (Alpaca) — market hours only
     Asset("NVDA", "NVIDIA", "stock", alpaca_symbol="NVDA"),
     Asset("TSLA", "Tesla", "stock", alpaca_symbol="TSLA"),
@@ -167,3 +168,18 @@ PAPER_STARTING_CAPITAL: float = 10000.0
 HIGH_CONVICTION_VOTES: int = 4    # votes >= this → is_high_conviction
 TOTAL_STRATEGIES: int = len(STRATEGIES)
 POSITION_EXPIRY_HOURS: int = 48
+
+# ── APEX live config (locked from 2026-07 stress test) ─────────────────
+# Out-of-regime testing (2021 bull / 2022 bear / 2022 chop, friction on) showed:
+# - full 15-strategy blob, all directions, 1H: negative in EVERY regime
+# - best survivor: MACD+trend-confirm subset, LONG-only, 4H bars, MA200 gate
+#   (bull: positive; bear: sits out; chop: small bleed)
+# Prod forward-tests this config out-of-sample. docs: stress-test audit.
+APEX_CONFIG: dict = {
+    "timeframe": "4h",
+    "bars_needed": 260,           # 200 for MA gate + indicator warmup
+    "strategies": {"MACD_MOMENTUM", "DONCHIAN_BREAKOUT", "KELTNER_BREAKOUT",
+                   "ADX_TREND", "SUPERTREND", "ROC_MOMENTUM"},
+    "long_only": True,
+    "ma_gate_period": 200,        # only enter when close > SMA200
+}
