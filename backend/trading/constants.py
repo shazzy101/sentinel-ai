@@ -188,3 +188,9 @@ APEX_CONFIG: dict = {
     "fee_pct": 0.0015,            # per side — live paper charges the same
     "slippage_pct": 0.0005,       # friction the stress test charged
 }
+
+# Forward-test epoch. Trades before this are the pre-lock/pre-fix era (ungated
+# blob, re-entry bug, no friction) — kept in the DB as a research log but
+# excluded from headline stats, equity, and position sizing. Never delete data;
+# segment it.
+APEX_EPOCH_START: str = "2026-07-07T19:45:00+00:00"  # post-fix deploy

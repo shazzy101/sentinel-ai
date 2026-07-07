@@ -12,7 +12,9 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from trading.api_clients import get_admin_client
-from trading.constants import PAPER_STARTING_CAPITAL, POSITION_EXPIRY_HOURS
+from trading.constants import (
+    PAPER_STARTING_CAPITAL, POSITION_EXPIRY_HOURS, APEX_EPOCH_START,
+)
 
 _log = logging.getLogger("apex.store")
 
@@ -148,10 +150,17 @@ def update_position(position_id: str, data: dict) -> None:
         _log.error("update_position failed: %s", exc)
 
 
-def closed_positions(limit: int = 1000) -> list[dict]:
+def closed_positions(limit: int = 1000, *, epoch_only: bool = True) -> list[dict]:
+    """Closed positions, current forward-test epoch by default.
+
+    epoch_only=False returns the full history including the pre-fix era.
+    """
     try:
-        res = (_client().table("paper_positions").select("*")
-               .eq("status", "CLOSED").order("exit_at", desc=True).limit(limit).execute())
+        q = (_client().table("paper_positions").select("*")
+             .eq("status", "CLOSED"))
+        if epoch_only:
+            q = q.gte("exit_at", APEX_EPOCH_START)
+        res = q.order("exit_at", desc=True).limit(limit).execute()
         return res.data or []
     except Exception as exc:
         _log.error("closed_positions failed: %s", exc)
@@ -197,6 +206,7 @@ def insert_equity_snapshot(equity: float, drawdown: float, open_count: int) -> N
 def equity_snapshots(limit: int = 500) -> list[dict]:
     try:
         res = (_client().table("paper_equity_snapshots").select("*")
+               .gte("taken_at", APEX_EPOCH_START)
                .order("taken_at", desc=False).limit(limit).execute())
         return res.data or []
     except Exception:
