@@ -182,4 +182,9 @@ APEX_CONFIG: dict = {
                    "ADX_TREND", "SUPERTREND", "ROC_MOMENTUM"},
     "long_only": True,
     "ma_gate_period": 200,        # only enter when close > SMA200
+    "bar_minutes": 240,           # 4h — dedupe/cooldown must span a full bar,
+                                  # else the same candle re-fires the same
+                                  # losing setup every scan (the July bleed bug)
+    "fee_pct": 0.0015,            # per side — live paper charges the same
+    "slippage_pct": 0.0005,       # friction the stress test charged
 }

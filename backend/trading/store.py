@@ -158,6 +158,22 @@ def closed_positions(limit: int = 1000) -> list[dict]:
         return []
 
 
+def recently_closed(asset: str, minutes: int) -> bool:
+    """Cooldown guard: any position on this asset closed within the window.
+
+    Without this, an SL that hits mid-bar lets the very next scan re-enter the
+    SAME candle's signal — codified revenge trading.
+    """
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+        res = (_client().table("paper_positions").select("id")
+               .eq("asset", asset).eq("status", "CLOSED")
+               .gte("exit_at", since).limit(1).execute())
+        return bool(res.data)
+    except Exception:
+        return False
+
+
 def closed_today() -> list[dict]:
     try:
         since = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()

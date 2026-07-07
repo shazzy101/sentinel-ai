@@ -49,6 +49,9 @@ def generate_signals() -> dict:
             if store.has_open_position(asset.symbol):
                 continue
             cfg = APEX_CONFIG
+            # post-close cooldown: no re-entry on this asset within one bar
+            if store.recently_closed(asset.symbol, minutes=cfg["bar_minutes"]):
+                continue
             bars = fetch_ohlcv(asset.symbol, cfg["timeframe"], cfg["bars_needed"])
             ma_n = cfg["ma_gate_period"]
             if len(bars) < ma_n + 20:
@@ -67,8 +70,9 @@ def generate_signals() -> dict:
             )
             if sig is None:
                 continue
-            # dedupe: don't re-fire the same asset+direction within 30 min
-            if store.recent_signal_exists(sig.asset, sig.dir, minutes=30):
+            # dedupe: window must cover a FULL bar — on 4h candles a 30-min
+            # window let the identical signal re-fire ~8x per bar (July bug).
+            if store.recent_signal_exists(sig.asset, sig.dir, minutes=cfg["bar_minutes"]):
                 continue
 
             row = store.insert_signal(store.signal_to_row(sig))
@@ -128,9 +132,14 @@ def monitor_positions() -> dict:
                 continue
 
             move = (exit_price - entry) / entry * (1 if is_long else -1)
-            pnl_pct = move * 100
             units = float(p["size"]) / entry if entry else 0
             pnl = (exit_price - entry) * units * (1 if is_long else -1)
+            # charge the same friction the stress test charged (fee+slippage,
+            # both sides, on notional) so the live record isn't flattered
+            friction = (APEX_CONFIG["fee_pct"] + APEX_CONFIG["slippage_pct"]) * 2
+            notional = float(p["size"])
+            pnl -= notional * friction
+            pnl_pct = (pnl / notional * 100) if notional else move * 100
             sig_status = {"TP": "WIN", "SL": "LOSS", "EXPIRED": "EXPIRED"}[exit_reason]
 
             store.update_position(p["id"], {
